@@ -8,7 +8,7 @@ authors = ["leo-guinan <leo@copy.ai>"]
 python = "^3.7"
 Django = "^3.2"
 dj-rest-auth = {extras = ["with_social"], version = "^2.2.4"}
-tweepy = "^4.9.0"
+tweepy = "^4.10.0"
 python-decouple = "^3.6"
 django-cors-headers = "^3.12.0"
 djangorestframework-simplejwt = "^5.1.0"
@@ -22,5 +22,5 @@ psycopg2-binary = "^2.9.3"
 [tool.poetry.dev-dependencies]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.1.13"]
 build-backend = "poetry.core.masonry.api"
