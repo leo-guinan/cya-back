@@ -30,7 +30,7 @@ services:
     region: ohio
     env: python
     buildCommand: "./build.sh"
-    startCommand: "celery -A basedjangocelery worker --loglevel=info --concurrency=4"
+    startCommand: "celery -A backend worker --loglevel=info --concurrency=4"
     envVars:
       - key: REDIS_URL
         fromService:
@@ -46,7 +46,7 @@ services:
     region: ohio
     env: python
     buildCommand: "./build.sh"
-    startCommand: "celery -A  basedjangocelery flower --loglevel=info"
+    startCommand: "celery -A  backend flower --loglevel=info"
     envVars:
       - key: REDIS_URL
         fromService:
@@ -62,7 +62,7 @@ services:
     region: ohio
     env: python
     buildCommand: "./build.sh"
-    startCommand: "celery -A basedjangocelery beat --loglevel=info"
+    startCommand: "celery -A backend beat --loglevel=info"
     envVars:
       - key: REDIS_URL
         fromService:
