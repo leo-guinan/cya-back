@@ -10,7 +10,7 @@ services:
     env: python
     region: ohio
     buildCommand: "./build.sh"
-    startCommand: "gunicorn basedjangocelery.wsgi:application"
+    startCommand: "gunicorn backend.wsgi:application"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
