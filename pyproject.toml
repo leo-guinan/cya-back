@@ -5,14 +5,19 @@ description = ""
 authors = ["leo-guinan <leo@copy.ai>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-Django = "^4.0.4"
+python = "^3.7"
+Django = "^3.2"
 dj-rest-auth = {extras = ["with_social"], version = "^2.2.4"}
 tweepy = "^4.9.0"
 python-decouple = "^3.6"
 django-cors-headers = "^3.12.0"
 djangorestframework-simplejwt = "^5.1.0"
 djangorestframework-api-key = "2.*"
+celery = "^5.2.6"
+django-celery-results = "^2.3.1"
+django-celery-beat = "^2.2.1"
+dj-database-url = "^0.5.0"
+psycopg2-binary = "^2.9.3"
 
 [tool.poetry.dev-dependencies]
 
