@@ -29,7 +29,7 @@ services:
     name: queue
     region: ohio
     env: python
-    buildCommand: "poetry install"
+    buildCommand: "./build.sh"
     startCommand: "celery -A basedjangocelery worker --loglevel=info --concurrency=4"
     envVars:
       - key: REDIS_URL
@@ -45,7 +45,7 @@ services:
     name: flower
     region: ohio
     env: python
-    buildCommand: "poetry install"
+    buildCommand: "./build.sh"
     startCommand: "celery -A  basedjangocelery flower --loglevel=info"
     envVars:
       - key: REDIS_URL
@@ -61,7 +61,7 @@ services:
     name: scheduler
     region: ohio
     env: python
-    buildCommand: "poetry install"
+    buildCommand: "./build.sh"
     startCommand: "celery -A basedjangocelery beat --loglevel=info"
     envVars:
       - key: REDIS_URL
