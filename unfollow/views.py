@@ -64,6 +64,26 @@ def get_followers_whose_last_tweet_was_more_than_3_months_ago(request):
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
+def get_number_of_followers_processed(request):
+    body = json.loads(request.body)
+    twitter_id_to_check = body['twitter_id']
+    current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
+    relationship_count = FollowingRelationship.objects.filter(twitter_user=current_user).count()
+    return Response({"count": relationship_count})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def get_number_of_followers(request):
+    body = json.loads(request.body)
+    twitter_id_to_check = body['twitter_id']
+    twitter_api = TwitterAPI()
+    count = twitter_api.get_number_of_accounts_followed_by_account(twitter_id_to_check)
+    return Response({"count": count})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
 def get_number_of_followers_whose_last_tweet_was_more_than_3_months_ago(request):
     body = json.loads(request.body)
     twitter_id_to_check = body['twitter_id']
@@ -78,7 +98,7 @@ def get_number_of_followers_whose_last_tweet_was_more_than_3_months_ago(request)
                 serializer = TwitterAccountSerializer(user_to_check)
                 results.append(serializer.data)
 
-    return Response(results)
+    return Response({"count": len(results)})
 
 
 @api_view(('POST',))

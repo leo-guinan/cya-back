@@ -1,6 +1,6 @@
 import tweepy
 from decouple import config
-
+import json
 
 class TwitterAPI:
     def __init__(self):
@@ -109,6 +109,11 @@ class TwitterAPI:
         client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
         user = client.get_user(id=twitter_id)
         return user.data
+
+    def get_number_of_accounts_followed_by_account(self, twitter_id):
+        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        user = client.get_user(id=twitter_id, user_fields="public_metrics")
+        return user.data.public_metrics['following_count']
 
     def unfollow_user(self, twitter_id_to_unfollow, token):
         client = tweepy.Client(token)

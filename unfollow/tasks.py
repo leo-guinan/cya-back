@@ -17,7 +17,7 @@ def lookup_twitter_user(token, twitter_id_to_check):
             return None
         current_user = TwitterAccount(twitter_id=twitter_id_to_check, twitter_username=user_data.username,
                                       twitter_name=user_data.name)
-        print(current_user)
+        current_user.token = token
         current_user.save()
     followers = twitter_api.get_following_for_user(twitter_id=twitter_id_to_check, token=token)
     for user in followers:
@@ -28,17 +28,18 @@ def lookup_twitter_user(token, twitter_id_to_check):
                                              )
             twitter_account.save()
         user_follows_account.delay(twitter_id_to_check, user.id)
-        get_most_recent_tweet_for_account.delay(token, user.id)
+        get_most_recent_tweet_for_account.delay(twitter_id_to_check, user.id)
 
 
 @app.task(name="get_most_recent_tweet")
-def get_most_recent_tweet_for_account(token, account_id):
+def get_most_recent_tweet_for_account(logged_in_twitter_id, account_id):
     twitter_api = TwitterAPI()
+    logged_in_account = TwitterAccount.objects.filter(twitter_id=logged_in_twitter_id).first()
     twitter_account = TwitterAccount.objects.filter(twitter_id=account_id).first()
     if (twitter_account.last_tweet_date and twitter_account.last_tweet_date > (
     utc.localize(datetime.now() - timedelta(days=90)))):
         return
-    most_recent_tweet = twitter_api.get_most_recent_tweet_for_user(account_id, token=token)
+    most_recent_tweet = twitter_api.get_most_recent_tweet_for_user(account_id, token=logged_in_account.token)
     if most_recent_tweet is not None:
         twitter_account.last_tweet_date = most_recent_tweet.created_at
         twitter_account.save()
