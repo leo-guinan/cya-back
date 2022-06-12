@@ -1,5 +1,7 @@
 from django.db import models
 
+
+
 # Create your models here.
 class TwitterAccount(models.Model):
     twitter_id = models.CharField("Twitter ID", max_length=512, unique=True)
@@ -7,7 +9,7 @@ class TwitterAccount(models.Model):
     twitter_name = models.CharField("Twitter Name", max_length=255, null=True)
     last_tweet_date = models.DateTimeField("date of last tweet", null=True)
     token = models.CharField("Token", max_length=100, null=True)
-
+    groups = models.ManyToManyField("unfollow.Group", related_name="owned_by")
 
     def __str__(self):
         return f'{self.twitter_username}: {self.last_tweet_date}'
@@ -15,4 +17,18 @@ class TwitterAccount(models.Model):
 class FollowingRelationship(models.Model):
     twitter_user = models.ForeignKey('unfollow.TwitterAccount', related_name="main", on_delete=models.DO_NOTHING)
     follows = models.ForeignKey('unfollow.TwitterAccount', related_name="follows", on_delete=models.DO_NOTHING)
+
+class Group(models.Model):
+    name = models.CharField("Group Name", max_length=255, null=False)
+    members = models.ManyToManyField("unfollow.TwitterAccount", related_name="member_of")
+
+    def __str__(self):
+        return f'{self.owned_by}: {self.name}'
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'owned_by'], name='unique_user_group_name'),
+        ]
+
+
 

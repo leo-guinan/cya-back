@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timedelta
 from twitter_api.twitter_api import TwitterAPI
 # Create your views here.
-from .models import TwitterAccount, FollowingRelationship
+from .models import TwitterAccount, FollowingRelationship, Group
 from .serializers import TwitterAccountSerializer
 from .tasks import lookup_twitter_user
 import pytz
@@ -116,3 +116,59 @@ def unfollow_user(request):
     userToUnfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
     FollowingRelationship.objects.filter(twitter_user=currentUser, follows=userToUnfollow).delete()
     return Response({"success": True})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def protect_user(request):
+    body = json.loads(request.body)
+    logged_in_user_twitter_id = body['logged_in_user_id']
+    twitter_id_to_unfollow = body['twitter_id']
+    print(f"Protecting {twitter_id_to_unfollow}")
+    currentUser = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    userToProtect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
+    # if group doesn't exist for protected, create one
+    protected_group = Group.objects.filter(owned_by=currentUser, name="Protected").first()
+    if not protected_group:
+        protected_group = Group(name="Protected")
+        protected_group.save()
+        protected_group.members.add(userToProtect)
+        currentUser.groups.add(protected_group)
+    else:
+        protected_group.members.add(userToProtect)
+    protected_group.save()
+    currentUser.save()
+    print(protected_group)
+    serializer = TwitterAccountSerializer(userToProtect)
+
+    return Response(serializer.data)
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def unprotect_user(request):
+    body = json.loads(request.body)
+    logged_in_user_twitter_id = body['logged_in_user_id']
+    twitter_id_to_unfollow = body['twitter_id']
+    print(f"Protecting {twitter_id_to_unfollow}")
+    currentUser = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    userToUnprotect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
+    if userToUnprotect in currentUser.groups.all():
+        currentUser.groups.remove(userToUnprotect)
+        currentUser.save()
+    serializer = TwitterAccountSerializer(userToUnprotect)
+    return Response(serializer.data)
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def get_protected_users(request):
+    body = json.loads(request.body)
+    logged_in_user_twitter_id = body['logged_in_user_id']
+    currentUser = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    protected_users = []
+    for group in currentUser.groups.all():
+        for member in group.members.all():
+            serializer = TwitterAccountSerializer(member)
+            protected_users.append(serializer.data)
+    return Response(protected_users)
