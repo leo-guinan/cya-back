@@ -1,31 +1,30 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 
 
-
 # Create your models here.
-class TwitterAccount(models.Model):
-    twitter_id = models.CharField("Twitter ID", max_length=512, unique=True)
-    twitter_username = models.CharField("Twitter Username", max_length=255, null=True)
-    twitter_name = models.CharField("Twitter Name", max_length=255, null=True)
-    last_tweet_date = models.DateTimeField("date of last tweet", null=True)
-    token = models.CharField("Token", max_length=100, null=True)
-    groups = models.ManyToManyField("unfollow.Group", related_name="owned_by")
 
-    def __str__(self):
-        return f'{self.twitter_username}: {self.last_tweet_date}'
-
-class FollowingRelationship(models.Model):
-    twitter_user = models.ForeignKey('unfollow.TwitterAccount', related_name="main", on_delete=models.DO_NOTHING)
-    follows = models.ForeignKey('unfollow.TwitterAccount', related_name="follows", on_delete=models.DO_NOTHING)
-
-class Group(models.Model):
-    name = models.CharField("Group Name", max_length=255, null=False)
-    members = models.ManyToManyField("unfollow.TwitterAccount", related_name="member_of")
-
-    def __str__(self):
-        return f'{self.owned_by}: {self.name}'
+class AnalysisReport(models.Model):
+    account = models.ForeignKey("twitter.TwitterAccount", related_name="analysis_reports", on_delete=models.CASCADE)
+    dormant_count = models.IntegerField("number of accounts followed that are dormant")
+    following_count = models.IntegerField("number of accounts followed")
+    date_of_report = models.DateField("Date report was created", auto_now_add=True)
 
 
+class Analysis(models.Model):
+    class AnalysisState(models.TextChoices):
+        REQUESTED = 'RE', ('Requested')
+        STARTED = 'ST', ('Started')
+        IN_PROGRESS = 'IP', ('In progress')
+        COMPLETE = 'CP', ('Complete')
+        ERROR = 'ER', ('Error')
+
+    state = models.CharField(
+        max_length=2,
+        choices=AnalysisState.choices,
+        default=AnalysisState.REQUESTED,
+    )
+    account = models.OneToOneField("twitter.TwitterAccount", related_name="analysis", on_delete=models.CASCADE, unique=True)
+    created = models.DateTimeField("Date created", auto_now_add=True)
+    updated = models.DateTimeField("Date updated", auto_now=True)
 
 

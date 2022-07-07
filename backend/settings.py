@@ -50,10 +50,16 @@ INSTALLED_APPS = [
     'dj_rest_auth',
     'django.contrib.sites',
     'unfollow',
+    'watchtweet',
     "corsheaders",
     "rest_framework_api_key",
     'django_celery_beat',
     'django_celery_results',
+    'client',
+    'feather',
+    'twitter',
+    'mail',
+    'crawler'
 ]
 SITE_ID = 2
 

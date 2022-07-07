@@ -1,13 +1,18 @@
 import tweepy
 from decouple import config
-import json
+
 
 class TwitterAPI:
+    USER_FIELDS = "id,profile_image_url,name,description"
+    TWEET_FIELDS = "public_metrics,entities,created_at,author_id"
+
     def __init__(self):
         self.api_key = config('TWITTER_API_KEY')
         self.api_secret = config('TWITTER_API_SECRET')
         self.client_id = config('TWITTER_CLIENT_ID')
         self.client_secret = config('TWITTER_CLIENT_SECRET')
+        self.access_token = config('TWITTER_ACCESS_TOKEN')
+        self.access_token_secret = config('TWITTER_ACCESS_SECRET')
         self.oauth_callback_url = config('TWITTER_OAUTH_CALLBACK_URL')
         self.bearer_token = config('TWITTER_BEARER_TOKEN')
 
@@ -93,21 +98,78 @@ class TwitterAPI:
         print(f'found {len(following)} users that {twitter_id} is following')
         return following
 
+    def get_following_for_user_admin(self, twitter_id):
+        client = tweepy.Client(bearer_token=self.bearer_token,
+                               wait_on_rate_limit=True)
+        results = client.get_users_following(id=twitter_id, max_results=1000)
+        following = results.data
+        next_token = results.meta.get("next_token", "")
+        while next_token:
+            added_following = client.get_users_following(id=twitter_id, max_results=1000, pagination_token=next_token)
+            following.extend(added_following.data)
+            next_token = added_following.meta.get("next_token", "")
+
+        print(f'found {len(following)} users that {twitter_id} is following')
+        return following
+
+    def get_followers_for_user_admin(self, twitter_id):
+        client = tweepy.Client(bearer_token=self.bearer_token,
+                               wait_on_rate_limit=True)
+        results = client.get_users_followers(id=twitter_id, max_results=1000)
+        followers = results.data
+        next_token = results.meta.get("next_token", "")
+        while next_token:
+            added_following = client.get_users_followers(id=twitter_id, max_results=1000, pagination_token=next_token)
+            followers.extend(added_following.data)
+            next_token = added_following.meta.get("next_token", "")
+
+        print(f'found {len(followers)} users that follow {twitter_id}')
+        return followers
+
     def get_most_recent_tweet_for_user(self, twitter_id, token):
-        client = tweepy.Client(token, wait_on_rate_limit=True)
+        client = tweepy.Client(token, wait_on_rate_limit=False)
         next_token = ''
         print(f'checking user: {twitter_id}')
-        results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets", max_results=100)
+        results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
+                                          max_results=10)
         while not results.data and results.meta.get(next_token, ""):
             print(f'rechecking user: {twitter_id}, results: {results}')
             results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
-                                              max_results=100, pagination_token=next_token)
+                                              max_results=10, pagination_token=next_token)
 
         return results.data[0] if results.data else None
 
-    def lookup_user(self, twitter_id):
+    def get_most_recent_tweet_for_user_as_admin(self, twitter_id):
         client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
-        user = client.get_user(id=twitter_id)
+        next_token = ''
+        print(f'checking user: {twitter_id}')
+        results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
+                                          max_results=10)
+        while not results.data and results.meta.get(next_token, ""):
+            print(f'rechecking user: {twitter_id}, results: {results}')
+            results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
+                                              max_results=10, pagination_token=next_token)
+
+        return results.data[0] if results.data else None
+
+    def lookup_user_as_admin(self, twitter_id):
+        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS)
+        return user.data
+
+    def lookup_user(self, twitter_id, token):
+        client = tweepy.Client(token)
+        user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS)
+        return user.data
+
+    def lookup_user_by_username_as_admin(self, username):
+        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        user = client.get_user(username=username, user_fields=self.USER_FIELDS)
+        return user.data
+
+    def lookup_user_by_username(self, username, token):
+        client = tweepy.Client(token)
+        user = client.get_user(username=username, user_fields=self.USER_FIELDS)
         return user.data
 
     def get_number_of_accounts_followed_by_account(self, twitter_id):
@@ -119,3 +181,79 @@ class TwitterAPI:
         client = tweepy.Client(token)
         client.unfollow_user(twitter_id_to_unfollow, user_auth=False)
 
+    def get_responses_to_tweet(self, tweet_id, since_id=None):
+        client = tweepy.Client(bearer_token=self.bearer_token)
+        last_lookup = since_id
+        if not last_lookup:
+            last_lookup = tweet_id
+        responses = client.search_recent_tweets(query=f'conversation_id:{tweet_id}',
+                                                since_id=last_lookup,
+                                                tweet_fields="author_id", max_results=100, expansions="author_id",
+                                                user_fields=self.USER_FIELDS)
+        return responses
+
+    def get_responses_to_prompt_in_conversation(self, tweet_id, since_id=None):
+        client = tweepy.Client(bearer_token=self.bearer_token)
+        last_lookup = since_id
+        if not last_lookup:
+            last_lookup = tweet_id
+        responses = client.search_recent_tweets(
+            query=f'conversation_id:{tweet_id} to:feathercrm -from:feathercrm is:reply', since_id=last_lookup,
+            tweet_fields="author_id", max_results=100)
+        return responses
+
+    def reply_to_tweet(self, message, tweet_id_to_reply_to):
+        client = tweepy.Client(consumer_key=self.api_key, consumer_secret=self.api_secret,
+                               access_token=self.access_token,
+                               access_token_secret=self.access_token_secret)
+        response = client.create_tweet(text=message, in_reply_to_tweet_id=tweet_id_to_reply_to, user_auth=True)
+        return response.data
+
+    def get_retweets(self, tweet_id, token):
+        client = tweepy.Client(token)
+        response = client.get_retweeters(id=tweet_id)
+        return response.data
+
+    def get_likes(self, tweet_id, token):
+        client = tweepy.Client(token)
+        response = client.get_liking_users(id=tweet_id)
+        return response.data
+
+    def get_retweets_as_admin(self, tweet_id):
+        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        response = client.get_retweeters(id=tweet_id)
+        return response.data
+
+    def get_likes_as_admin(self, tweet_id):
+        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        response = client.get_liking_users(id=tweet_id)
+        return response.data
+
+    def lookup_tweet(self, tweet_id, token):
+        client = tweepy.Client(token)
+        response = client.get_tweet(id=tweet_id, tweet_fields=["public_metrics", "entities", "created_at", "author_id"])
+        return response.data
+
+    def lookup_tweet_as_admin(self, tweet_id):
+        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        response = client.get_tweet(id=tweet_id, tweet_fields=["public_metrics", "entities", "created_at", "author_id"])
+        return response.data
+
+    def get_recent_tweets_as_admin(self, twitter_id):
+        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        response = client.search_recent_tweets(query=f"from:{twitter_id}", max_results=10,
+                                               tweet_fields=self.TWEET_FIELDS)
+        return response.data
+
+    def get_recent_tweets(self, twitter_id, token):
+        client = tweepy.Client(token)
+        response = client.search_recent_tweets(query=f"from:{twitter_id}", max_results=10,
+                                               tweet_fields=self.TWEET_FIELDS)
+        return response.data
+
+    def send_tweet(self, message):
+        client = tweepy.Client(consumer_key=self.api_key, consumer_secret=self.api_secret,
+                               access_token=self.access_token,
+                               access_token_secret=self.access_token_secret)
+        response = client.create_tweet(text=message, user_auth=True)
+        return response.data
