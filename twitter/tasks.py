@@ -32,7 +32,7 @@ def populate_user_data_from_twitter_id(twitter_id, client_account_id=None):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
         if not client_account:
             raise Exception("unable to find client account")
-        user = twitter_api.lookup_user(twitter_id=twitter_id, token=client_account.token)
+        user = twitter_api.lookup_user(twitter_id=twitter_id, client_account_id=client_account_id)
     else:
         user = twitter_api.lookup_user_as_admin(twitter_id=twitter_id)
     twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()

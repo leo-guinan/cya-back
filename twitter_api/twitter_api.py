@@ -1,5 +1,11 @@
 import tweepy
 from decouple import config
+import requests
+import logging
+import base64
+
+from client.exception import UnknownClientAccount
+from client.models import ClientAccount
 
 
 class TwitterAPI:
@@ -84,7 +90,12 @@ class TwitterAPI:
 
         return bookmarks
 
-    def get_following_for_user(self, twitter_id, token):
+    def get_following_for_user(self, client_account_id):
+        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        if not client_account:
+            raise UnknownClientAccount()
+        twitter_id = client_account.twitter_account.twitter_id
+        token = self.refresh_oauth2_token(client_account_id=client_account_id)
         client = tweepy.Client(token,
                                wait_on_rate_limit=True)
         results = client.get_users_following(id=twitter_id, max_results=1000)
@@ -126,7 +137,11 @@ class TwitterAPI:
         print(f'found {len(followers)} users that follow {twitter_id}')
         return followers
 
-    def get_most_recent_tweet_for_user(self, twitter_id, token):
+    def get_most_recent_tweet_for_user(self, client_account_id, twitter_id):
+        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        if not client_account:
+            raise UnknownClientAccount()
+        token = self.refresh_oauth2_token(client_account_id=client_account_id)
         client = tweepy.Client(token, wait_on_rate_limit=False)
         next_token = ''
         print(f'checking user: {twitter_id}')
@@ -157,7 +172,8 @@ class TwitterAPI:
         user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS)
         return user.data
 
-    def lookup_user(self, twitter_id, token):
+    def lookup_user(self, twitter_id, client_account_id):
+        token = self.refresh_oauth2_token(client_account_id=client_account_id)
         client = tweepy.Client(token)
         user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS)
         return user.data
@@ -257,3 +273,23 @@ class TwitterAPI:
                                access_token_secret=self.access_token_secret)
         response = client.create_tweet(text=message, user_auth=True)
         return response.data
+
+    def refresh_oauth2_token(self, client_account_id):
+        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        if not client_account:
+            raise UnknownClientAccount()
+        client = client_account.client
+        url = 'https://api.twitter.com/2/oauth2/token'
+        myobj = {
+            'refresh_token': client_account.refresh_token,
+            "grant_type": "refresh_token",
+            "client_id": client.client_id
+        }
+        response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
+        results = response.json()
+        client_account.access_token = results['access_token']
+        client_account.refresh_token = results['refresh_token']
+        client_account.save()
+        return results["access_token"]
+
+

@@ -5,43 +5,51 @@ from celery import group
 from pytz import utc
 
 from backend.celery import app
+from client.exception import UnknownClientAccount
+from client.models import ClientAccount
 from twitter.models import TwitterAccount
 from twitter_api.twitter_api import TwitterAPI
-from unfollow.models import AnalysisReport
+from unfollow.models import AnalysisReport, Analysis
 
 
 @app.task(name="lookup_twitter_user", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
           retry_kwargs={'max_retries': 8})
-def lookup_twitter_user(token, twitter_id_to_check):
+def lookup_twitter_user(client_account_id):
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
     twitter_api = TwitterAPI()
-    current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    if not current_user:
-        user_data = twitter_api.lookup_user(twitter_id=twitter_id_to_check, token=token)
-        if not user_data:
-            return None
-        current_user = TwitterAccount(twitter_id=twitter_id_to_check, twitter_username=user_data.username,
-                                      twitter_name=user_data.name)
-        current_user.token = token
-        current_user.save()
-    followers = twitter_api.get_following_for_user(twitter_id=twitter_id_to_check, token=token)
-    user_lookup_tasks = []
-    user_follows_account_tasks = []
-    for user in followers:
-        twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
-        if not twitter_account:
-            twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
-                                             twitter_name=user.name
-                                             )
-            twitter_account.save()
-        user_follows_account_tasks.append(user_follows_account.s(twitter_id_to_check, user.id))
-        user_lookup_tasks.append(get_most_recent_tweet_for_account.s(twitter_id_to_check, user.id))
-    user_lookup_group = group(user_lookup_tasks)
-    user_follows_account_group = group(user_follows_account_tasks)
-    follows_result = user_follows_account_group()
-    lookup_result = user_lookup_group()
-    while not lookup_result.successful() or not follows_result.successful():
-        pass
-
+    current_user = client_account.twitter_account
+    analysis = Analysis.objects.filter(account=current_user).first()
+    if not analysis:
+        analysis = Analysis()
+        analysis.account = current_user
+        analysis.save()
+    if analysis.created < (utc.localize(datetime.now() - timedelta(days=7))):
+        analysis.state = Analysis.AnalysisState.IN_PROGRESS
+        analysis.save()
+        followers = twitter_api.get_following_for_user(client_account_id=client_account_id)
+        user_lookup_tasks = []
+        user_follows_account_tasks = []
+        for user in followers:
+            twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
+            if not twitter_account:
+                twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
+                                                 twitter_name=user.name
+                                                 )
+                twitter_account.save()
+            user_follows_account_tasks.append(
+                user_follows_account.s(client_account.twitter_account.twitter_id, user.id))
+            user_lookup_tasks.append(
+                get_most_recent_tweet_for_account.s(client_account.twitter_account.twitter_id, user.id))
+        user_lookup_group = group(user_lookup_tasks)
+        user_follows_account_group = group(user_follows_account_tasks)
+        follows_result = user_follows_account_group()
+        lookup_result = user_lookup_group()
+        while not lookup_result.successful() or not follows_result.successful():
+            pass
+        analysis.state = Analysis.AnalysisState.COMPLETE
+        analysis.save()
 
 
 @app.task(name="lookup_twitter_user_nologin", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
@@ -80,14 +88,14 @@ def lookup_twitter_user_as_admin(twitter_id_to_check):
 
 @app.task(name="get_most_recent_tweet", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
           retry_kwargs={'max_retries': 8})
-def get_most_recent_tweet_for_account(logged_in_twitter_id, account_id):
+def get_most_recent_tweet_for_account(client_account_id, account_id):
     twitter_api = TwitterAPI()
-    logged_in_account = TwitterAccount.objects.filter(twitter_id=logged_in_twitter_id).first()
     twitter_account = TwitterAccount.objects.filter(twitter_id=account_id).first()
     if (twitter_account.last_tweet_date and twitter_account.last_tweet_date > (
             utc.localize(datetime.now() - timedelta(days=90)))):
         return
-    most_recent_tweet = twitter_api.get_most_recent_tweet_for_user(account_id, token=logged_in_account.token)
+    most_recent_tweet = twitter_api.get_most_recent_tweet_for_user(client_account_id=client_account_id,
+                                                                   twitter_id=account_id)
     if most_recent_tweet is not None:
         twitter_account.last_tweet_date = most_recent_tweet.created_at
         twitter_account.save()
@@ -141,5 +149,6 @@ def report_to_account(twitter_id_to_check):
 
     message = f".@{current_user.twitter_username} you follow {len(results)} accounts that haven't tweeted in the last three months"
     twitter_api.send_tweet(message)
-    report = AnalysisReport(account=current_user, dormant_count=len(results), following_count=current_user.follows.count())
+    report = AnalysisReport(account=current_user, dormant_count=len(results),
+                            following_count=current_user.follows.count())
     report.save()

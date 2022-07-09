@@ -9,7 +9,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
-from twitter.models import TwitterAccount
+from twitter.models import TwitterAccount, Group
 from twitter.serializers import TwitterAccountSerializer
 from twitter_api.twitter_api import TwitterAPI
 # Create your views here.
@@ -35,31 +35,6 @@ class TwitterAccountDetail(RetrieveUpdateDestroyAPIView):
 def sortKeyFunctionLastTweetDate(e):
     return e['last_tweet_date']
 
-
-@api_view(('POST',))
-@renderer_classes((JSONRenderer,))
-@permission_classes([HasAPIKey])
-def lookup_user(request):
-    body = json.loads(request.body)
-    token = body['token']
-    twitter_id_to_lookup = body['twitter_id']
-    twitter_api = TwitterAPI()
-    twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id_to_lookup).first()
-    if not twitter_account:
-        twitter_account_looked_up = twitter_api.lookup_user_as_admin(twitter_id_to_lookup)
-        twitter_account.twitter_id = twitter_account_looked_up.id
-        twitter_account.twitter_bio = twitter_account_looked_up.description
-        twitter_account.twitter_name = twitter_account_looked_up.name
-        twitter_account.twitter_username = twitter_account_looked_up.username
-        twitter_account.twitter_profile_picture_url = twitter_account_looked_up.profile_image_url
-        twitter_account.save()
-    analysis = Analysis.objects.filter(account=twitter_account).first()
-    if not analysis:
-        analysis = Analysis()
-        analysis.account = twitter_account
-        analysis.save()
-    lookup_twitter_user.delay(token, twitter_id_to_lookup)
-    return Response({"status": "success"})
 
 
 @api_view(('GET',))
@@ -138,9 +113,9 @@ def unfollow_user(request):
     twitter_api = TwitterAPI()
     print(f"Unfollowing {twitter_id_to_unfollow}")
     twitter_api.unfollow_user(twitter_id_to_unfollow, token)
-    currentUser = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
-    userToUnfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
-    FollowingRelationship.objects.filter(twitter_user=currentUser, follows=userToUnfollow).delete()
+    current_user = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
+    current_user.follows.remove(user_to_unfollow)
     return Response({"success": True})
 
 
@@ -152,21 +127,20 @@ def protect_user(request):
     logged_in_user_twitter_id = body['logged_in_user_id']
     twitter_id_to_unfollow = body['twitter_id']
     print(f"Protecting {twitter_id_to_unfollow}")
-    currentUser = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
-    userToProtect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
+    current_user = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    user_to_protect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
     # if group doesn't exist for protected, create one
-    protected_group = Group.objects.filter(owned_by=currentUser, name="Protected").first()
+    protected_group = Group.objects.filter(owned_by=current_user, name="Protected").first()
     if not protected_group:
         protected_group = Group(name="Protected")
         protected_group.save()
-        protected_group.members.add(userToProtect)
-        currentUser.groups.add(protected_group)
+        protected_group.members.add(user_to_protect)
+        current_user.groups.add(protected_group)
     else:
-        protected_group.members.add(userToProtect)
+        protected_group.members.add(user_to_protect)
     protected_group.save()
-    currentUser.save()
-    print(protected_group)
-    serializer = TwitterAccountSerializer(userToProtect)
+    current_user.save()
+    serializer = TwitterAccountSerializer(user_to_protect)
 
     return Response(serializer.data)
 

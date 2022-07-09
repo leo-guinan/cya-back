@@ -12,6 +12,6 @@ class ClientAccount(models.Model):
     client = models.ForeignKey("client.Client", related_name="accounts", on_delete=models.CASCADE)
     token = models.CharField("twitter oauth2 token", max_length=255, default="")
     refresh_token = models.CharField("twitter oauth2 refresh token", max_length=255, default="")
-    email = models.CharField("account email address", max_length=255)
+    email = models.CharField("account email address", max_length=255, null=True, blank=True)
     twitter_account = models.ForeignKey("twitter.TwitterAccount", related_name="client_accounts", on_delete=models.CASCADE)
 

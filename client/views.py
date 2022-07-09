@@ -20,6 +20,7 @@ def client_account_login(request):
     client_name = body['client']
     email = body['email']
     token = body['token']
+    refresh_token = body['refresh_token']
     client = Client.objects.filter(name=client_name).first()
     if not client:
         raise UnknownClient()
@@ -35,6 +36,7 @@ def client_account_login(request):
         client_account.twitter_account = twitter_account
     client_account.email = email
     client_account.token = token
+    client_account.refresh_token = refresh_token
     client_account.save()
     populate_user_data_from_twitter_id.delay(twitter_id=twitter_id, client_account_id=client_account.id)
     return Response({"client_account_id": client_account.id})

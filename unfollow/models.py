@@ -13,7 +13,6 @@ class AnalysisReport(models.Model):
 class Analysis(models.Model):
     class AnalysisState(models.TextChoices):
         REQUESTED = 'RE', ('Requested')
-        STARTED = 'ST', ('Started')
         IN_PROGRESS = 'IP', ('In progress')
         COMPLETE = 'CP', ('Complete')
         ERROR = 'ER', ('Error')
