@@ -1,8 +1,12 @@
+from datetime import datetime, timedelta
+
 import tweepy
 from decouple import config
 import requests
 import logging
 import base64
+
+from pytz import utc
 
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount
@@ -193,7 +197,8 @@ class TwitterAPI:
         user = client.get_user(id=twitter_id, user_fields="public_metrics")
         return user.data.public_metrics['following_count']
 
-    def unfollow_user(self, twitter_id_to_unfollow, token):
+    def unfollow_user(self, client_account_id, twitter_id_to_unfollow):
+        token = self.refresh_oauth2_token(client_account_id)
         client = tweepy.Client(token)
         client.unfollow_user(twitter_id_to_unfollow, user_auth=False)
 
@@ -276,6 +281,10 @@ class TwitterAPI:
 
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        print(client_account.refreshed)
+        print(utc.localize(datetime.now() - timedelta(minutes=90)))
+        if client_account.refreshed >= utc.localize(datetime.now() - timedelta(minutes=90)):
+            return client_account.token
         if not client_account:
             raise UnknownClientAccount()
         client = client_account.client

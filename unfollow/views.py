@@ -9,11 +9,14 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
+from client.exception import UnknownClientAccount
+from client.models import ClientAccount
 from twitter.models import TwitterAccount, Group
 from twitter.serializers import TwitterAccountSerializer
 from twitter_api.twitter_api import TwitterAPI
 # Create your views here.
 from .models import Analysis
+from .serializers import AnalysisSerializer
 from .tasks import lookup_twitter_user, report_to_account
 
 utc = pytz.UTC
@@ -36,13 +39,26 @@ def sortKeyFunctionLastTweetDate(e):
     return e['last_tweet_date']
 
 
-
-@api_view(('GET',))
+@api_view(('POST',))
 @renderer_classes((JSONRenderer,))
-@permission_classes([])
-def analyze_self(request):
-    report_to_account.delay("1325102346792218629")
-    return Response({"status": "success"})
+@permission_classes([HasAPIKey])
+def get_account_analysis(request):
+    body = json.loads(request.body)
+    client_account_id = body['client_account_id']
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
+    current_user = client_account.twitter_account
+    analysis = Analysis.objects.filter(account=current_user).first()
+    if not analysis:
+        analysis = Analysis()
+        analysis.account = current_user
+        analysis.save()
+    lookup_twitter_user.delay(client_account_id)
+    serializer = AnalysisSerializer(analysis)
+    return Response(serializer.data)
+
+
 
 
 @api_view(('POST',))
@@ -107,13 +123,15 @@ def get_number_of_followers_whose_last_tweet_was_more_than_3_months_ago(request)
 @permission_classes([HasAPIKey])
 def unfollow_user(request):
     body = json.loads(request.body)
-    token = body['token']
-    logged_in_user_twitter_id = body['logged_in_user_id']
+    client_account_id = body['client_account_id']
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
     twitter_id_to_unfollow = body['twitter_id']
     twitter_api = TwitterAPI()
     print(f"Unfollowing {twitter_id_to_unfollow}")
-    twitter_api.unfollow_user(twitter_id_to_unfollow, token)
-    current_user = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    twitter_api.unfollow_user(client_account_id, twitter_id_to_unfollow)
+    current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
     current_user.follows.remove(user_to_unfollow)
     return Response({"success": True})
@@ -130,16 +148,14 @@ def protect_user(request):
     current_user = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
     user_to_protect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
     # if group doesn't exist for protected, create one
-    protected_group = Group.objects.filter(owned_by=current_user, name="Protected").first()
+    protected_group = Group.objects.filter(owner=current_user, name="Protected").first()
     if not protected_group:
-        protected_group = Group(name="Protected")
+        protected_group = Group(name="Protected", owner=current_user)
         protected_group.save()
         protected_group.members.add(user_to_protect)
-        current_user.groups.add(protected_group)
     else:
         protected_group.members.add(user_to_protect)
     protected_group.save()
-    current_user.save()
     serializer = TwitterAccountSerializer(user_to_protect)
 
     return Response(serializer.data)

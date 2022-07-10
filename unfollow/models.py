@@ -25,5 +25,7 @@ class Analysis(models.Model):
     account = models.OneToOneField("twitter.TwitterAccount", related_name="analysis", on_delete=models.CASCADE, unique=True)
     created = models.DateTimeField("Date created", auto_now_add=True)
     updated = models.DateTimeField("Date updated", auto_now=True)
+    dormant_count = models.IntegerField("number of accounts followed that are dormant", default=0)
+    following_count = models.IntegerField("number of accounts followed", default=0)
 
 

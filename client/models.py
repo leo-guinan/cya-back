@@ -1,3 +1,6 @@
+import datetime
+
+import django.utils.timezone
 from django.db import models
 
 # Create your models here.
@@ -14,4 +17,5 @@ class ClientAccount(models.Model):
     refresh_token = models.CharField("twitter oauth2 refresh token", max_length=255, default="")
     email = models.CharField("account email address", max_length=255, null=True, blank=True)
     twitter_account = models.ForeignKey("twitter.TwitterAccount", related_name="client_accounts", on_delete=models.CASCADE)
+    refreshed = models.DateTimeField("time the token was refreshed", default=django.utils.timezone.now)
 
