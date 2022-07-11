@@ -40,8 +40,11 @@ def lookup_twitter_user(client_account_id):
                                                  twitter_name=user.name
                                                  )
                 twitter_account.save()
-            user_follows_account_tasks.append(
-                user_follows_account.s(client_account.twitter_account.twitter_id, user.id))
+            user_follows_account_lookup = TwitterAccount.objects.filter(twitter_account=current_user, follows__twitter_account=twitter_account).first()
+            if not user_follows_account_lookup:
+                user_follows_account_tasks.append(
+                    user_follows_account.s(client_account.twitter_account.twitter_id, user.id))
+
             user_lookup_tasks.append(
                 get_most_recent_tweet_for_account.s(client_account_id, user.id))
         user_lookup_group = group(user_lookup_tasks)
