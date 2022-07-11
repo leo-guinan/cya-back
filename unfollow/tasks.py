@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import tweepy
 from celery import group
 from pytz import utc
+from django.utils import timezone
 
 from backend.celery import app
 from client.exception import UnknownClientAccount
@@ -25,12 +26,12 @@ def lookup_twitter_user(client_account_id):
         analysis = Analysis()
         analysis.account = current_user
         analysis.save()
-    if analysis.state == Analysis.AnalysisState.REQUESTED or (analysis.created < (utc.localize(datetime.now() - timedelta(days=7))) and analysis.state == Analysis.AnalysisState.COMPLETE):
+    if analysis.state == Analysis.AnalysisState.REQUESTED or (analysis.created < (
+    utc.localize(datetime.now() - timedelta(days=7))) and analysis.state == Analysis.AnalysisState.COMPLETE):
         analysis.state = Analysis.AnalysisState.IN_PROGRESS
         analysis.save()
         followers = twitter_api.get_following_for_user(client_account_id=client_account_id)
         user_lookup_tasks = []
-        user_follows_account_tasks = []
         analysis.following_count = len(followers)
         analysis.save()
         for user in followers:
@@ -40,25 +41,23 @@ def lookup_twitter_user(client_account_id):
                                                  twitter_name=user.name
                                                  )
                 twitter_account.save()
-            user_follows_account_lookup = TwitterAccount.objects.filter(twitter_account=current_user, follows__twitter_account=twitter_account).first()
+            user_follows_account_lookup = TwitterAccount.objects.filter(twitter_id=current_user.twitter_id,
+                                                                        follows__twitter_id=twitter_account.twitter_id).first()
             if not user_follows_account_lookup:
-                user_follows_account_tasks.append(
-                    user_follows_account.s(client_account.twitter_account.twitter_id, user.id))
+                user_follows_account.delay(client_account.twitter_account.twitter_id, user.id)
 
             user_lookup_tasks.append(
                 get_most_recent_tweet_for_account.s(client_account_id, user.id))
         user_lookup_group = group(user_lookup_tasks)
-        user_follows_account_group = group(user_follows_account_tasks)
-        follows_result = user_follows_account_group()
         lookup_result = user_lookup_group()
-        while not lookup_result.successful() or not follows_result.successful():
+        while not lookup_result.successful():
             pass
         date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
         dormant_count = 0
         for relationship in current_user.follows.all():
             if relationship and relationship.last_tweet_date:
                 if relationship.last_tweet_date < date_to_compare_against:
-                    dormant_count+=1
+                    dormant_count += 1
         analysis.dormant_count = dormant_count
         analysis.state = Analysis.AnalysisState.COMPLETE
         analysis.save()

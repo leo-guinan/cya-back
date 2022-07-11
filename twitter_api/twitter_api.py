@@ -3,8 +3,7 @@ from datetime import datetime, timedelta
 import tweepy
 from decouple import config
 import requests
-import logging
-import base64
+from django.utils import timezone
 
 from pytz import utc
 
@@ -299,7 +298,7 @@ class TwitterAPI:
         print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
-        client_account.refreshed=datetime.now()
+        client_account.refreshed=timezone.now()
         client_account.save()
         return results["access_token"]
 
