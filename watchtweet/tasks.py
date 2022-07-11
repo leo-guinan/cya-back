@@ -96,7 +96,3 @@ def prompt_twitter_user(tweet_to_respond_to_with_prompt, prompt_question_id, wat
     watched_tweet.children.add(watch_for_response)
     watched_tweet.save()
 
-
-@app.task(name='process_hourly_watches')
-def hourly_watches():
-    analyze_accounts_that_respond_to_tweet.delay("1543941455550578688")
