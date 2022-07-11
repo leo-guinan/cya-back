@@ -296,6 +296,7 @@ class TwitterAPI:
         }
         response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
         results = response.json()
+        print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
         client_account.save()
