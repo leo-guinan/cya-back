@@ -145,7 +145,7 @@ class TwitterAPI:
         if not client_account:
             raise UnknownClientAccount()
         token = self.refresh_oauth2_token(client_account_id=client_account_id)
-        client = tweepy.Client(token, wait_on_rate_limit=False)
+        client = tweepy.Client(token, wait_on_rate_limit=True)
         next_token = ''
         print(f'checking user: {twitter_id}')
         results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
