@@ -51,7 +51,9 @@ def lookup_twitter_user(client_account_id):
         user_lookup_group = group(user_lookup_tasks)
         lookup_result = user_lookup_group()
         while not lookup_result.successful():
-            pass
+            if lookup_result.failed():
+                analysis.state = Analysis.AnalysisState.ERROR
+                analysis.save()
         date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
         dormant_count = 0
         for relationship in current_user.follows.all():
@@ -97,7 +99,7 @@ def lookup_twitter_user_as_admin(twitter_id_to_check):
     report_to_account.delay(current_user.twitter_id)
 
 
-@app.task(name="get_most_recent_tweet", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
+@app.task(name="get_most_recent_tweet", autoretry_for=(Exception,), retry_backoff=60,
           retry_kwargs={'max_retries': 8})
 def get_most_recent_tweet_for_account(client_account_id, account_id):
     twitter_api = TwitterAPI()
