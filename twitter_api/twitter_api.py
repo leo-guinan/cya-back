@@ -1,10 +1,10 @@
+import logging
 from datetime import datetime, timedelta
 
+import requests
 import tweepy
 from decouple import config
-import requests
 from django.utils import timezone
-
 from pytz import utc
 
 from client.exception import UnknownClientAccount
@@ -24,6 +24,8 @@ class TwitterAPI:
         self.access_token_secret = config('TWITTER_ACCESS_SECRET')
         self.oauth_callback_url = config('TWITTER_OAUTH_CALLBACK_URL')
         self.bearer_token = config('TWITTER_BEARER_TOKEN')
+
+        logging.basicConfig(level=logging.DEBUG)
 
     def twitter_login(self):
         oauth1_user_handler = tweepy.OAuthHandler(self.api_key, self.api_secret, callback=self.oauth_callback_url)
@@ -99,6 +101,7 @@ class TwitterAPI:
             raise UnknownClientAccount()
         twitter_id = client_account.twitter_account.twitter_id
         token = self.refresh_oauth2_token(client_account_id=client_account_id)
+        print(token)
         client = tweepy.Client(token,
                                wait_on_rate_limit=True)
         results = client.get_users_following(id=twitter_id, max_results=1000)
@@ -298,8 +301,6 @@ class TwitterAPI:
         print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
-        client_account.refreshed=timezone.now()
+        client_account.refreshed = timezone.now()
         client_account.save()
         return results["access_token"]
-
-
