@@ -26,7 +26,7 @@ def lookup_twitter_user(client_account_id):
         analysis = Analysis()
         analysis.account = current_user
         analysis.save()
-    if analysis.state == Analysis.AnalysisState.REQUESTED or (analysis.created < (
+    if analysis.state == Analysis.AnalysisState.REQUESTED or analysis.state == Analysis.AnalysisState.ERROR or (analysis.created < (
     utc.localize(datetime.now() - timedelta(days=7))) and analysis.state == Analysis.AnalysisState.COMPLETE):
         analysis.state = Analysis.AnalysisState.IN_PROGRESS
         analysis.save()
