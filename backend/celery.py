@@ -26,10 +26,14 @@ app.conf.beat_scheduler = 'django_celery_beat.schedulers.DatabaseScheduler'
 def debug_task(self):
     print(f'Request: {self.request!r}')
 
-# app.conf.beat_schedule = {
-#     'watch_tweets_hourly': {
-#         'task': 'process_hourly_watches',
-#         'schedule': crontab(hour='*', minute=0),
-#     },
-# }
 
+app.conf.beat_schedule = {
+    'analyze_requested': {
+        'task': 'run_analysis_on_accounts_requesting',
+        'schedule': crontab(hour='*', minute=30),
+    },
+    'analyse_errored': {
+        'task': 'run_analysis_on_accounts_errored',
+        'schedule': crontab(hour='*', minute=0),
+    },
+}
