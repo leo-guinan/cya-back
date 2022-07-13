@@ -1,6 +1,7 @@
 import json
 
 # Create your views here.
+from django.utils import timezone
 from rest_framework.decorators import permission_classes, renderer_classes, api_view
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -37,6 +38,7 @@ def client_account_login(request):
     client_account.email = email
     client_account.token = token
     client_account.refresh_token = refresh_token
+    client_account.refreshed = timezone.now()
     client_account.save()
     populate_user_data_from_twitter_id.delay(twitter_id=twitter_id, client_account_id=client_account.id)
     return Response({"client_account_id": client_account.id})
