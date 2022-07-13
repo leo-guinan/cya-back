@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timedelta
 
 import requests
@@ -24,8 +23,6 @@ class TwitterAPI:
         self.access_token_secret = config('TWITTER_ACCESS_SECRET')
         self.oauth_callback_url = config('TWITTER_OAUTH_CALLBACK_URL')
         self.bearer_token = config('TWITTER_BEARER_TOKEN')
-
-        logging.basicConfig(level=logging.DEBUG)
 
     def twitter_login(self):
         oauth1_user_handler = tweepy.OAuthHandler(self.api_key, self.api_secret, callback=self.oauth_callback_url)
@@ -101,7 +98,6 @@ class TwitterAPI:
             raise UnknownClientAccount()
         twitter_id = client_account.twitter_account.twitter_id
         token = self.refresh_oauth2_token(client_account_id=client_account_id)
-        print(token)
         client = tweepy.Client(token,
                                wait_on_rate_limit=True)
         results = client.get_users_following(id=twitter_id, max_results=1000)
@@ -283,8 +279,7 @@ class TwitterAPI:
 
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
-        print(client_account.refreshed)
-        print(utc.localize(datetime.now() - timedelta(minutes=90)))
+
         if client_account.refreshed >= utc.localize(datetime.now() - timedelta(minutes=90)):
             return client_account.token
         if not client_account:
@@ -298,7 +293,6 @@ class TwitterAPI:
         }
         response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
         results = response.json()
-        print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
         client_account.refreshed = timezone.now()
