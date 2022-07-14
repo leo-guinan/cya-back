@@ -169,14 +169,14 @@ def report_to_account(twitter_id_to_check):
 
 @app.task(name="run_analysis_on_accounts_requesting")
 def run_analysis():
-    analyses_to_run = Analysis.objects.filter(status=Analysis.AnalysisState.REQUESTED).all()
+    analyses_to_run = Analysis.objects.filter(state=Analysis.AnalysisState.REQUESTED).all()
     for analysis in analyses_to_run:
         client_account = ClientAccount.filter(twitter_account=analysis.account).first()
         lookup_twitter_user.delay(client_account.id)
 
 @app.task(name="run_analysis_on_accounts_errored")
 def run_analysis_on_error():
-    analyses_to_run = Analysis.objects.filter(status=Analysis.AnalysisState.ERROR).all()
+    analyses_to_run = Analysis.objects.filter(state=Analysis.AnalysisState.ERROR).all()
     for analysis in analyses_to_run:
         client_account = ClientAccount.objects.filter(twitter_account=analysis.account).first()
         lookup_twitter_user.delay(client_account.id)
