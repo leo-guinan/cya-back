@@ -28,10 +28,10 @@ def debug_task(self):
 
 
 app.conf.beat_schedule = {
-    'analyze_requested': {
-        'task': 'run_analysis_on_accounts_requesting',
-        'schedule': crontab(hour='*', minute=30),
-    },
+    # 'analyze_requested': {
+    #     'task': 'run_analysis_on_accounts_requesting',
+    #     'schedule': crontab(hour='*', minute=30),
+    # },
     'analyse_errored': {
         'task': 'run_analysis_on_accounts_errored',
         'schedule': crontab(hour='*', minute=0),
