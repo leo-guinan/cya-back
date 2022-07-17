@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from backend.celery import app
 from client.exception import UnknownClientAccount
-from client.models import ClientAccount
+from client.models import ClientAccount, BetaAccount
 from twitter.models import TwitterAccount
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AnalysisReport, Analysis
@@ -192,3 +192,28 @@ def dm_users_who_ran_analysis():
         except Exception as e:
             print(f"Error sending DM: {e}")
 
+
+@app.task(name="send_dms_to_users")
+def dm_beta_users():
+    twitter_api = TwitterAPI()
+    beta_users = BetaAccount.objects.filter(messaged=False).all()
+    for user in beta_users:
+        try:
+            print(f"Sending DM to {user.client_account.twitter_account.twitter_name}")
+            twitter_api.send_dm_to_user(1, user.client_account.twitter_account.twitter_id, f'''Thanks for your interest in beta testing Who Should I Unfollow? 
+
+To get started, you can visit the site here: http://whoshouldiunfollow.com/
+
+From there, log in with your Twitter account and click “Analyze My Account”. That will kick off the process. 
+Ideally, that will finish running and you’ll be able to see the button for viewing the dormant accounts you follow, but I’m going to be monitoring the processes as they run to make sure they finish. Occasionally, they fail and I’ll need to kick it off again. If you let me know once you click analyze, I’ll make sure that your account finishes analyzing and shows you the dormant accounts you follow.
+
+Here’s your beta code to use:
+{user.beta_code}'''
+                                        )
+
+        except Exception as e:
+            print(f"Error sending DM: {e}")
+            twitter_api.send_dm_to_user(1, "1325102346792218629", f"Error sending DM to {user.client_account.twitter_account.twitter_name}")
+
+        user.messaged = True
+        user.save()

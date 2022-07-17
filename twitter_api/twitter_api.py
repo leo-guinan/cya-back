@@ -7,7 +7,7 @@ from django.utils import timezone
 from pytz import utc
 
 from client.exception import UnknownClientAccount
-from client.models import ClientAccount
+from client.models import ClientAccount, Client
 
 
 class TwitterAPI:
@@ -277,13 +277,12 @@ class TwitterAPI:
         response = client.create_tweet(text=message, user_auth=True)
         return response.data
 
-    def send_dm_to_user(self, client_account_id, twitter_user_to_message, message):
-        client_account = ClientAccount.objects.filter(id=client_account_id).first()
-        client = client_account.client
+    def send_dm_to_user(self, client_id, twitter_user_to_message, message):
+        client = Client.objects.filter(id=client_id).first()
 
         auth = tweepy.OAuth1UserHandler(
             client.consumer_key, client.consumer_secret,
-            client.access_token, client.access_token_secret
+            client.access_token, client.access_secret
         )
         api = tweepy.API(auth)
         api.send_direct_message(twitter_user_to_message, text=message)
