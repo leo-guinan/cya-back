@@ -206,6 +206,7 @@ To get started, you can visit the site here: http://whoshouldiunfollow.com/
 
 From there, log in with your Twitter account and click “Analyze My Account”. That will kick off the process. 
 Ideally, that will finish running and you’ll be able to see the button for viewing the dormant accounts you follow, but I’m going to be monitoring the processes as they run to make sure they finish. Occasionally, they fail and I’ll need to kick it off again. If you let me know once you click analyze, I’ll make sure that your account finishes analyzing and shows you the dormant accounts you follow.
+Also, you can share your beta code with up to 4 friends, so feel free to pass it on if you know someone who might be interested!
 
 Here’s your beta code to use:
 {user.beta_code}'''
