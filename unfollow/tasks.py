@@ -193,7 +193,7 @@ def dm_users_who_ran_analysis():
             print(f"Error sending DM: {e}")
 
 
-@app.task(name="send_dms_to_users")
+@app.task(name="send_dms_to_beta_users")
 def dm_beta_users():
     twitter_api = TwitterAPI()
     beta_users = BetaAccount.objects.filter(messaged=False).all()

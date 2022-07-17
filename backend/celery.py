@@ -36,4 +36,8 @@ app.conf.beat_schedule = {
         'task': 'run_analysis_on_accounts_errored',
         'schedule': crontab(hour='*', minute=0),
     },
+    'message_beta_users': {
+        'task': 'send_dms_to_beta_users',
+        'schedule': crontab(hour='*', minute=0),
+    },
 }
