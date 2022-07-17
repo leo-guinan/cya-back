@@ -180,3 +180,15 @@ def run_analysis_on_error():
     for analysis in analyses_to_run:
         client_account = ClientAccount.objects.filter(twitter_account=analysis.account).first()
         lookup_twitter_user.delay(client_account.id)
+
+@app.task(name="send_dms_to_users")
+def dm_users_who_ran_analysis():
+    twitter_api = TwitterAPI()
+    analyses_to_run = Analysis.objects.filter().all()
+    for analysis in analyses_to_run:
+        try:
+            print(f"Sending DM to {analysis.account.twitter_name}")
+            twitter_api.send_dm_to_user(analysis.account.twitter_id, "Testing DMs")
+        except Exception as e:
+            print(f"Error sending DM: {e}")
+

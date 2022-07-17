@@ -1,7 +1,24 @@
 from backend.celery import app
 from client.models import ClientAccount
+from tweetpik.tweetpik import TweetPik
 from twitter.models import TwitterAccount, Tweet, Retweet, Like
 from twitter_api.twitter_api import TwitterAPI
+from PIL import Image, ImageDraw, ImageFont
+from textwrap import wrap
+
+FONT_USER_INFO = ImageFont.truetype("arial.ttf", 90, encoding="utf-8")
+FONT_TEXT = ImageFont.truetype("arial.ttf", 110, encoding="utf-8")
+WIDTH = 2376
+HEIGHT = 2024
+COLOR_BG = 'white'
+COLOR_NAME = 'black'
+COLOR_TAG = (64, 64, 64)
+COLOR_TEXT = 'black'
+COORD_PHOTO = (250, 170)
+COORD_NAME = (600, 185)
+COORD_TAG = (600, 305)
+COORD_TEXT = (250, 510)
+LINE_MARGIN = 15
 
 
 @app.task(name="populate_user_by_username")
@@ -147,4 +164,12 @@ def fetch_user_engagement(twitter_id, client_account_id):
             saved_tweet.tweet_id = tweet.id
             saved_tweet.message = tweet.text
             saved_tweet.tweet_created_at = tweet.created_at
+
+@app.task(name="create_screenshot_from_tweet")
+def create_screenshot(tweet_id):
+    tweet_pik = TweetPik()
+    tweet_pik.create_image(tweet_id=tweet_id)
+
+
+
 

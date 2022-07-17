@@ -277,6 +277,17 @@ class TwitterAPI:
         response = client.create_tweet(text=message, user_auth=True)
         return response.data
 
+    def send_dm_to_user(self, client_account_id, twitter_user_to_message, message):
+        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        client = client_account.client
+
+        auth = tweepy.OAuth1UserHandler(
+            client.consumer_key, client.consumer_secret,
+            client.access_token, client.access_token_secret
+        )
+        api = tweepy.API(auth)
+        api.send_direct_message(twitter_user_to_message, text=message)
+
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
 
