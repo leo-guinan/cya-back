@@ -22,10 +22,17 @@ class Analysis(models.Model):
         choices=AnalysisState.choices,
         default=AnalysisState.REQUESTED,
     )
-    account = models.OneToOneField("twitter.TwitterAccount", related_name="analysis", on_delete=models.CASCADE, unique=True)
+    account = models.OneToOneField("twitter.TwitterAccount", related_name="analysis", on_delete=models.CASCADE,
+                                   unique=True)
     created = models.DateTimeField("Date created", auto_now_add=True)
     updated = models.DateTimeField("Date updated", auto_now=True)
     dormant_count = models.IntegerField("number of accounts followed that are dormant", default=0)
     following_count = models.IntegerField("number of accounts followed", default=0)
 
 
+class AccountCheck(models.Model):
+    account = models.OneToOneField("twitter.TwitterAccount", related_name="account_check", on_delete=models.CASCADE,
+                                   unique=True)
+    requests = models.ManyToManyField("client.ClientAccount", related_name="accounts_to_analyze")
+    last_requested = models.DateTimeField("last time requested", auto_now=True)
+    last_analyzed = models.DateTimeField("last time analyzed", null=True)

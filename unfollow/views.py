@@ -54,9 +54,25 @@ def get_account_analysis(request):
         analysis = Analysis()
         analysis.account = current_user
         analysis.save()
-    lookup_twitter_user.delay(client_account_id)
-    serializer = AnalysisSerializer(analysis)
-    return Response(serializer.data)
+        lookup_twitter_user.delay(client_account_id)
+    following = current_user.follows.all()
+    follower_count = len(following)
+    dormant_count = 0
+    date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
+    for relationship in following:
+        if relationship and relationship.last_tweet_date:
+            if relationship.last_tweet_date < date_to_compare_against:
+                dormant_count += 1
+    followers_to_analyze = client_account.accounts_to_analyze.filter(last_analyzed__isnull=True).count()
+    print(followers_to_analyze)
+    print(follower_count)
+    print(dormant_count)
+    result = {
+        "following_count": follower_count,
+        "dormant_count": dormant_count,
+        "followers_to_analyze": followers_to_analyze
+    }
+    return Response(result)
 
 
 

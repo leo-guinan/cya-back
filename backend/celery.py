@@ -40,4 +40,8 @@ app.conf.beat_schedule = {
         'task': 'send_dms_to_beta_users',
         'schedule': crontab(hour='*', minute=0),
     },
+    'analyze_accounts': {
+        'task': 'analyze_accounts_that_need_it',
+        'schedule': crontab(hour='*')
+    }
 }
