@@ -20,6 +20,7 @@ class TwitterAccount(models.Model):
     most_recent_tweet = models.ForeignKey("twitter.Tweet", on_delete=models.SET_NULL, null=True, blank=True)
     follows = models.ManyToManyField("self", symmetrical=False, related_name="followed_by")
     last_tweet_date = models.DateTimeField("date of last tweet", null=True)
+    last_checked = models.DateField("date followers and following looked up", null=True)
 
 
 class Group(models.Model):

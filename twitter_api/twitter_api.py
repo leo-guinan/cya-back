@@ -111,6 +111,25 @@ class TwitterAPI:
         print(f'found {len(following)} users that {twitter_id} is following')
         return following
 
+    def get_users_following_account(self, client_account_id):
+        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        if not client_account:
+            raise UnknownClientAccount()
+        twitter_id = client_account.twitter_account.twitter_id
+        token = self.refresh_oauth2_token(client_account_id=client_account_id)
+        client = tweepy.Client(token,
+                               wait_on_rate_limit=True)
+        results = client.get_users_followers(id=twitter_id, max_results=1000)
+        followers = results.data
+        next_token = results.meta.get("next_token", "")
+        while next_token:
+            added_following = client.get_users_followers(id=twitter_id, max_results=1000, pagination_token=next_token)
+            followers.extend(added_following.data)
+            next_token = added_following.meta.get("next_token", "")
+
+        print(f'found {len(followers)} users following {twitter_id}')
+        return followers
+
     def get_following_for_user_admin(self, twitter_id):
         client = tweepy.Client(bearer_token=self.bearer_token,
                                wait_on_rate_limit=True)

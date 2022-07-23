@@ -20,25 +20,39 @@ def lookup_twitter_user(client_account_id):
         raise UnknownClientAccount()
     twitter_api = TwitterAPI()
     current_user = client_account.twitter_account
-    current_user.follows.set([])
-    current_user.save()
-    followers = twitter_api.get_following_for_user(client_account_id=client_account_id)
 
-    for user in followers:
-        twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
-        if not twitter_account:
-            twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
-                                             twitter_name=user.name
-                                             )
-            twitter_account.save()
-        user_follows_account_lookup = TwitterAccount.objects.filter(twitter_id=current_user.twitter_id,
-                                                                    follows__twitter_id=twitter_account.twitter_id).first()
-        if not user_follows_account_lookup:
-            user_follows_account.delay(client_account.twitter_account.twitter_id, user.id)
+    if current_user.last_checked and current_user.last_checked < (utc.localize(datetime.now()) - timedelta(days=2)):
+        current_user.follows.set([])
+        current_user.followed_by.set([])
+        current_user.save()
+        following = twitter_api.get_following_for_user(client_account_id=client_account_id)
+        followers = twitter_api.get_users_following_account(client_account_id=client_account_id)
+        for user in following:
+            twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
+            if not twitter_account:
+                twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
+                                                 twitter_name=user.name
+                                                 )
+                twitter_account.save()
+            user_follows_account_lookup = TwitterAccount.objects.filter(twitter_id=current_user.twitter_id,
+                                                                        follows__twitter_id=twitter_account.twitter_id).first()
+            if not user_follows_account_lookup:
+                user_follows_account.delay(client_account.twitter_account.twitter_id, user.id)
 
-        account_check_request.delay(client_account_id, user.id)
-
-
+            account_check_request.delay(client_account_id, user.id)
+        for user in followers:
+            twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
+            if not twitter_account:
+                twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
+                                                 twitter_name=user.name
+                                                 )
+                twitter_account.save()
+            user_followed_by_account_lookup = TwitterAccount.objects.filter(twitter_id=twitter_account.twitter_id,
+                                                                            follows__twitter_id=current_user.twitter_id).first()
+            if not user_followed_by_account_lookup:
+                user_follows_account.delay(user.id, client_account.twitter_account.twitter_id)
+        current_user.last_checked = utc.localize(datetime.now())
+        current_user.save()
 
 
 @app.task(name="request_account_check")
@@ -92,7 +106,6 @@ def check_twitter_account(account_check_id):
         except Exception as e:
             twitter_api.send_dm_to_user(1, "1325102346792218629",
                                         f"Error looking up {twitter_account.twitter_name} for {client_account.twitter_account.twitter_name}: {e}")
-
 
 
 @app.task(name="lookup_twitter_user_nologin", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
