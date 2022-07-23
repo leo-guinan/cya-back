@@ -20,7 +20,7 @@ def lookup_twitter_user(client_account_id):
         raise UnknownClientAccount()
     twitter_api = TwitterAPI()
     current_user = client_account.twitter_account
-    current_user.follows.set(None)
+    current_user.follows.set([])
     current_user.save()
     followers = twitter_api.get_following_for_user(client_account_id=client_account_id)
 
