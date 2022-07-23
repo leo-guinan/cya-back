@@ -8,6 +8,7 @@ from backend.celery import app
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, BetaAccount
 from twitter.models import TwitterAccount
+from twitter.tasks import make_user_follow_account
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AnalysisReport, Analysis, AccountCheck
 
@@ -32,7 +33,7 @@ def lookup_twitter_user(client_account_id):
                                                  )
                 twitter_account.save()
 
-            user_follows_account.delay(client_account.twitter_account.twitter_id, user.id)
+            make_user_follow_account.delay(client_account.twitter_account.twitter_id, user.id)
 
             account_check_request.delay(client_account_id, user.id)
         for user in followers:
@@ -42,7 +43,7 @@ def lookup_twitter_user(client_account_id):
                                                  twitter_name=user.name
                                                  )
                 twitter_account.save()
-            user_follows_account.delay(user.id, client_account.twitter_account.twitter_id)
+            make_user_follow_account.delay(user.id, client_account.twitter_account.twitter_id)
         current_user.last_checked = utc.localize(datetime.now())
         current_user.save()
 
@@ -122,7 +123,7 @@ def lookup_twitter_user_as_admin(twitter_id_to_check):
                                              twitter_name=user.name
                                              )
             twitter_account.save()
-        user_follows_account_tasks.append(user_follows_account.s(twitter_id_to_check, user.id))
+        user_follows_account_tasks.append(make_user_follow_account.s(twitter_id_to_check, user.id))
         user_lookup_tasks.append(get_most_recent_tweet_for_account_as_admin.s(user.id))
     user_lookup_group = group(user_lookup_tasks)
     user_follows_account_group = group(user_follows_account_tasks)
@@ -168,20 +169,6 @@ def get_most_recent_tweet_for_account_as_admin(account_id):
     else:
         # when no tweet, just set last tweet date to 5 years ago
         twitter_account.last_tweet_date = utc.localize(datetime.now() - timedelta(weeks=52 * 5))
-        twitter_account.save()
-
-
-@app.task(name="user_follows_account")
-def user_follows_account(user_id, follows_id):
-    print(f'checking if {user_id} follows {follows_id}')
-    relationship = TwitterAccount.objects.filter(twitter_id=user_id,
-                                                 following__twitter_id=follows_id).first()
-    if not relationship:
-        print('they do not. following.')
-        current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
-        twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()
-        current_user.following.add(twitter_account)
-        current_user.save()
         twitter_account.save()
 
 

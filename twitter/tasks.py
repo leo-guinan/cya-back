@@ -194,6 +194,27 @@ def get_followers(client_account_id):
             make_user_follow_account.delay(client_account.twitter_account.twitter_id, user.id)
 
 
+@app.task(name="get_users_following_client_account")
+def get_users_following(client_account_id):
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
+    twitter_api = TwitterAPI()
+    current_user = client_account.twitter_account
+    followers = twitter_api.get_users_following_account(client_account_id=client_account_id)
+
+    for user in followers:
+        twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
+        if not twitter_account:
+            twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
+                                             twitter_name=user.name
+                                             )
+            twitter_account.save()
+        user_follows_account_lookup = TwitterAccount.objects.filter(twitter_id=twitter_account.twitter_id,
+                                                                    following__twitter_id=current_user.twitter_id).first()
+        if not user_follows_account_lookup:
+            make_user_follow_account.delay(user.id,client_account.twitter_account.twitter_id)
+
 @app.task(name="set_user_follows_account")
 def make_user_follow_account(user_id, follows_id):
     relationship = TwitterAccount.objects.filter(twitter_id=user_id,
