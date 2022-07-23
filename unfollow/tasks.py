@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import tweepy
 from celery import group
@@ -21,7 +21,7 @@ def lookup_twitter_user(client_account_id):
     twitter_api = TwitterAPI()
     current_user = client_account.twitter_account
 
-    if not current_user.last_checked or current_user.last_checked < (utc.localize(datetime.now()) - timedelta(days=2)):
+    if not current_user.last_checked or current_user.last_checked < (date.today() - timedelta(days=2)):
         following = twitter_api.get_following_for_user(client_account_id=client_account_id)
         followers = twitter_api.get_users_following_account(client_account_id=client_account_id)
         for user in following:
