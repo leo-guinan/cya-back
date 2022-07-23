@@ -64,6 +64,21 @@ def get_account_analysis(request):
     }
     return Response(result)
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def get_number_of_accounts_left_to_analyze(request):
+    body = json.loads(request.body)
+    client_account_id = body['client_account_id']
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
+    followers_to_analyze = client_account.accounts_to_analyze.filter(last_analyzed__isnull=True).count()
+    result = {
+        "followers_to_analyze": followers_to_analyze
+    }
+    return Response(result)
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
