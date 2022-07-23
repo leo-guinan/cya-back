@@ -22,9 +22,6 @@ def lookup_twitter_user(client_account_id):
     current_user = client_account.twitter_account
 
     if not current_user.last_checked or current_user.last_checked < (utc.localize(datetime.now()) - timedelta(days=2)):
-        current_user.follows.set([])
-        current_user.followed_by.set([])
-        current_user.save()
         following = twitter_api.get_following_for_user(client_account_id=client_account_id)
         followers = twitter_api.get_users_following_account(client_account_id=client_account_id)
         for user in following:
@@ -34,10 +31,8 @@ def lookup_twitter_user(client_account_id):
                                                  twitter_name=user.name
                                                  )
                 twitter_account.save()
-            user_follows_account_lookup = TwitterAccount.objects.filter(twitter_id=current_user.twitter_id,
-                                                                        follows__twitter_id=twitter_account.twitter_id).first()
-            if not user_follows_account_lookup:
-                user_follows_account.delay(client_account.twitter_account.twitter_id, user.id)
+
+            user_follows_account.delay(client_account.twitter_account.twitter_id, user.id)
 
             account_check_request.delay(client_account_id, user.id)
         for user in followers:
@@ -47,10 +42,7 @@ def lookup_twitter_user(client_account_id):
                                                  twitter_name=user.name
                                                  )
                 twitter_account.save()
-            user_followed_by_account_lookup = TwitterAccount.objects.filter(twitter_id=twitter_account.twitter_id,
-                                                                            follows__twitter_id=current_user.twitter_id).first()
-            if not user_followed_by_account_lookup:
-                user_follows_account.delay(user.id, client_account.twitter_account.twitter_id)
+            user_follows_account.delay(user.id, client_account.twitter_account.twitter_id)
         current_user.last_checked = utc.localize(datetime.now())
         current_user.save()
 
@@ -181,9 +173,11 @@ def get_most_recent_tweet_for_account_as_admin(account_id):
 
 @app.task(name="user_follows_account")
 def user_follows_account(user_id, follows_id):
+    print(f'checking if {user_id} follows {follows_id}')
     relationship = TwitterAccount.objects.filter(twitter_id=user_id,
                                                  follows__twitter_id=follows_id).first()
     if not relationship:
+        print('they do not. following.')
         current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
         twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()
         current_user.follows.add(twitter_account)
