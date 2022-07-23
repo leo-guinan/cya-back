@@ -21,7 +21,7 @@ def lookup_twitter_user(client_account_id):
     twitter_api = TwitterAPI()
     current_user = client_account.twitter_account
 
-    if current_user.last_checked and current_user.last_checked < (utc.localize(datetime.now()) - timedelta(days=2)):
+    if not current_user.last_checked or current_user.last_checked < (utc.localize(datetime.now()) - timedelta(days=2)):
         current_user.follows.set([])
         current_user.followed_by.set([])
         current_user.save()
