@@ -92,14 +92,16 @@ class TwitterAPI:
 
         return bookmarks
 
-    def get_following_for_user(self, client_account_id):
-        client_account = ClientAccount.objects.filter(id=client_account_id).first()
-        if not client_account:
-            raise UnknownClientAccount()
-        twitter_id = client_account.twitter_account.twitter_id
-        token = self.refresh_oauth2_token(client_account_id=client_account_id)
-        client = tweepy.Client(token,
-                               wait_on_rate_limit=True)
+    def get_following_for_user(self, twitter_id, client_account_id):
+        if client_account_id:
+            client_account = ClientAccount.objects.filter(id=client_account_id).first()
+            if not client_account:
+                raise UnknownClientAccount()
+            token = self.refresh_oauth2_token(client_account_id=client_account_id)
+            client = tweepy.Client(token,
+                                wait_on_rate_limit=True)
+        else:
+            client=tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
         results = client.get_users_following(id=twitter_id, max_results=1000)
         following = results.data
         next_token = results.meta.get("next_token", "")
@@ -111,14 +113,17 @@ class TwitterAPI:
         print(f'found {len(following)} users that {twitter_id} is following')
         return following
 
-    def get_users_following_account(self, client_account_id):
-        client_account = ClientAccount.objects.filter(id=client_account_id).first()
-        if not client_account:
-            raise UnknownClientAccount()
-        twitter_id = client_account.twitter_account.twitter_id
-        token = self.refresh_oauth2_token(client_account_id=client_account_id)
-        client = tweepy.Client(token,
-                               wait_on_rate_limit=True)
+    def get_users_following_account(self, twitter_id, client_account_id):
+        if client_account_id:
+            client_account = ClientAccount.objects.filter(id=client_account_id).first()
+            if not client_account:
+                raise UnknownClientAccount()
+            token = self.refresh_oauth2_token(client_account_id=client_account_id)
+            client = tweepy.Client(token,
+                                   wait_on_rate_limit=True)
+        else:
+            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+
         results = client.get_users_followers(id=twitter_id, max_results=1000)
         followers = results.data
         next_token = results.meta.get("next_token", "")
@@ -130,40 +135,15 @@ class TwitterAPI:
         print(f'found {len(followers)} users following {twitter_id}')
         return followers
 
-    def get_following_for_user_admin(self, twitter_id):
-        client = tweepy.Client(bearer_token=self.bearer_token,
-                               wait_on_rate_limit=True)
-        results = client.get_users_following(id=twitter_id, max_results=1000)
-        following = results.data
-        next_token = results.meta.get("next_token", "")
-        while next_token:
-            added_following = client.get_users_following(id=twitter_id, max_results=1000, pagination_token=next_token)
-            following.extend(added_following.data)
-            next_token = added_following.meta.get("next_token", "")
-
-        print(f'found {len(following)} users that {twitter_id} is following')
-        return following
-
-    def get_followers_for_user_admin(self, twitter_id):
-        client = tweepy.Client(bearer_token=self.bearer_token,
-                               wait_on_rate_limit=True)
-        results = client.get_users_followers(id=twitter_id, max_results=1000)
-        followers = results.data
-        next_token = results.meta.get("next_token", "")
-        while next_token:
-            added_following = client.get_users_followers(id=twitter_id, max_results=1000, pagination_token=next_token)
-            followers.extend(added_following.data)
-            next_token = added_following.meta.get("next_token", "")
-
-        print(f'found {len(followers)} users that follow {twitter_id}')
-        return followers
-
-    def get_most_recent_tweet_for_user(self, client_account_id, twitter_id):
-        client_account = ClientAccount.objects.filter(id=client_account_id).first()
-        if not client_account:
-            raise UnknownClientAccount()
-        token = self.refresh_oauth2_token(client_account_id=client_account_id)
-        client = tweepy.Client(token, wait_on_rate_limit=True)
+    def get_most_recent_tweet_for_user(self, twitter_id, client_account_id = None):
+        if client_account_id:
+            client_account = ClientAccount.objects.filter(id=client_account_id).first()
+            if not client_account:
+                raise UnknownClientAccount()
+            token = self.refresh_oauth2_token(client_account_id=client_account_id)
+            client = tweepy.Client(token, wait_on_rate_limit=True)
+        else:
+            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
         next_token = ''
         print(f'checking user: {twitter_id}')
         results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
@@ -175,38 +155,14 @@ class TwitterAPI:
 
         return results.data[0] if results.data else None
 
-    def get_most_recent_tweet_for_user_as_admin(self, twitter_id):
-        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
-        next_token = ''
-        print(f'checking user: {twitter_id}')
-        results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
-                                          max_results=10)
-        while not results.data and results.meta.get(next_token, ""):
-            print(f'rechecking user: {twitter_id}, results: {results}')
-            results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
-                                              max_results=10, pagination_token=next_token)
 
-        return results.data[0] if results.data else None
-
-    def lookup_user_as_admin(self, twitter_id):
-        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+    def lookup_user(self, twitter_id, client_account_id=None):
+        if client_account_id:
+            token = self.refresh_oauth2_token(client_account_id=client_account_id)
+            client = tweepy.Client(token)
+        else:
+            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
         user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS)
-        return user.data
-
-    def lookup_user(self, twitter_id, client_account_id):
-        token = self.refresh_oauth2_token(client_account_id=client_account_id)
-        client = tweepy.Client(token)
-        user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS)
-        return user.data
-
-    def lookup_user_by_username_as_admin(self, username):
-        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
-        user = client.get_user(username=username, user_fields=self.USER_FIELDS)
-        return user.data
-
-    def lookup_user_by_username(self, username, token):
-        client = tweepy.Client(token)
-        user = client.get_user(username=username, user_fields=self.USER_FIELDS)
         return user.data
 
     def get_number_of_accounts_followed_by_account(self, twitter_id):

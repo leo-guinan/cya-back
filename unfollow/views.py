@@ -13,12 +13,9 @@ from client.exception import UnknownClientAccount
 from client.models import ClientAccount
 from twitter.models import TwitterAccount, Group
 from twitter.serializers import TwitterAccountSerializer
-from twitter.tasks import get_followers
 from twitter_api.twitter_api import TwitterAPI
 # Create your views here.
-from .models import Analysis
-from .serializers import AnalysisSerializer
-from .tasks import lookup_twitter_user, report_to_account
+from .tasks import lookup_twitter_user
 
 utc = pytz.UTC
 
@@ -53,16 +50,6 @@ def get_account_analysis(request):
     following = current_user.following.all()
     follower_count = len(following)
     # On first run, just get follower count and return that.
-    if follower_count == 0:
-        twitter_api = TwitterAPI()
-        follower_count = twitter_api.get_number_of_accounts_followed_by_account(current_user.twitter_id)
-        lookup_twitter_user.delay(client_account_id)
-        result = {
-            "following_count": follower_count,
-            "dormant_count": 0,
-            "followers_to_analyze": follower_count
-        }
-        return Response(result)
     dormant_count = 0
     date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
     for relationship in following:
@@ -76,8 +63,6 @@ def get_account_analysis(request):
         "followers_to_analyze": followers_to_analyze
     }
     return Response(result)
-
-
 
 
 @api_view(('POST',))

@@ -8,7 +8,7 @@ from backend.celery import app
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, BetaAccount
 from twitter.models import TwitterAccount
-from twitter.tasks import make_user_follow_account
+from twitter.tasks import make_user_follow_account, populate_user_data_from_twitter_id
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AnalysisReport, Analysis, AccountCheck
 
@@ -23,46 +23,10 @@ def lookup_twitter_user(client_account_id):
     current_user = client_account.twitter_account
 
     if not current_user.last_checked or current_user.last_checked < (date.today() - timedelta(days=2)):
-        following = twitter_api.get_following_for_user(client_account_id=client_account_id)
-        followers = twitter_api.get_users_following_account(client_account_id=client_account_id)
-        for user in following:
-            twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
-            if not twitter_account:
-                twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
-                                                 twitter_name=user.name
-                                                 )
-                twitter_account.save()
-
-            make_user_follow_account.delay(client_account.twitter_account.twitter_id, user.id)
-
-            account_check_request.delay(client_account_id, user.id)
-        for user in followers:
-            twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
-            if not twitter_account:
-                twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
-                                                 twitter_name=user.name
-                                                 )
-                twitter_account.save()
-            make_user_follow_account.delay(user.id, client_account.twitter_account.twitter_id)
+        populate_user_data_from_twitter_id.delay(current_user.twitter_id, client_account_id)
         current_user.last_checked = utc.localize(datetime.now())
         current_user.save()
 
-
-@app.task(name="request_account_check")
-def account_check_request(client_account_id, twitter_id):
-    client_account = ClientAccount.objects.filter(id=client_account_id).first()
-    twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
-    if not twitter_account:
-        twitter_account = TwitterAccount()
-        twitter_account.twitter_id = twitter_id
-        twitter_account.save()
-    existing_check = AccountCheck.objects.filter(account=twitter_account).first()
-    if not existing_check:
-        existing_check = AccountCheck()
-        existing_check.account = twitter_account
-        existing_check.save()
-    existing_check.requests.add(client_account)
-    existing_check.save()
 
 
 @app.task(name="check_account")
