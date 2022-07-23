@@ -43,5 +43,13 @@ app.conf.beat_schedule = {
     'analyze_accounts': {
         'task': 'analyze_accounts_that_need_it',
         'schedule': crontab(hour='*')
-    }
+    },
+    # 'watch_mentions': {
+    #     'task': 'handle_tweet',
+    #     'schedule': crontab(hour='*')
+    # },
+    # 'process_triggers': {
+    #     'task': 'process_tweets',
+    #     'schedule': crontab(hour='*')
+    # }
 }

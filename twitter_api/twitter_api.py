@@ -277,6 +277,14 @@ class TwitterAPI:
         response = client.create_tweet(text=message, user_auth=True)
         return response.data
 
+    def send_tweet_as_client_in_response(self, client_id, tweet_to_respond_to, message):
+        app_client = Client.objects.filter(id=client_id).first()
+        client = tweepy.Client(consumer_key=app_client.consumer_key, consumer_secret=app_client.consumer_secret,
+                               access_token=app_client.access_token,
+                               access_token_secret=app_client.access_secret)
+        response = client.create_tweet(text=message, in_reply_to_tweet_id=tweet_to_respond_to, user_auth=True)
+        return response.data
+
     def send_dm_to_user(self, client_id, twitter_user_to_message, message):
         client = Client.objects.filter(id=client_id).first()
 
@@ -286,6 +294,14 @@ class TwitterAPI:
         )
         api = tweepy.API(auth)
         api.send_direct_message(twitter_user_to_message, text=message)
+
+    def get_latest_mentions(self, client_id, since):
+        app_client = Client.objects.filter(id=client_id).first()
+        client = tweepy.Client(bearer_token=app_client.bearer_token)
+        mentions = client.get_users_mentions(id=app_client.twitter_account.twitter_id,
+                                             since_id=since, tweet_fields="author_id,created_at,conversation_id") if since else client.get_users_mentions(
+            id=app_client.twitter_account.twitter_id, tweet_fields="author_id,created_at,conversation_id")
+        return mentions.data if mentions.data else None
 
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()

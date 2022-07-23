@@ -1,4 +1,5 @@
 from backend.celery import app
+from client.exception import UnknownClientAccount
 from client.models import ClientAccount
 from tweetpik.tweetpik import TweetPik
 from twitter.models import TwitterAccount, Tweet, Retweet, Like
@@ -61,6 +62,7 @@ def populate_user_data_from_twitter_id(twitter_id, client_account_id=None):
     twitter_account.twitter_username = user.username
     twitter_account.twitter_profile_picture_url = user.profile_image_url
     twitter_account.save()
+
 
 
 @app.task(name="get_liking_users")
@@ -169,6 +171,41 @@ def fetch_user_engagement(twitter_id, client_account_id):
 def create_screenshot(tweet_id):
     tweet_pik = TweetPik()
     tweet_pik.create_image(tweet_id=tweet_id)
+
+@app.task(name="get_followers_for_client_account")
+def get_followers(client_account_id):
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
+    twitter_api = TwitterAPI()
+    current_user = client_account.twitter_account
+    current_user.follows = None
+    current_user.save()
+    followers = twitter_api.get_following_for_user(client_account_id=client_account_id)
+
+    for user in followers:
+        twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
+        if not twitter_account:
+            twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
+                                             twitter_name=user.name
+                                             )
+            twitter_account.save()
+        user_follows_account_lookup = TwitterAccount.objects.filter(twitter_id=current_user.twitter_id,
+                                                                    follows__twitter_id=twitter_account.twitter_id).first()
+        if not user_follows_account_lookup:
+            make_user_follow_account.delay(client_account.twitter_account.twitter_id, user.id)
+
+
+@app.task(name="set_user_follows_account")
+def make_user_follow_account(user_id, follows_id):
+    relationship = TwitterAccount.objects.filter(twitter_id=user_id,
+                                                 follows__twitter_id=follows_id).first()
+    if not relationship:
+        current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
+        twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()
+        current_user.follows.add(twitter_account)
+        current_user.save()
+
 
 
 

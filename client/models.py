@@ -13,6 +13,8 @@ class Client(models.Model):
     access_secret = models.CharField("Access secret", max_length=255, null=True, blank=True)
     consumer_key = models.CharField("consumer key", max_length=255, null=True, blank=True)
     consumer_secret = models.CharField("consumer secret", max_length=255, null=True, blank=True)
+    bearer_token = models.CharField("bearer token", max_length=255, null=True, blank=True)
+    twitter_account = models.OneToOneField("twitter.TwitterAccount", related_name="client", on_delete=models.CASCADE, null=True)
 
 
 class ClientAccount(models.Model):

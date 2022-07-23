@@ -13,6 +13,7 @@ from client.exception import UnknownClientAccount
 from client.models import ClientAccount
 from twitter.models import TwitterAccount, Group
 from twitter.serializers import TwitterAccountSerializer
+from twitter.tasks import get_followers
 from twitter_api.twitter_api import TwitterAPI
 # Create your views here.
 from .models import Analysis
@@ -49,14 +50,19 @@ def get_account_analysis(request):
     if not client_account:
         raise UnknownClientAccount()
     current_user = client_account.twitter_account
-    analysis = Analysis.objects.filter(account=current_user).first()
-    if not analysis:
-        analysis = Analysis()
-        analysis.account = current_user
-        analysis.save()
-        lookup_twitter_user.delay(client_account_id)
     following = current_user.follows.all()
     follower_count = len(following)
+    # On first run, just get follower count and return that.
+    if follower_count == 0:
+        twitter_api = TwitterAPI()
+        follower_count = twitter_api.get_number_of_accounts_followed_by_account(current_user.twitter_id)
+        lookup_twitter_user.delay(client_account_id)
+        result = {
+            "following_count": follower_count,
+            "dormant_count": 0,
+            "followers_to_analyze": follower_count
+        }
+        return Response(result)
     dormant_count = 0
     date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
     for relationship in following:
@@ -64,9 +70,6 @@ def get_account_analysis(request):
             if relationship.last_tweet_date < date_to_compare_against:
                 dormant_count += 1
     followers_to_analyze = client_account.accounts_to_analyze.filter(last_analyzed__isnull=True).count()
-    print(followers_to_analyze)
-    print(follower_count)
-    print(dormant_count)
     result = {
         "following_count": follower_count,
         "dormant_count": dormant_count,

@@ -59,7 +59,8 @@ INSTALLED_APPS = [
     'feather',
     'twitter',
     'mail',
-    'crawler'
+    'crawler',
+    'friendcontent'
 ]
 SITE_ID = 2
 
