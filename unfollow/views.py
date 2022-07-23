@@ -50,7 +50,7 @@ def get_account_analysis(request):
     if not client_account:
         raise UnknownClientAccount()
     current_user = client_account.twitter_account
-    following = current_user.follows.all()
+    following = current_user.following.all()
     follower_count = len(following)
     # On first run, just get follower count and return that.
     if follower_count == 0:
@@ -89,7 +89,7 @@ def get_followers_whose_last_tweet_was_more_than_3_months_ago(request):
     date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
     results = []
     current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    for relationship in current_user.follows.all():
+    for relationship in current_user.following.all():
         if relationship and relationship.last_tweet_date:
             if relationship.last_tweet_date < date_to_compare_against:
                 serializer = TwitterAccountSerializer(relationship)
@@ -105,7 +105,7 @@ def get_number_of_followers_processed(request):
     body = json.loads(request.body)
     twitter_id_to_check = body['twitter_id']
     current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    return Response({"count": current_user.follows.count()})
+    return Response({"count": current_user.following.count()})
 
 
 @api_view(('POST',))
@@ -128,7 +128,7 @@ def get_number_of_followers_whose_last_tweet_was_more_than_3_months_ago(request)
     date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
     results = []
     current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    for relationship in current_user.follows.all():
+    for relationship in current_user.following.all():
         if relationship and relationship.last_tweet_date:
             if relationship.last_tweet_date < date_to_compare_against:
                 serializer = TwitterAccountSerializer(relationship)
@@ -152,7 +152,7 @@ def unfollow_user(request):
     twitter_api.unfollow_user(client_account_id, twitter_id_to_unfollow)
     current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
-    current_user.follows.remove(user_to_unfollow)
+    current_user.following.remove(user_to_unfollow)
     return Response({"success": True})
 
 

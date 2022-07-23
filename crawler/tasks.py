@@ -21,7 +21,7 @@ def start_crawl(twitter_id, number_of_steps):
                                              twitter_name=follower.name, twitter_bio=follower.description
                                              )
             twitter_account.save()
-            current_account.follows.add(twitter_account)
+            current_account.following.add(twitter_account)
             twitter_account.save()
 
     followers = twitter_api.get_followers_for_user_admin(twitter_id)
@@ -32,7 +32,7 @@ def start_crawl(twitter_id, number_of_steps):
                                              twitter_name=follower.name, twitter_bio=follower.description
                                              )
             twitter_account.save()
-            twitter_account.follows.add(current_account)
+            twitter_account.following.add(current_account)
             twitter_account.save()
     if number_of_steps > 1:
         for follower in following:

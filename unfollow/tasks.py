@@ -180,8 +180,9 @@ def user_follows_account(user_id, follows_id):
         print('they do not. following.')
         current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
         twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()
-        current_user.follows.add(twitter_account)
+        current_user.following.add(twitter_account)
         current_user.save()
+        twitter_account.save()
 
 
 @app.task(name="send_analysis_to_account")
@@ -191,7 +192,7 @@ def report_to_account(twitter_id_to_check):
     results = []
     current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
     print("Checking relationships...")
-    for user_to_check in current_user.follows.all():
+    for user_to_check in current_user.following.all():
 
         if user_to_check and user_to_check.last_tweet_date:
             if user_to_check.last_tweet_date < date_to_compare_against:
@@ -200,7 +201,7 @@ def report_to_account(twitter_id_to_check):
     message = f".@{current_user.twitter_username} you follow {len(results)} accounts that haven't tweeted in the last three months"
     twitter_api.send_tweet(message)
     report = AnalysisReport(account=current_user, dormant_count=len(results),
-                            following_count=current_user.follows.count())
+                            following_count=current_user.following.count())
     report.save()
 
 

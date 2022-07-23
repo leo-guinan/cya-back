@@ -179,8 +179,6 @@ def get_followers(client_account_id):
         raise UnknownClientAccount()
     twitter_api = TwitterAPI()
     current_user = client_account.twitter_account
-    current_user.follows = None
-    current_user.save()
     followers = twitter_api.get_following_for_user(client_account_id=client_account_id)
 
     for user in followers:
@@ -203,7 +201,7 @@ def make_user_follow_account(user_id, follows_id):
     if not relationship:
         current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
         twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()
-        current_user.follows.add(twitter_account)
+        current_user.following.add(twitter_account)
         current_user.save()
 
 
