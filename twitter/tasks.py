@@ -189,7 +189,7 @@ def get_followers(client_account_id):
                                              )
             twitter_account.save()
         user_follows_account_lookup = TwitterAccount.objects.filter(twitter_id=current_user.twitter_id,
-                                                                    follows__twitter_id=twitter_account.twitter_id).first()
+                                                                    following__twitter_id=twitter_account.twitter_id).first()
         if not user_follows_account_lookup:
             make_user_follow_account.delay(client_account.twitter_account.twitter_id, user.id)
 
@@ -197,7 +197,7 @@ def get_followers(client_account_id):
 @app.task(name="set_user_follows_account")
 def make_user_follow_account(user_id, follows_id):
     relationship = TwitterAccount.objects.filter(twitter_id=user_id,
-                                                 follows__twitter_id=follows_id).first()
+                                                 following__twitter_id=follows_id).first()
     if not relationship:
         current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
         twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()

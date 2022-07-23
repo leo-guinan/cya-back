@@ -175,7 +175,7 @@ def get_most_recent_tweet_for_account_as_admin(account_id):
 def user_follows_account(user_id, follows_id):
     print(f'checking if {user_id} follows {follows_id}')
     relationship = TwitterAccount.objects.filter(twitter_id=user_id,
-                                                 follows__twitter_id=follows_id).first()
+                                                 following__twitter_id=follows_id).first()
     if not relationship:
         print('they do not. following.')
         current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
