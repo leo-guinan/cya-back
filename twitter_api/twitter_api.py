@@ -272,6 +272,7 @@ class TwitterAPI:
         if not client_account:
             raise UnknownClientAccount()
         if client_account.client.auth_version == "V2":
+            print("Using V2 User auth client")
             token = client_account.token
             client = tweepy.Client(token,
                                    wait_on_rate_limit=True)
@@ -280,5 +281,7 @@ class TwitterAPI:
                                    consumer_secret=client_account.client.consumer_secret,
                                    access_token=client_account.access_key,
                                    access_token_secret=client_account.secret_access_key)
+            print("Using V1 User auth client")
+
             user_auth = True
         return client, user_auth
