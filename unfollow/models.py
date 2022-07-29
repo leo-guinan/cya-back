@@ -36,3 +36,10 @@ class AccountCheck(models.Model):
     requests = models.ManyToManyField("client.ClientAccount", related_name="accounts_to_analyze")
     last_requested = models.DateTimeField("last time requested", auto_now=True)
     last_analyzed = models.DateTimeField("last time analyzed", null=True)
+
+
+class UnfollowRequest(models.Model):
+    requesting_account = models.ForeignKey("client.ClientAccount", related_name="requested_unfollows",
+                                           on_delete=models.CASCADE)
+    account_to_unfollow = models.ForeignKey("twitter.TwitterAccount", related_name="unfollow_requests", on_delete=models.CASCADE, null=True)
+    unfollowed = models.DateTimeField("the time the account was unfollowed", null=True)

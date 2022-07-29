@@ -1,10 +1,7 @@
-from datetime import datetime, timedelta
-
 import requests
 import tweepy
 from decouple import config
 from django.utils import timezone
-from pytz import utc
 
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, Client
@@ -93,20 +90,13 @@ class TwitterAPI:
         return bookmarks
 
     def get_following_for_user(self, twitter_id, client_account_id):
-        if client_account_id:
-            client_account = ClientAccount.objects.filter(id=client_account_id).first()
-            if not client_account:
-                raise UnknownClientAccount()
-            token = self.refresh_oauth2_token(client_account_id=client_account_id)
-            client = tweepy.Client(token,
-                                wait_on_rate_limit=True)
-        else:
-            client=tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
-        results = client.get_users_following(id=twitter_id, max_results=1000)
+        client, user_auth = self.get_client_for_account(client_account_id)
+        results = client.get_users_following(id=twitter_id, max_results=1000, user_auth=user_auth)
         following = results.data
         next_token = results.meta.get("next_token", "")
         while next_token:
-            added_following = client.get_users_following(id=twitter_id, max_results=1000, pagination_token=next_token)
+            added_following = client.get_users_following(id=twitter_id, max_results=1000, pagination_token=next_token,
+                                                         user_auth=user_auth)
             following.extend(added_following.data)
             next_token = added_following.meta.get("next_token", "")
 
@@ -114,55 +104,36 @@ class TwitterAPI:
         return following
 
     def get_users_following_account(self, twitter_id, client_account_id):
-        if client_account_id:
-            client_account = ClientAccount.objects.filter(id=client_account_id).first()
-            if not client_account:
-                raise UnknownClientAccount()
-            token = self.refresh_oauth2_token(client_account_id=client_account_id)
-            client = tweepy.Client(token,
-                                   wait_on_rate_limit=True)
-        else:
-            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+        client, user_auth = self.get_client_for_account(client_account_id)
 
-        results = client.get_users_followers(id=twitter_id, max_results=1000)
+        results = client.get_users_followers(id=twitter_id, max_results=1000, user_auth=user_auth)
         followers = results.data
         next_token = results.meta.get("next_token", "")
         while next_token:
-            added_following = client.get_users_followers(id=twitter_id, max_results=1000, pagination_token=next_token)
+            added_following = client.get_users_followers(id=twitter_id, max_results=1000, pagination_token=next_token,
+                                                         user_auth=user_auth)
             followers.extend(added_following.data)
             next_token = added_following.meta.get("next_token", "")
 
         print(f'found {len(followers)} users following {twitter_id}')
         return followers
 
-    def get_most_recent_tweet_for_user(self, twitter_id, client_account_id = None):
-        if client_account_id:
-            client_account = ClientAccount.objects.filter(id=client_account_id).first()
-            if not client_account:
-                raise UnknownClientAccount()
-            token = self.refresh_oauth2_token(client_account_id=client_account_id)
-            client = tweepy.Client(token, wait_on_rate_limit=True)
-        else:
-            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+    def get_most_recent_tweet_for_user(self, twitter_id, client_account_id=None):
+        client, user_auth = self.get_client_for_account(client_account_id)
         next_token = ''
         print(f'checking user: {twitter_id}')
         results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
-                                          max_results=10)
+                                          max_results=10, user_auth=user_auth)
         while not results.data and results.meta.get(next_token, ""):
             print(f'rechecking user: {twitter_id}, results: {results}')
             results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
-                                              max_results=10, pagination_token=next_token)
+                                              max_results=10, pagination_token=next_token, user_auth=user_auth)
 
         return results.data[0] if results.data else None
 
-
     def lookup_user(self, twitter_id, client_account_id=None):
-        if client_account_id:
-            token = self.refresh_oauth2_token(client_account_id=client_account_id)
-            client = tweepy.Client(token)
-        else:
-            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
-        user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS)
+        client, user_auth = self.get_client_for_account(client_account_id)
+        user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS, user_auth=user_auth)
         return user.data
 
     def get_number_of_accounts_followed_by_account(self, twitter_id):
@@ -171,9 +142,8 @@ class TwitterAPI:
         return user.data.public_metrics['following_count']
 
     def unfollow_user(self, client_account_id, twitter_id_to_unfollow):
-        token = self.refresh_oauth2_token(client_account_id)
-        client = tweepy.Client(token)
-        client.unfollow_user(twitter_id_to_unfollow, user_auth=False)
+        client, user_auth = self.get_client_for_account(client_account_id)
+        client.unfollow_user(twitter_id_to_unfollow, user_auth=user_auth)
 
     def get_responses_to_tweet(self, tweet_id, since_id=None):
         client = tweepy.Client(bearer_token=self.bearer_token)
@@ -274,17 +244,13 @@ class TwitterAPI:
         app_client = Client.objects.filter(id=client_id).first()
         client = tweepy.Client(bearer_token=app_client.bearer_token)
         mentions = client.get_users_mentions(id=app_client.twitter_account.twitter_id,
-                                             since_id=since, tweet_fields="author_id,created_at,conversation_id") if since else client.get_users_mentions(
+                                             since_id=since,
+                                             tweet_fields="author_id,created_at,conversation_id") if since else client.get_users_mentions(
             id=app_client.twitter_account.twitter_id, tweet_fields="author_id,created_at,conversation_id")
         return mentions.data if mentions.data else None
 
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
-
-        if client_account.refreshed >= utc.localize(datetime.now() - timedelta(minutes=90)):
-            return client_account.token
-        if not client_account:
-            raise UnknownClientAccount()
         client = client_account.client
         url = 'https://api.twitter.com/2/oauth2/token'
         myobj = {
@@ -294,8 +260,25 @@ class TwitterAPI:
         }
         response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
         results = response.json()
+        print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
         client_account.refreshed = timezone.now()
         client_account.save()
-        return results["access_token"]
+
+    def get_client_for_account(self, client_account_id):
+        user_auth = False
+        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        if not client_account:
+            raise UnknownClientAccount()
+        if client_account.client.auth_version == "V2":
+            token = client_account.token
+            client = tweepy.Client(token,
+                                   wait_on_rate_limit=True)
+        else:
+            client = tweepy.Client(consumer_key=client_account.client.consumer_key,
+                                   consumer_secret=client_account.client.consumer_secret,
+                                   access_token=client_account.access_key,
+                                   access_token_secret=client_account.secret_access_key)
+            user_auth = True
+        return client, user_auth

@@ -8,9 +8,9 @@ from backend.celery import app
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, BetaAccount
 from twitter.models import TwitterAccount
-from twitter.tasks import make_user_follow_account, populate_user_data_from_twitter_id
+from twitter.tasks import make_user_follow_account, populate_user_data_from_twitter_id, unfollow_user_for_client_account
 from twitter_api.twitter_api import TwitterAPI
-from unfollow.models import AnalysisReport, Analysis, AccountCheck
+from unfollow.models import AnalysisReport, Analysis, AccountCheck, UnfollowRequest
 
 
 @app.task(name="lookup_twitter_user", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
@@ -19,7 +19,6 @@ def lookup_twitter_user(client_account_id):
     client_account = ClientAccount.objects.filter(id=client_account_id).first()
     if not client_account:
         raise UnknownClientAccount()
-    twitter_api = TwitterAPI()
     current_user = client_account.twitter_account
 
     if not current_user.last_checked or current_user.last_checked < (date.today() - timedelta(days=2)):
@@ -217,3 +216,10 @@ def analyze_accounts_needing():
     checks = AccountCheck.objects.filter(last_analyzed__isnull=True).all()
     for check in checks:
         check_twitter_account.delay(check.id)
+
+@app.task(name="unfollow_accounts")
+def unfollow_accounts_needing():
+    unfollow_requests = UnfollowRequest.objects.filter(unfollowed__isnull=True).all()
+    for request in unfollow_requests:
+        unfollow_user_for_client_account.delay(request.requesting_account.id, request.account_to_unfollow.twitter_id, request.id)
+

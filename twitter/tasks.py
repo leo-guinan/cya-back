@@ -4,12 +4,14 @@ from PIL import ImageFont
 from pytz import utc
 
 from backend.celery import app
+from client.exception import UnknownClientAccount
 from client.models import ClientAccount
 from tweetpik.tweetpik import TweetPik
 from twitter.models import TwitterAccount, Tweet
-from twitter.service import refresh_twitter_account, get_twitter_account, update_twitter_accounts_user_is_following, \
+from twitter.service import refresh_twitter_account, get_twitter_account, unfollow_account, update_twitter_accounts_user_is_following, \
     update_users_following_twitter_account
 from twitter_api.twitter_api import TwitterAPI
+from unfollow.models import UnfollowRequest
 
 FONT_USER_INFO = ImageFont.truetype("arial.ttf", 90, encoding="utf-8")
 FONT_TEXT = ImageFont.truetype("arial.ttf", 110, encoding="utf-8")
@@ -149,3 +151,18 @@ def make_user_follow_account(user_id, follows_id):
         twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()
         current_user.following.add(twitter_account)
         current_user.save()
+
+@app.task(name="unfollow_user")
+def unfollow_user_for_client_account(client_account_id, twitter_id_to_unfollow, request_id):
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
+    print(f"Unfollowing {twitter_id_to_unfollow}")
+    unfollow_account(client_account_id, twitter_id_to_unfollow)
+    current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
+    user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
+    current_user.following.remove(user_to_unfollow)
+    if (request_id):
+        request = UnfollowRequest.objects.get(id=request_id)
+        request.unfollowed = utc.localize(datetime.now())
+        request.save()

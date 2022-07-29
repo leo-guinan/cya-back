@@ -20,8 +20,8 @@ def client_account_login(request):
     twitter_id = body['twitter_id']
     client_name = body['client']
     email = body['email']
-    token = body['token']
-    refresh_token = body['refresh_token']
+    access_key = body['access_key']
+    secret_access_key = body['secret_access_key']
     client = Client.objects.filter(name=client_name).first()
     if not client:
         raise UnknownClient()
@@ -36,8 +36,8 @@ def client_account_login(request):
         client_account.client = client
         client_account.twitter_account = twitter_account
     client_account.email = email
-    client_account.token = token
-    client_account.refresh_token = refresh_token
+    client_account.access_key = access_key
+    client_account.secret_access_key = secret_access_key
     client_account.refreshed = timezone.now()
     client_account.save()
     lookup_twitter_user.delay(client_account_id=client_account.id)

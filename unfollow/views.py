@@ -13,9 +13,12 @@ from client.exception import UnknownClientAccount
 from client.models import ClientAccount
 from twitter.models import TwitterAccount, Group
 from twitter.serializers import TwitterAccountSerializer
+from twitter.service import unfollow_account
+from twitter.tasks import unfollow_user_for_client_account
 from twitter_api.twitter_api import TwitterAPI
 # Create your views here.
-from .tasks import lookup_twitter_user
+from .models import UnfollowRequest
+from .tasks import lookup_twitter_user, unfollow_accounts_needing
 
 utc = pytz.UTC
 
@@ -147,14 +150,30 @@ def unfollow_user(request):
     if not client_account:
         raise UnknownClientAccount()
     twitter_id_to_unfollow = body['twitter_id']
-    twitter_api = TwitterAPI()
     print(f"Unfollowing {twitter_id_to_unfollow}")
-    twitter_api.unfollow_user(client_account_id, twitter_id_to_unfollow)
+    unfollow_account(client_account_id, twitter_id_to_unfollow)
     current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
     current_user.following.remove(user_to_unfollow)
     return Response({"success": True})
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def bulk_unfollow_users(request):
+    body = json.loads(request.body)
+    client_account_id = body['client_account_id']
+    twitter_ids_to_unfollow = body['twitter_ids']
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
+    for twitter_id in twitter_ids_to_unfollow:
+        request = UnfollowRequest()
+        request.requesting_account = client_account
+        request.account_to_unfollow = TwitterAccount.objects.get(twitter_id=twitter_id)
+        request.save()
+    unfollow_accounts_needing.delay()
+    return Response({"success": True})
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -210,3 +229,13 @@ def get_protected_users(request):
             serializer = TwitterAccountSerializer(member)
             protected_users.append(serializer.data)
     return Response(protected_users)
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def bulk_request_status(request):
+    body = json.loads(request.body)
+    client_account_id = body['client_account_id']
+    unfollow_request_count = UnfollowRequest.objects.filter(requesting_account_id=client_account_id ,unfollowed__isnull=True).count()
+    return Response({"left_to_unfollow": unfollow_request_count})
+

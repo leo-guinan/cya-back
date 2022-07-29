@@ -63,3 +63,7 @@ def account_check_request(client_account_id, twitter_id):
         existing_check.save()
     existing_check.requests.add(client_account)
     existing_check.save()
+
+def unfollow_account(client_account_id, twitter_id_to_unfollow):
+    twitter_api = TwitterAPI()
+    twitter_api.unfollow_user(client_account_id, twitter_id_to_unfollow)

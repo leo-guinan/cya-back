@@ -44,6 +44,14 @@ app.conf.beat_schedule = {
         'task': 'analyze_accounts_that_need_it',
         'schedule': crontab(hour='*')
     },
+    'unfollow_accounts': {
+        'task': 'unfollow_accounts',
+        'schedule': crontab(minute='*/15')
+    },
+    # 'refresh_twitter_tokens': {
+    #     'task': 'refresh_client_twitter_tokens',
+    #     'schedule': crontab(hour='*', minute=42)
+    # }
     # 'watch_mentions': {
     #     'task': 'handle_tweet',
     #     'schedule': crontab(hour='*')
