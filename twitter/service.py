@@ -31,26 +31,24 @@ def update_users_following_twitter_account(twitter_id=None, client_account_id=No
     twitter_api = TwitterAPI()
     followers = twitter_api.get_users_following_account(twitter_id=twitter_id, client_account_id=client_account_id)
     current_user = TwitterAccount.objects.get(twitter_id=twitter_id)
-    collected_followers = []
+    current_user.followed_by.clear()
     for user in followers:
         account_check_request(client_account_id, user.id)
         twitter_account = get_twitter_account(user.id, client_account_id)
-        collected_followers.append(twitter_account)
-    print(f'Number of users following current account: {len(collected_followers)}')
-    current_user.followed_by.set(collected_followers, clear=True)
+        current_user.followed_by.add(twitter_account)
+    print(f'Number of users following current account: {current_user.followed_by.count()}')
 
 
 def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None):
     twitter_api = TwitterAPI()
     followers = twitter_api.get_following_for_user(twitter_id=twitter_id, client_account_id=client_account_id)
     current_user = get_twitter_account(twitter_id=twitter_id)
-    collected_followers = []
+    current_user.following.clear()
     for user in followers:
         account_check_request(client_account_id, user.id)
         twitter_account = get_twitter_account(user.id, client_account_id)
-        collected_followers.append(twitter_account)
-    print(f'Number of users current account is following: {len(collected_followers)}')
-    current_user.following.set(collected_followers, clear=True)
+        current_user.following.add(twitter_account)
+    print(f'Number of users current account is following: {current_user.following.count()}')
 
 
 def account_check_request(client_account_id, twitter_id):
