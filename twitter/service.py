@@ -37,7 +37,7 @@ def update_users_following_twitter_account(twitter_id=None, client_account_id=No
         twitter_account = get_twitter_account(user.id, client_account_id)
         collected_followers.append(twitter_account)
     print(f'Number of users following current account: {len(collected_followers)}')
-    current_user.followed_by.set(collected_followers)
+    current_user.followed_by.set(collected_followers, clear=True)
 
 
 def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None):
@@ -50,7 +50,7 @@ def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None
         twitter_account = get_twitter_account(user.id, client_account_id)
         collected_followers.append(twitter_account)
     print(f'Number of users current account is following: {len(collected_followers)}')
-    current_user.following.set(collected_followers)
+    current_user.following.set(collected_followers, clear=True)
 
 
 def account_check_request(client_account_id, twitter_id):
