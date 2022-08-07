@@ -5,11 +5,12 @@ from pytz import utc
 
 from backend.celery import app
 from client.exception import UnknownClientAccount
-from client.models import ClientAccount
+from client.models import ClientAccount, StaffAccount
 from tweetpik.tweetpik import TweetPik
 from twitter.models import TwitterAccount, Tweet
-from twitter.service import refresh_twitter_account, get_twitter_account, unfollow_account, update_twitter_accounts_user_is_following, \
-    update_users_following_twitter_account
+from twitter.service import refresh_twitter_account, get_twitter_account, unfollow_account, \
+    update_twitter_accounts_user_is_following, \
+    update_users_following_twitter_account, get_recent_tweets
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import UnfollowRequest
 
@@ -38,47 +39,6 @@ def populate_user_data_from_twitter_id(twitter_id, client_account_id=None):
         current_user.last_checked = utc.localize(datetime.now())
         current_user.save()
 
-
-@app.task(name="get_tweet_info")
-def lookup_tweet(tweet_id, client_account_id=None):
-    twitter_api = TwitterAPI()
-    if client_account_id:
-        client_account = ClientAccount.objects.filter(id=client_account_id).first()
-        if not client_account:
-            raise Exception("unable to find client account")
-        tweet = twitter_api.lookup_tweet(tweet_id, token=client_account.token)
-    else:
-        tweet = twitter_api.lookup_tweet_as_admin(tweet_id)
-    tweet_object = Tweet.objects.filter(tweet_id=tweet_id).first()
-    tweet_object.message = tweet.text
-    author = TwitterAccount.objects.filter(twitter_id=tweet.author_id)
-    if not author:
-        author = TwitterAccount()
-        author.twitter_id = tweet.author_id
-        author.save()
-        populate_user_data_from_twitter_id.delay(tweet.author_id, client_account_id)
-    tweet_object.author = author
-    tweet_object.tweet_created_at = tweet.created_at
-
-
-@app.task(name="user_engagement")
-def fetch_user_engagement(twitter_id, client_account_id):
-    twitter_api = TwitterAPI()
-    if client_account_id:
-        client_account = ClientAccount.objects.filter(id=client_account_id).first()
-        if not client_account:
-            raise Exception("unable to find client account")
-        tweets = twitter_api.get_recent_tweets(twitter_id=twitter_id, token=client_account.token)
-    else:
-        tweets = twitter_api.get_recent_tweets_as_admin(twitter_id=twitter_id)
-
-    for tweet in tweets:
-        saved_tweet = Tweet.objects.filter(tweet_id=tweet.id).first()
-        if not saved_tweet:
-            saved_tweet = Tweet()
-            saved_tweet.tweet_id = tweet.id
-            saved_tweet.message = tweet.text
-            saved_tweet.tweet_created_at = tweet.created_at
 
 
 @app.task(name="create_screenshot_from_tweet")
@@ -123,24 +83,6 @@ def get_followers_for_twitter_account(twitter_id):
             current_user.following.add(twitter_account)
 
 
-@app.task(name="get_users_following_twitter_account")
-def get_users_following(twitter_id):
-    twitter_api = TwitterAPI()
-    current_user = get_twitter_account(twitter_id)
-    followers = twitter_api.get_users_following_account_as_admin(client_account_id=client_account_id)
-
-    for user in followers:
-        twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
-        if not twitter_account:
-            twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
-                                             twitter_name=user.name
-                                             )
-            twitter_account.save()
-        relationship = TwitterAccount.objects.filter(twitter_id=twitter_account.twitter_id,
-                                                     following__twitter_id=current_user.twitter_id).first()
-        if not relationship:
-            twitter_account.following.add(current_user)
-
 
 @app.task(name="set_user_follows_account")
 def make_user_follow_account(user_id, follows_id):
@@ -162,7 +104,23 @@ def unfollow_user_for_client_account(client_account_id, twitter_id_to_unfollow, 
     current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
     current_user.following.remove(user_to_unfollow)
-    if (request_id):
+    if request_id:
         request = UnfollowRequest.objects.get(id=request_id)
         request.unfollowed = utc.localize(datetime.now())
         request.save()
+
+@app.task(name="get_latest_tweets")
+def get_latest_tweets_for_account(client_account_id, twitter_id):
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    try:
+        get_recent_tweets(client_account_id=client_account_id, twitter_id=twitter_id)
+    except Exception as e:
+        print(e)
+        staff_accounts = StaffAccount.objects.filter(client=client_account.client).all()
+        for staff_account in staff_accounts:
+            try:
+                get_recent_tweets(client_account_id=staff_account.id, twitter_id=twitter_id, staff_account=True)
+                return
+            except Exception as nested_e:
+                print(nested_e)
+                continue

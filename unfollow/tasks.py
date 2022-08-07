@@ -1,16 +1,15 @@
 from datetime import datetime, timedelta, date
 
 import tweepy
-from celery import group
 from pytz import utc
 
 from backend.celery import app
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, BetaAccount
-from twitter.models import TwitterAccount
-from twitter.tasks import make_user_follow_account, populate_user_data_from_twitter_id, unfollow_user_for_client_account
+from twitter.tasks import populate_user_data_from_twitter_id, unfollow_user_for_client_account
 from twitter_api.twitter_api import TwitterAPI
-from unfollow.models import AnalysisReport, Analysis, AccountCheck, UnfollowRequest
+from unfollow.models import AccountCheck, UnfollowRequest
+from unfollow.service import get_twitter_account_info_for_check
 
 
 @app.task(name="lookup_twitter_user", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
@@ -27,160 +26,9 @@ def lookup_twitter_user(client_account_id):
         current_user.save()
 
 
-
 @app.task(name="check_account")
 def check_twitter_account(account_check_id):
-    check = AccountCheck.objects.filter(id=account_check_id).first()
-    if check.last_analyzed and check.last_analyzed > (
-            utc.localize(datetime.now() - timedelta(days=30))):
-        check.last_analyzed = utc.localize(datetime.now())
-        check.save()
-        return
-
-    twitter_account = check.account
-    if (twitter_account.last_tweet_date and twitter_account.last_tweet_date > (
-            utc.localize(datetime.now() - timedelta(days=90)))):
-        check.last_analyzed = utc.localize(datetime.now())
-        check.save()
-        return
-    twitter_api = TwitterAPI()
-
-    for client_account in check.requests.all():
-        try:
-            most_recent_tweet = twitter_api.get_most_recent_tweet_for_user(client_account_id=client_account.id,
-                                                                           twitter_id=twitter_account.twitter_id)
-            if most_recent_tweet is not None:
-                twitter_account.last_tweet_date = most_recent_tweet.created_at
-                twitter_account.save()
-            else:
-                # when no tweet, just set last tweet date to 5 years ago
-                twitter_account.last_tweet_date = utc.localize(datetime.now() - timedelta(weeks=52 * 5))
-                twitter_account.save()
-            check.last_analyzed = utc.localize(datetime.now())
-            check.save()
-            return
-        except Exception as e:
-            twitter_api.send_dm_to_user(1, "1325102346792218629",
-                                        f"Error looking up {twitter_account.twitter_name} for {client_account.twitter_account.twitter_name}: {e}")
-
-
-@app.task(name="lookup_twitter_user_nologin", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
-          retry_kwargs={'max_retries': 8})
-def lookup_twitter_user_as_admin(twitter_id_to_check):
-    twitter_api = TwitterAPI()
-    current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    if not current_user:
-        user_data = twitter_api.lookup_user_as_admin(twitter_id=twitter_id_to_check)
-        if not user_data:
-            return None
-        current_user = TwitterAccount(twitter_id=twitter_id_to_check, twitter_username=user_data.username,
-                                      twitter_name=user_data.name)
-        current_user.save()
-    followers = twitter_api.get_following_for_user_admin(twitter_id=twitter_id_to_check)
-    user_lookup_tasks = []
-    user_follows_account_tasks = []
-    for user in followers:
-        twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
-        if not twitter_account:
-            twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
-                                             twitter_name=user.name
-                                             )
-            twitter_account.save()
-        user_follows_account_tasks.append(make_user_follow_account.s(twitter_id_to_check, user.id))
-        user_lookup_tasks.append(get_most_recent_tweet_for_account_as_admin.s(user.id))
-    user_lookup_group = group(user_lookup_tasks)
-    user_follows_account_group = group(user_follows_account_tasks)
-    follows = user_follows_account_group()
-    res = user_lookup_group()
-    while not res.successful() or not follows.successful():
-        pass
-
-    report_to_account.delay(current_user.twitter_id)
-
-
-@app.task(name="get_most_recent_tweet", autoretry_for=(Exception,), retry_backoff=60,
-          retry_kwargs={'max_retries': 8})
-def get_most_recent_tweet_for_account(client_account_id, account_id):
-    twitter_api = TwitterAPI()
-    twitter_account = TwitterAccount.objects.filter(twitter_id=account_id).first()
-    if (twitter_account.last_tweet_date and twitter_account.last_tweet_date > (
-            utc.localize(datetime.now() - timedelta(days=90)))):
-        return
-    most_recent_tweet = twitter_api.get_most_recent_tweet_for_user(client_account_id=client_account_id,
-                                                                   twitter_id=account_id)
-    if most_recent_tweet is not None:
-        twitter_account.last_tweet_date = most_recent_tweet.created_at
-        twitter_account.save()
-    else:
-        # when no tweet, just set last tweet date to 5 years ago
-        twitter_account.last_tweet_date = utc.localize(datetime.now() - timedelta(weeks=52 * 5))
-        twitter_account.save()
-
-
-@app.task(name="get_most_recent_tweet_nologin", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
-          retry_kwargs={'max_retries': 8})
-def get_most_recent_tweet_for_account_as_admin(account_id):
-    twitter_api = TwitterAPI()
-    twitter_account = TwitterAccount.objects.filter(twitter_id=account_id).first()
-    if (twitter_account.last_tweet_date and twitter_account.last_tweet_date > (
-            utc.localize(datetime.now() - timedelta(days=90)))):
-        return
-    most_recent_tweet = twitter_api.get_most_recent_tweet_for_user_as_admin(account_id)
-    if most_recent_tweet is not None:
-        twitter_account.last_tweet_date = most_recent_tweet.created_at
-        twitter_account.save()
-    else:
-        # when no tweet, just set last tweet date to 5 years ago
-        twitter_account.last_tweet_date = utc.localize(datetime.now() - timedelta(weeks=52 * 5))
-        twitter_account.save()
-
-
-@app.task(name="send_analysis_to_account")
-def report_to_account(twitter_id_to_check):
-    twitter_api = TwitterAPI()
-    date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
-    results = []
-    current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    print("Checking relationships...")
-    for user_to_check in current_user.following.all():
-
-        if user_to_check and user_to_check.last_tweet_date:
-            if user_to_check.last_tweet_date < date_to_compare_against:
-                results.append(user_to_check)
-
-    message = f".@{current_user.twitter_username} you follow {len(results)} accounts that haven't tweeted in the last three months"
-    twitter_api.send_tweet(message)
-    report = AnalysisReport(account=current_user, dormant_count=len(results),
-                            following_count=current_user.following.count())
-    report.save()
-
-
-@app.task(name="run_analysis_on_accounts_requesting")
-def run_analysis():
-    analyses_to_run = Analysis.objects.filter(state=Analysis.AnalysisState.REQUESTED).all()
-    for analysis in analyses_to_run:
-        client_account = ClientAccount.objects.filter(twitter_account=analysis.account).first()
-        lookup_twitter_user.delay(client_account.id)
-
-
-@app.task(name="run_analysis_on_accounts_errored")
-def run_analysis_on_error():
-    analyses_to_run = Analysis.objects.filter(state=Analysis.AnalysisState.ERROR).all()
-    for analysis in analyses_to_run:
-        client_account = ClientAccount.objects.filter(twitter_account=analysis.account).first()
-        lookup_twitter_user.delay(client_account.id)
-
-
-@app.task(name="send_dms_to_users")
-def dm_users_who_ran_analysis():
-    twitter_api = TwitterAPI()
-    analyses_to_run = Analysis.objects.filter().all()
-    for analysis in analyses_to_run:
-        try:
-            print(f"Sending DM to {analysis.account.twitter_name}")
-            twitter_api.send_dm_to_user(analysis.account.twitter_id, "Testing DMs")
-        except Exception as e:
-            print(f"Error sending DM: {e}")
+    get_twitter_account_info_for_check(account_check_id)
 
 
 @app.task(name="send_dms_to_beta_users")
@@ -217,9 +65,10 @@ def analyze_accounts_needing():
     for check in checks:
         check_twitter_account.delay(check.id)
 
+
 @app.task(name="unfollow_accounts")
 def unfollow_accounts_needing():
     unfollow_requests = UnfollowRequest.objects.filter(unfollowed__isnull=True).all()
     for request in unfollow_requests:
-        unfollow_user_for_client_account.delay(request.requesting_account.id, request.account_to_unfollow.twitter_id, request.id)
-
+        unfollow_user_for_client_account.delay(request.requesting_account.id, request.account_to_unfollow.twitter_id,
+                                               request.id)

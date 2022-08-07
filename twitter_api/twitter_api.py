@@ -1,15 +1,17 @@
+import datetime
+
 import requests
 import tweepy
 from decouple import config
 from django.utils import timezone
 
 from client.exception import UnknownClientAccount
-from client.models import ClientAccount, Client
+from client.models import ClientAccount, Client, StaffAccount
 
 
 class TwitterAPI:
-    USER_FIELDS = "id,profile_image_url,name,description"
-    TWEET_FIELDS = "public_metrics,entities,created_at,author_id"
+    USER_FIELDS = "id,profile_image_url,name,description,protected"
+    TWEET_FIELDS = "public_metrics,entities,created_at,author_id,conversation_id"
 
     def __init__(self):
         self.api_key = config('TWITTER_API_KEY')
@@ -118,8 +120,8 @@ class TwitterAPI:
         print(f'found {len(followers)} users following {twitter_id}')
         return followers
 
-    def get_most_recent_tweet_for_user(self, twitter_id, client_account_id=None):
-        client, user_auth = self.get_client_for_account(client_account_id)
+    def get_most_recent_tweet_for_user(self, twitter_id, client_account_id=None, staff_account=False):
+        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
         next_token = ''
         print(f'checking user: {twitter_id}')
         results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
@@ -193,28 +195,6 @@ class TwitterAPI:
         response = client.get_liking_users(id=tweet_id)
         return response.data
 
-    def lookup_tweet(self, tweet_id, token):
-        client = tweepy.Client(token)
-        response = client.get_tweet(id=tweet_id, tweet_fields=["public_metrics", "entities", "created_at", "author_id"])
-        return response.data
-
-    def lookup_tweet_as_admin(self, tweet_id):
-        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
-        response = client.get_tweet(id=tweet_id, tweet_fields=["public_metrics", "entities", "created_at", "author_id"])
-        return response.data
-
-    def get_recent_tweets_as_admin(self, twitter_id):
-        client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
-        response = client.search_recent_tweets(query=f"from:{twitter_id}", max_results=10,
-                                               tweet_fields=self.TWEET_FIELDS)
-        return response.data
-
-    def get_recent_tweets(self, twitter_id, token):
-        client = tweepy.Client(token)
-        response = client.search_recent_tweets(query=f"from:{twitter_id}", max_results=10,
-                                               tweet_fields=self.TWEET_FIELDS)
-        return response.data
-
     def send_tweet(self, message):
         client = tweepy.Client(consumer_key=self.api_key, consumer_secret=self.api_secret,
                                access_token=self.access_token,
@@ -249,6 +229,56 @@ class TwitterAPI:
             id=app_client.twitter_account.twitter_id, tweet_fields="author_id,created_at,conversation_id")
         return mentions.data if mentions.data else None
 
+    def get_latest_tweets(self, twitter_id, since_tweet_id=None, client_account_id=None, staff_account=False):
+        start_time = (datetime.datetime.now() - datetime.timedelta(days=7))
+        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
+        tweets = []
+        if since_tweet_id:
+            response = client.get_users_tweets(id=twitter_id,
+                                               exclude="retweets,replies", since_id=since_tweet_id,
+                                               tweet_fields=self.TWEET_FIELDS,
+                                               max_results=100,
+                                               start_time=start_time,
+                                               user_auth=user_auth)
+            tweets = response.data
+            next_token = response.meta.get("next_token", "")
+            while next_token:
+                added_tweets = client.get_users_tweets(id=twitter_id,
+                                                       exclude="retweets,replies",
+                                                       since_id=since_tweet_id,
+                                                       tweet_fields=self.TWEET_FIELDS,
+                                                       user_auth=user_auth,
+                                                       max_results=100,
+                                                       start_time=start_time,
+                                                       pagination_token=next_token)
+                tweets.extend(added_tweets.data)
+                next_token = added_tweets.meta.get("next_token", "")
+        else:
+            response = client.get_users_tweets(id=twitter_id,
+                                               exclude="retweets,replies",
+                                               tweet_fields=self.TWEET_FIELDS,
+                                               max_results=100,
+                                               start_time=start_time,
+                                               user_auth=user_auth)
+            tweets = response.data
+            next_token = response.meta.get("next_token", "")
+            while next_token:
+                added_tweets = client.get_users_tweets(id=twitter_id,
+                                                       exclude="retweets,replies",
+                                                       tweet_fields=self.TWEET_FIELDS,
+                                                       max_results=100,
+                                                       start_time=start_time,
+                                                       user_auth=user_auth,
+                                                       pagination_token=next_token)
+                tweets.extend(added_tweets.data)
+                next_token = added_tweets.meta.get("next_token", "")
+        return tweets
+
+    def get_tweet(self, tweet_id, client_account_id=None, staff_account=False):
+        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
+        response = client.get_tweet(id=tweet_id, tweet_fields=self.TWEET_FIELDS, user_auth=user_auth)
+        return response.data
+
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
         client = client_account.client
@@ -260,15 +290,20 @@ class TwitterAPI:
         }
         response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
         results = response.json()
-        print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
         client_account.refreshed = timezone.now()
         client_account.save()
 
-    def get_client_for_account(self, client_account_id):
+    def get_client_for_account(self, client_account_id, staff_account=False):
         user_auth = False
-        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        if not client_account_id:
+            client = tweepy.Client(bearer_token=self.bearer_token)
+            return client, user_auth
+        if not staff_account:
+            client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        else:
+            client_account = StaffAccount.objects.filter(id=client_account_id).first()
         if not client_account:
             raise UnknownClientAccount()
         if client_account.client.auth_version == "V2":

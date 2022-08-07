@@ -21,6 +21,7 @@ class TwitterAccount(models.Model):
     following = models.ManyToManyField("self", symmetrical=False, related_name="followed_by")
     last_tweet_date = models.DateTimeField("date of last tweet", null=True)
     last_checked = models.DateField("date followers and following looked up", null=True)
+    protected = models.BooleanField("is the account protected", default=False)
 
 
 class Group(models.Model):
