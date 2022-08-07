@@ -52,10 +52,10 @@ app.conf.beat_schedule = {
     #     'task': 'refresh_client_twitter_tokens',
     #     'schedule': crontab(hour='*', minute=42)
     # }
-    'watch_mentions': {
-        'task': 'handle_tweet',
-        'schedule': crontab(hour='*')
-    },
+    # 'watch_mentions': {
+    #     'task': 'handle_tweet',
+    #     'schedule': crontab(hour='*')
+    # },
     # 'process_triggers': {
     #     'task': 'process_tweets',
     #     'schedule': crontab(hour='*')
