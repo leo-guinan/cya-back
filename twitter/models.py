@@ -18,10 +18,11 @@ class TwitterAccount(models.Model):
     twitter_profile_picture_url = models.CharField("the url of the user's profile picture", max_length=1024, null=True,
                                                    blank=True)
     most_recent_tweet = models.ForeignKey("twitter.Tweet", on_delete=models.SET_NULL, null=True, blank=True)
-    following = models.ManyToManyField("self", symmetrical=False, related_name="followed_by")
     last_tweet_date = models.DateTimeField("date of last tweet", null=True)
     last_checked = models.DateField("date followers and following looked up", null=True)
     protected = models.BooleanField("is the account protected", default=False)
+    relationships = models.ManyToManyField("self", through='twitter.Relationship', related_name="related_to",
+                                           symmetrical=False)
 
 
 class Group(models.Model):
@@ -45,3 +46,10 @@ class Retweet(models.Model):
 class TweetCollection(models.Model):
     tweets = models.ManyToManyField("twitter.Tweet", related_name="collections")
     name = models.CharField("the name of the collection", max_length=512)
+
+
+class Relationship(models.Model):
+    this_account = models.ForeignKey("twitter.TwitterAccount", related_name="explicit_following",
+                                     on_delete=models.CASCADE)
+    follows_this_account = models.ForeignKey("twitter.TwitterAccount", related_name="explicit_followed_by",
+                                             on_delete=models.CASCADE)

@@ -11,7 +11,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount
-from twitter.models import TwitterAccount, Group
+from twitter.models import TwitterAccount, Group, Relationship
 from twitter.serializers import TwitterAccountSerializer
 from twitter.service import unfollow_account
 from twitter.tasks import unfollow_user_for_client_account
@@ -50,14 +50,13 @@ def get_account_analysis(request):
     if not client_account:
         raise UnknownClientAccount()
     current_user = client_account.twitter_account
-    following = current_user.following.all()
+    following = Relationship.objects.filter(this_account=current_user).all()
     follower_count = len(following)
-    # On first run, just get follower count and return that.
     dormant_count = 0
     date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
     for relationship in following:
-        if relationship and relationship.last_tweet_date:
-            if relationship.last_tweet_date < date_to_compare_against:
+        if relationship and relationship.follows_this_account.last_tweet_date:
+            if relationship.follows_this_account.last_tweet_date < date_to_compare_against:
                 dormant_count += 1
     followers_to_analyze = client_account.accounts_to_analyze.filter(last_analyzed__isnull=True).count()
     result = {
@@ -92,10 +91,10 @@ def get_followers_whose_last_tweet_was_more_than_3_months_ago(request):
     date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
     results = []
     current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    for relationship in current_user.following.all():
-        if relationship and relationship.last_tweet_date:
-            if relationship.last_tweet_date < date_to_compare_against:
-                serializer = TwitterAccountSerializer(relationship)
+    for relationship in Relationship.objects.filter(this_account=current_user).all():
+        if relationship and relationship.follows_this_account.last_tweet_date:
+            if relationship.follows_this_account.last_tweet_date < date_to_compare_against:
+                serializer = TwitterAccountSerializer(relationship.follows_this_account)
                 results.append(serializer.data)
     results.sort(key=sortKeyFunctionLastTweetDate)
     return Response(results)
@@ -122,23 +121,6 @@ def get_number_of_followers(request):
     return Response({"count": count})
 
 
-@api_view(('POST',))
-@renderer_classes((JSONRenderer,))
-@permission_classes([HasAPIKey])
-def get_number_of_followers_whose_last_tweet_was_more_than_3_months_ago(request):
-    body = json.loads(request.body)
-    twitter_id_to_check = body['twitter_id']
-    date_to_compare_against = utc.localize(datetime.now() - timedelta(days=90))
-    results = []
-    current_user = TwitterAccount.objects.filter(twitter_id=twitter_id_to_check).first()
-    for relationship in current_user.following.all():
-        if relationship and relationship.last_tweet_date:
-            if relationship.last_tweet_date < date_to_compare_against:
-                serializer = TwitterAccountSerializer(relationship)
-                results.append(serializer.data)
-
-    return Response({"count": len(results)})
-
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -154,7 +136,9 @@ def unfollow_user(request):
     unfollow_account(client_account_id, twitter_id_to_unfollow)
     current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
-    current_user.following.remove(user_to_unfollow)
+    relationship = Relationship.objects.filter(this_account=current_user, follows_this_account=user_to_unfollow).first()
+    if relationship:
+        relationship.delete()
     return Response({"success": True})
 
 @api_view(('POST',))

@@ -1,5 +1,5 @@
 from client.models import ClientAccount
-from twitter.models import TwitterAccount, Tweet
+from twitter.models import TwitterAccount, Tweet, Relationship
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AccountCheck
 
@@ -31,24 +31,30 @@ def update_users_following_twitter_account(twitter_id=None, client_account_id=No
     twitter_api = TwitterAPI()
     followers = twitter_api.get_users_following_account(twitter_id=twitter_id, client_account_id=client_account_id)
     current_user = TwitterAccount.objects.get(twitter_id=twitter_id)
-    current_user.followed_by.clear()
+    followed_by = Relationship.objects.filter(follows_this_account=current_user).all()
+    followed_by.delete()
     for user in followers:
         account_check_request(client_account_id, user.id)
         twitter_account = get_twitter_account(user.id, client_account_id)
-        current_user.followed_by.add(twitter_account)
-    print(f'Number of users following current account: {current_user.followed_by.count()}')
+        relationship = Relationship(this_account=twitter_account, follows_this_account=current_user)
+        relationship.save()
+    print(
+        f'Number of users following current account: {Relationship.objects.filter(follows_this_account=current_user).count()}')
 
 
 def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None):
     twitter_api = TwitterAPI()
     followers = twitter_api.get_following_for_user(twitter_id=twitter_id, client_account_id=client_account_id)
     current_user = get_twitter_account(twitter_id=twitter_id)
-    current_user.following.clear()
+    following = Relationship.objects.filter(this_account=current_user).all()
+    following.delete()
     for user in followers:
         account_check_request(client_account_id, user.id)
         twitter_account = get_twitter_account(user.id, client_account_id)
-        current_user.following.add(twitter_account)
-    print(f'Number of users current account is following: {current_user.following.count()}')
+        relationship = Relationship(this_account=current_user, follows_this_account=twitter_account)
+        relationship.save()
+    print(
+        f'Number of users current account is following: {Relationship.objects.filter(this_account=current_user).count()}')
 
 
 def account_check_request(client_account_id, twitter_id):

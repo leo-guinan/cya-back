@@ -7,7 +7,7 @@ from backend.celery import app
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, StaffAccount
 from tweetpik.tweetpik import TweetPik
-from twitter.models import TwitterAccount, Tweet
+from twitter.models import TwitterAccount, Tweet, Relationship
 from twitter.service import refresh_twitter_account, get_twitter_account, unfollow_account, \
     update_twitter_accounts_user_is_following, \
     update_users_following_twitter_account, get_recent_tweets
@@ -61,38 +61,8 @@ def get_users_following_for_client_account(client_account_id):
                                            client_account_id=client_account_id)
 
 
-@app.task(name="get_followers_for_twitter_account")
-def get_followers_for_twitter_account(twitter_id):
-    twitter_api = TwitterAPI()
-    current_user = TwitterAccount.objects.get(twitter_id=twitter_id)
-    if not current_user:
-        current_user = TwitterAccount()
-        current_user.twitter_id = twitter_id
-    followers = twitter_api.get_following_for_user(twitter_id=twitter_id)
-
-    for user in followers:
-        twitter_account = TwitterAccount.objects.filter(twitter_id=user.id).first()
-        if not twitter_account:
-            twitter_account = TwitterAccount(twitter_id=user.id, twitter_username=user.username,
-                                             twitter_name=user.name
-                                             )
-            twitter_account.save()
-        relationship = TwitterAccount.objects.filter(twitter_id=current_user.twitter_id,
-                                                     following__twitter_id=twitter_account.twitter_id).first()
-        if not relationship:
-            current_user.following.add(twitter_account)
 
 
-
-@app.task(name="set_user_follows_account")
-def make_user_follow_account(user_id, follows_id):
-    relationship = TwitterAccount.objects.filter(twitter_id=user_id,
-                                                 following__twitter_id=follows_id).first()
-    if not relationship:
-        current_user = TwitterAccount.objects.filter(twitter_id=user_id).first()
-        twitter_account = TwitterAccount.objects.filter(twitter_id=follows_id).first()
-        current_user.following.add(twitter_account)
-        current_user.save()
 
 @app.task(name="unfollow_user")
 def unfollow_user_for_client_account(client_account_id, twitter_id_to_unfollow, request_id):
@@ -103,7 +73,9 @@ def unfollow_user_for_client_account(client_account_id, twitter_id_to_unfollow, 
     unfollow_account(client_account_id, twitter_id_to_unfollow)
     current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
-    current_user.following.remove(user_to_unfollow)
+    relationship = Relationship.objects.filter(this_account=current_user, follows_this_account=user_to_unfollow).first()
+    if relationship:
+        relationship.delete()
     if request_id:
         request = UnfollowRequest.objects.get(id=request_id)
         request.unfollowed = utc.localize(datetime.now())
