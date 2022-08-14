@@ -320,8 +320,7 @@ class TwitterAPI:
             client = tweepy.Client(consumer_key=client_account.client.consumer_key,
                                    consumer_secret=client_account.client.consumer_secret,
                                    access_token=client_account.access_key,
-                                   access_token_secret=client_account.secret_access_key,
-                                   wait_on_rate_limit=True)
+                                   access_token_secret=client_account.secret_access_key,)
             print("Using V1 User auth client")
 
             user_auth = True
