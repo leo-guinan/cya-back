@@ -284,10 +284,6 @@ class TwitterAPI:
         response = client.get_tweet(id=tweet_id, tweet_fields=self.TWEET_FIELDS, user_auth=user_auth)
         return response.data
 
-    def user_follows_account(self, client_account_id, twitter_account_id):
-        client, user_auth = self.get_client_for_account(client_account_id)
-
-
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
         client = client_account.client
