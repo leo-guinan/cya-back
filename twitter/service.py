@@ -75,8 +75,12 @@ def account_check_request(client_account_id, twitter_id):
 
 def unfollow_account(client_account_id, twitter_id_to_unfollow):
     twitter_api = TwitterAPI()
-    twitter_api.unfollow_user(client_account_id, twitter_id_to_unfollow)
+    if user_follows_account(client_account_id, twitter_id_to_unfollow):
+        twitter_api.unfollow_user(client_account_id, twitter_id_to_unfollow)
 
+def user_follows_account(client_account_id, twitter_id):
+    twitter_api = TwitterAPI()
+    return twitter_api.user_follows_account(client_account_id, twitter_id)
 
 def get_most_recent_tweet(client_account_id, twitter_id_to_lookup, staff_account=False):
     twitter_api = TwitterAPI()

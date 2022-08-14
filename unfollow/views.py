@@ -152,10 +152,13 @@ def bulk_unfollow_users(request):
     if not client_account:
         raise UnknownClientAccount()
     for twitter_id in twitter_ids_to_unfollow:
-        request = UnfollowRequest()
-        request.requesting_account = client_account
-        request.account_to_unfollow = TwitterAccount.objects.get(twitter_id=twitter_id)
-        request.save()
+        acct_to_unfollow = TwitterAccount.objects.get(twitter_id=twitter_id)
+        existing_request = UnfollowRequest.objects.filter(requesting_account=client_account,account_to_unfollow=acct_to_unfollow).first()
+        if not existing_request:
+            request = UnfollowRequest()
+            request.requesting_account = client_account
+            request.account_to_unfollow = acct_to_unfollow
+            request.save()
     unfollow_accounts_needing.delay()
     return Response({"success": True})
 

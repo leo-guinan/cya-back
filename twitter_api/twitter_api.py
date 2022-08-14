@@ -145,7 +145,12 @@ class TwitterAPI:
 
     def unfollow_user(self, client_account_id, twitter_id_to_unfollow):
         client, user_auth = self.get_client_for_account(client_account_id)
-        client.unfollow_user(twitter_id_to_unfollow, user_auth=user_auth)
+        try:
+            response = client.unfollow_user(twitter_id_to_unfollow, user_auth=user_auth)
+            print(response)
+        except Exception as e:
+            print(e)
+            raise e
 
     def get_responses_to_tweet(self, tweet_id, since_id=None):
         client = tweepy.Client(bearer_token=self.bearer_token)
@@ -278,6 +283,10 @@ class TwitterAPI:
         client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
         response = client.get_tweet(id=tweet_id, tweet_fields=self.TWEET_FIELDS, user_auth=user_auth)
         return response.data
+
+    def user_follows_account(self, client_account_id, twitter_account_id):
+        client, user_auth = self.get_client_for_account(client_account_id)
+
 
     def refresh_oauth2_token(self, client_account_id):
         client_account = ClientAccount.objects.filter(id=client_account_id).first()
