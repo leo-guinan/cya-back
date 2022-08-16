@@ -4,9 +4,27 @@ from backend.celery import app
 from client.exception import UnknownClient
 from client.models import Client
 from friendcontent.models import TriggerTweet, Content
-from friendcontent.util import extract_url_from_text
+from friendcontent.service import respond_to_add, respond_to_add_podcast, add_podcast, respond_to_add_blog, \
+    respond_to_add_youtube, respond_to_add_tiktok, add_blog, add_youtube, add_tiktok, respond_to_podcast, \
+    respond_to_blog, respond_to_youtube, respond_to_tiktok
 from twitter.models import Tweet, TwitterAccount
 from twitter_api.twitter_api import TwitterAPI
+
+SUPPORTED_MEDIA = {
+    'podcast': {
+
+    },
+    'blog': {
+
+    },
+    'youtube': {
+
+    },
+    'tiktok': {
+
+    }
+}
+
 
 
 @app.task(name="handle_tweet")
@@ -45,23 +63,15 @@ def handle_tweet():
                 print("parent response, new conversation")
                 # this is a new request. Act accordingly.
                 if 'add' in mention.text.lower():
-                    trigger.action = "ADD"
-                    response = twitter_api.send_tweet_as_client_in_response(client_id=client.id,
-                                                                            tweet_to_respond_to=trigger.tweet.tweet_id,
-                                                                            message=f"what kind of media would you like to add? Currently supported types: podcast")
-                    print(response)
-                    new_tweet = Tweet()
-                    new_tweet.tweet_id = response['id']
-                    new_tweet.message = response['text']
-                    new_tweet.author = client.twitter_account
-                    new_tweet.tweet_created_at = datetime.datetime.utcnow()
-                    new_tweet.save()
-                    new_trigger = TriggerTweet()
-                    new_trigger.tweet = new_tweet
-                    trigger.taken = True
-                    trigger.save()
+                    respond_to_add(trigger, client)
                 elif 'podcast' in mention.text.lower():
-                    trigger.action = 'PODCAST'
+                    respond_to_podcast(author, trigger, client)
+                elif 'blog' in mention.text.lower():
+                    respond_to_blog(author, trigger, client)
+                elif 'youtube' in mention.text.lower():
+                    respond_to_youtube(author, trigger, client)
+                elif 'tiktok' in mention.text.lower():
+                    respond_to_tiktok(author, trigger, client)
                 else:
                     trigger.action = "unknown"
                 trigger.save()
@@ -82,32 +92,22 @@ def handle_tweet():
                 parent.save()
                 if parent.action == 'ADD':
                     if trigger.action == 'PODCAST':
-                        response = twitter_api.send_tweet_as_client_in_response(client_id=client.id,
-                                                                                tweet_to_respond_to=trigger.tweet.tweet_id,
-                                                                                message=f"Awesome! What's the url of the podcast?")
-                        print(response)
-                        new_tweet = Tweet()
-                        new_tweet.tweet_id = response['id']
-                        new_tweet.message = response['text']
-                        new_tweet.author = client.twitter_account
-                        new_tweet.tweet_created_at = datetime.datetime.utcnow()
-                        new_tweet.save()
-                        new_trigger = TriggerTweet()
-                        new_trigger.tweet = new_tweet
-                        trigger.taken = True
-                        trigger.save()
+                        respond_to_add_podcast(trigger, client)
+                    elif trigger.action == 'BLOG':
+                        respond_to_add_blog(trigger, client)
+                    elif trigger.action == 'YOUTUBE':
+                        respond_to_add_youtube(trigger, client)
+                    elif trigger.action == 'TIKTOK':
+                        respond_to_add_tiktok(trigger, client)
                 if root.action == "ADD":
                     if parent.action == "PODCAST":
-                        content = Content()
-                        print(mention.text)
-                        url = extract_url_from_text(mention.text)
-                        content.url = url
-                        content.content_type = 'PC'
-                        content.owner = author
-                        content.save()
-                        twitter_api.send_tweet_as_client_in_response(client_id=client.id,
-                                                                                tweet_to_respond_to=trigger.tweet.tweet_id,
-                                                                                message=f"Excellent! Your podcast has been saved!")
+                        add_podcast(mention, author, trigger, client)
+                    elif parent.action == 'BLOG':
+                        add_blog(mention, author, trigger, client)
+                    elif parent.action == 'YOUTUBE':
+                        add_youtube(mention, author, trigger, client)
+                    elif parent.action == 'TIKTOK':
+                        add_tiktok(mention, author, trigger, client)
 
 
 

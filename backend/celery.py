@@ -56,10 +56,10 @@ app.conf.beat_schedule = {
     #     'task': 'handle_tweet',
     #     'schedule': crontab(hour='*')
     # },
-    # 'process_triggers': {
-    #     'task': 'process_tweets',
-    #     'schedule': crontab(hour='*')
-    # }
+    'process_triggers': {
+        'task': 'process_tweets',
+        'schedule': crontab(hour='*')
+    },
     'daily_user_refresh': {
         'task': 'daily_user_refresh',
         'schedule': crontab(hour=0)
