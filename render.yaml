@@ -76,6 +76,6 @@ services:
   - type: redis
     name: celery-redis
     region: ohio
-    plan: starter-plus
+    plan: "starter plus"
     maxmemoryPolicy: allkeys-lfu # recommended policy for queues
     ipAllowList: [ ] # only allow internal connections
