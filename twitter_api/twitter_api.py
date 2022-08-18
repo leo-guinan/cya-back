@@ -13,15 +13,25 @@ class TwitterAPI:
     USER_FIELDS = "id,profile_image_url,name,description,protected"
     TWEET_FIELDS = "public_metrics,entities,created_at,author_id,conversation_id"
 
-    def __init__(self):
-        self.api_key = config('TWITTER_API_KEY')
-        self.api_secret = config('TWITTER_API_SECRET')
-        self.client_id = config('TWITTER_CLIENT_ID')
-        self.client_secret = config('TWITTER_CLIENT_SECRET')
-        self.access_token = config('TWITTER_ACCESS_TOKEN')
-        self.access_token_secret = config('TWITTER_ACCESS_SECRET')
+    def __init__(self, client = None):
         self.oauth_callback_url = config('TWITTER_OAUTH_CALLBACK_URL')
-        self.bearer_token = config('TWITTER_BEARER_TOKEN')
+        if not client:
+            self.api_key = config('TWITTER_API_KEY')
+            self.api_secret = config('TWITTER_API_SECRET')
+            self.client_id = config('TWITTER_CLIENT_ID')
+            self.client_secret = config('TWITTER_CLIENT_SECRET')
+            self.access_token = config('TWITTER_ACCESS_TOKEN')
+            self.access_token_secret = config('TWITTER_ACCESS_SECRET')
+            self.bearer_token = config('TWITTER_BEARER_TOKEN')
+        else:
+            self.api_key = client.consumer_key
+            self.api_secret = client.consumer_secret
+            self.client_id = client.client_id
+            self.client_secret = client.client_secret
+            self.access_token = client.access_token
+            self.access_token_secret = client.access_secret
+            self.bearer_token = client.bearer_token
+
 
     def twitter_login(self):
         oauth1_user_handler = tweepy.OAuthHandler(self.api_key, self.api_secret, callback=self.oauth_callback_url)
@@ -303,7 +313,7 @@ class TwitterAPI:
     def get_client_for_account(self, client_account_id, staff_account=False):
         user_auth = False
         if not client_account_id:
-            client = tweepy.Client(bearer_token=self.bearer_token)
+            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
             return client, user_auth
         if not staff_account:
             client_account = ClientAccount.objects.filter(id=client_account_id).first()

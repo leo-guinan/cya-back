@@ -12,7 +12,7 @@ def respond_to_add(trigger, client):
     trigger.action = "ADD"
     response = twitter_api.send_tweet_as_client_in_response(client_id=client.id,
                                                             tweet_to_respond_to=trigger.tweet.tweet_id,
-                                                            message=f"what kind of media would you like to add? Currently supported types: podcast")
+                                                            message=f"what kind of media would you like to add? Currently supported types: podcast, blog, tiktok, youtube. Please respond with a type.")
     _save_trigger(response, trigger, client)
 
 
@@ -119,6 +119,18 @@ def respond_to_youtube(author, trigger, client):
 def respond_to_tiktok(author, trigger, client):
     _find_content_matching_type_in_network(author, 'TT', trigger, client)
 
+def respond_with_help(trigger, client):
+    twitter_api = TwitterAPI()
+    response = twitter_api.send_tweet_as_client_in_response(client_id=client.id,
+                                                            tweet_to_respond_to=trigger.tweet.tweet_id,
+                                                            message=f"""User Guide for @friend_content
+
+To add content to our database, tweet '@friend_content add' and respond to the prompts. 
+
+To request a content recommendation from your network, use '@friend_content $TYPE'. 
+
+Current types supported: podcast, blog, tiktok, youtube""")
+    _save_trigger(response, trigger, client)
 
 def _save_trigger(response, trigger, client):
     new_tweet = Tweet()

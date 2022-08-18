@@ -1,4 +1,5 @@
-import datetime
+from datetime import date, datetime, timedelta
+from pytz import utc
 
 from backend.celery import app
 from client.exception import UnknownClient
@@ -6,8 +7,11 @@ from client.models import Client
 from friendcontent.models import TriggerTweet, Content
 from friendcontent.service import respond_to_add, respond_to_add_podcast, add_podcast, respond_to_add_blog, \
     respond_to_add_youtube, respond_to_add_tiktok, add_blog, add_youtube, add_tiktok, respond_to_podcast, \
-    respond_to_blog, respond_to_youtube, respond_to_tiktok
+    respond_to_blog, respond_to_youtube, respond_to_tiktok, respond_with_help
 from twitter.models import Tweet, TwitterAccount
+from twitter.service import refresh_twitter_account, update_twitter_accounts_user_is_following, \
+    update_users_following_twitter_account
+from twitter.tasks import populate_user_data_from_twitter_id, get_users_following_for_client_account
 from twitter_api.twitter_api import TwitterAPI
 
 SUPPORTED_MEDIA = {
@@ -25,7 +29,7 @@ SUPPORTED_MEDIA = {
     }
 }
 
-
+CLIENT = Client.objects.filter(name="FRIENDCONTENT").first()
 
 @app.task(name="handle_tweet")
 def handle_tweet():
@@ -53,6 +57,14 @@ def handle_tweet():
                 author = TwitterAccount()
                 author.twitter_id = mention.author_id
                 author.save()
+            if not author.last_checked or author.last_checked < (date.today() - timedelta(days=2)):
+                #lookup user
+                refresh_twitter_account(author.twitter_id)
+                update_twitter_accounts_user_is_following(author.twitter_id, client=CLIENT)
+
+                author.last_checked = utc.localize(datetime.now())
+                author.save()
+
             tweet.author = author
             tweet.message = mention.text
             tweet.tweet_created_at = mention.created_at
@@ -74,6 +86,7 @@ def handle_tweet():
                     respond_to_tiktok(author, trigger, client)
                 else:
                     trigger.action = "unknown"
+                    respond_with_help(trigger, client)
                 trigger.save()
             else:
                 parent = TriggerTweet.objects.filter(tweet__tweet_id=mention.conversation_id).first()
@@ -132,7 +145,7 @@ def process_tweets():
             new_tweet.tweet_id = response['id']
             new_tweet.message = response['text']
             new_tweet.author = client.twitter_account
-            new_tweet.tweet_created_at = datetime.datetime.utcnow()
+            new_tweet.tweet_created_at = datetime.utcnow()
             new_tweet.save()
             new_trigger = TriggerTweet()
             new_trigger.tweet = new_tweet

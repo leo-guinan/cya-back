@@ -27,8 +27,8 @@ def refresh_twitter_account(twitter_id, client_account_id=None):
     return account
 
 
-def update_users_following_twitter_account(twitter_id=None, client_account_id=None):
-    twitter_api = TwitterAPI()
+def update_users_following_twitter_account(twitter_id=None, client_account_id=None, client=None):
+    twitter_api = TwitterAPI(client)
     followers = twitter_api.get_users_following_account(twitter_id=twitter_id, client_account_id=client_account_id)
     current_user = TwitterAccount.objects.get(twitter_id=twitter_id)
     followed_by = Relationship.objects.filter(follows_this_account=current_user).all()
@@ -42,8 +42,8 @@ def update_users_following_twitter_account(twitter_id=None, client_account_id=No
         f'Number of users following current account: {Relationship.objects.filter(follows_this_account=current_user).count()}')
 
 
-def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None):
-    twitter_api = TwitterAPI()
+def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None, client=None):
+    twitter_api = TwitterAPI(client)
     followers = twitter_api.get_following_for_user(twitter_id=twitter_id, client_account_id=client_account_id)
     current_user = get_twitter_account(twitter_id=twitter_id)
     following = Relationship.objects.filter(this_account=current_user).all()
@@ -58,19 +58,20 @@ def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None
 
 
 def account_check_request(client_account_id, twitter_id):
-    client_account = ClientAccount.objects.filter(id=client_account_id).first()
-    twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
-    if not twitter_account:
-        twitter_account = TwitterAccount()
-        twitter_account.twitter_id = twitter_id
-        twitter_account.save()
-    existing_check = AccountCheck.objects.filter(account=twitter_account).first()
-    if not existing_check:
-        existing_check = AccountCheck()
-        existing_check.account = twitter_account
+    if client_account_id:
+        client_account = ClientAccount.objects.filter(id=client_account_id).first()
+        twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
+        if not twitter_account:
+            twitter_account = TwitterAccount()
+            twitter_account.twitter_id = twitter_id
+            twitter_account.save()
+        existing_check = AccountCheck.objects.filter(account=twitter_account).first()
+        if not existing_check:
+            existing_check = AccountCheck()
+            existing_check.account = twitter_account
+            existing_check.save()
+        existing_check.requests.add(client_account)
         existing_check.save()
-    existing_check.requests.add(client_account)
-    existing_check.save()
 
 
 def unfollow_account(client_account_id, twitter_id_to_unfollow):
