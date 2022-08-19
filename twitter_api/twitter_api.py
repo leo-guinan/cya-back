@@ -240,8 +240,8 @@ class TwitterAPI:
         client = tweepy.Client(bearer_token=app_client.bearer_token)
         mentions = client.get_users_mentions(id=app_client.twitter_account.twitter_id,
                                              since_id=since,
-                                             tweet_fields="author_id,created_at,conversation_id") if since else client.get_users_mentions(
-            id=app_client.twitter_account.twitter_id, tweet_fields="author_id,created_at,conversation_id")
+                                             tweet_fields="author_id,created_at,conversation_id", max_results=50) if since else client.get_users_mentions(
+            id=app_client.twitter_account.twitter_id, tweet_fields="author_id,created_at,conversation_id", max_results=50)
         return mentions.data if mentions.data else None
 
     def get_latest_tweets(self, twitter_id, since_tweet_id=None, client_account_id=None, staff_account=False):
