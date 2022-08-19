@@ -64,6 +64,7 @@ def handle_tweet():
             tweet.save()
             trigger = TriggerTweet()
             trigger.tweet = tweet
+            print(mention.id)
             if mention.id == mention.conversation_id:
                 print("parent response, new conversation")
                 # this is a new request. Act accordingly.
