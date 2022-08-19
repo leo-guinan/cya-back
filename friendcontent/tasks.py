@@ -93,6 +93,12 @@ def handle_tweet():
                 print("child response")
                 if 'podcast' in mention.text.lower():
                     trigger.action = 'PODCAST'
+                elif 'blog' in mention.text.lower():
+                    trigger.action = 'BLOG'
+                elif 'youtube' in mention.text.lower():
+                    trigger.action = 'YOUTUBE'
+                elif 'tiktok' in mention.text.lower():
+                    trigger.action = 'TIKTOK'
                 else:
                     trigger.action = "unknown"
                 trigger.taken = True
