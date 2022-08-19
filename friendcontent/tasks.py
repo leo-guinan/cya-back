@@ -90,6 +90,8 @@ def handle_tweet():
                 trigger.save()
             else:
                 parent = TriggerTweet.objects.filter(tweet__tweet_id=mention.conversation_id).first()
+                if not parent:
+                    continue
                 root = parent
                 while parent.child:
                     #Get latest response

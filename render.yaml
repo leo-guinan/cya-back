@@ -30,7 +30,23 @@ services:
     region: ohio
     env: python
     buildCommand: "./build.sh"
-    startCommand: "celery -A backend worker --loglevel=info --concurrency=4"
+    startCommand: "celery -A backend worker -Q default --loglevel=info --concurrency=4"
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: celery-redis
+          type: redis
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: servicedb
+          property: connectionString
+  - type: worker
+    name: bot
+    region: ohio
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "celery -A backend worker -Q bot --loglevel=info --concurrency=1"
     envVars:
       - key: REDIS_URL
         fromService:

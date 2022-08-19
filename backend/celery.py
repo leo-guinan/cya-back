@@ -21,6 +21,15 @@ app.autodiscover_tasks()
 app.conf.broker_url = BASE_REDIS_URL
 app.conf.beat_scheduler = 'django_celery_beat.schedulers.DatabaseScheduler'
 
+CELERY_TASK_ROUTES = {
+ 'unfollow.tasks.*': {'queue': 'default'},
+ 'client.tasks.*': {'queue': 'default'},
+ 'crawler.tasks.*': {'queue': 'default'},
+ 'feather.tasks.*': {'queue': 'default'},
+ 'twitter.tasks.*': {'queue': 'default'},
+ 'watchtweet.tasks.*': {'queue': 'default'},
+ 'friendcontent.tasks.*': {'queue': 'bot'},
+}
 
 @app.task(bind=True)
 def debug_task(self):
@@ -39,29 +48,39 @@ app.conf.beat_schedule = {
     'message_beta_users': {
         'task': 'send_dms_to_beta_users',
         'schedule': crontab(hour='*', minute=0),
+        'options': {'queue': 'default'}
     },
     'analyze_accounts': {
         'task': 'analyze_accounts_that_need_it',
-        'schedule': crontab(hour='*')
+        'schedule': crontab(hour='*'),
+        'options': {'queue': 'default'}
+
     },
     'unfollow_accounts': {
         'task': 'unfollow_accounts',
-        'schedule': crontab(minute='*/15')
+        'schedule': crontab(minute='*/15'),
+        'options': {'queue': 'default'}
+
     },
     # 'refresh_twitter_tokens': {
     #     'task': 'refresh_client_twitter_tokens',
     #     'schedule': crontab(hour='*', minute=42)
     # }
-    # 'watch_mentions': {
-    #     'task': 'handle_tweet',
-    #     'schedule': crontab(hour='*')
-    # },
-    'process_triggers': {
-        'task': 'process_tweets',
-        'schedule': crontab(hour='*')
+    'watch_mentions': {
+        'task': 'handle_tweet',
+        'schedule': crontab(hour='*'),
+        'options': {'queue': 'bot'}
     },
+    # 'process_triggers': {
+    #     'task': 'process_tweets',
+    #     'schedule': crontab(hour='*'),
+    #     'options': {'queue': 'bot'}
+    #
+    # },
     'daily_user_refresh': {
         'task': 'daily_user_refresh',
-        'schedule': crontab(hour=0)
+        'schedule': crontab(hour=0),
+        'options': {'queue': 'default'}
+
     }
 }
