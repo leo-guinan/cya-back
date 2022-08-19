@@ -29,7 +29,6 @@ SUPPORTED_MEDIA = {
     }
 }
 
-CLIENT = Client.objects.filter(name="FRIENDCONTENT").first()
 
 @app.task(name="handle_tweet")
 def handle_tweet():
@@ -57,13 +56,7 @@ def handle_tweet():
                 author = TwitterAccount()
                 author.twitter_id = mention.author_id
                 author.save()
-            if not author.last_checked or author.last_checked < (date.today() - timedelta(days=2)):
-                #lookup user
-                refresh_twitter_account(author.twitter_id)
-                update_twitter_accounts_user_is_following(author.twitter_id, client=CLIENT)
 
-                author.last_checked = utc.localize(datetime.now())
-                author.save()
 
             tweet.author = author
             tweet.message = mention.text

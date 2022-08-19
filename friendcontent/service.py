@@ -1,11 +1,15 @@
 import random
-from datetime import datetime
+from datetime import date, datetime, timedelta
+from pytz import utc
 
+from client.models import Client
 from friendcontent.models import TriggerTweet, Content
 from friendcontent.util import extract_url_from_text
 from twitter.models import Tweet, Relationship
+from twitter.service import refresh_twitter_account, update_twitter_accounts_user_is_following
 from twitter_api.twitter_api import TwitterAPI
 
+CLIENT = Client.objects.filter(name="FRIENDCONTENT").first()
 
 def respond_to_add(trigger, client):
     twitter_api = TwitterAPI()
@@ -151,6 +155,13 @@ def _find_content_matching_type_in_network(author, content_type, trigger, client
     # pick random content from that group
     # send tweet
     twitter_api = TwitterAPI()
+    if not author.last_checked or author.last_checked < (date.today() - timedelta(days=2)):
+        # lookup user
+        refresh_twitter_account(author.twitter_id)
+        update_twitter_accounts_user_is_following(author.twitter_id, client=CLIENT)
+
+        author.last_checked = utc.localize(datetime.now())
+        author.save()
     following = Relationship.objects.filter(this_account=author).all()
     following_accounts = [follow.follows_this_account for follow in following]
     content_options = Content.objects.filter(content_type=content_type, owner__in=following_accounts).all()
