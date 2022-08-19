@@ -32,7 +32,7 @@ def respond_to_add_blog(trigger, client):
     twitter_api = TwitterAPI()
     response = twitter_api.send_tweet_as_client_in_response(client_id=client.id,
                                                             tweet_to_respond_to=trigger.tweet.tweet_id,
-                                                            message=f"Awesome! What's the url of the podcast?")
+                                                            message=f"Awesome! What's the url of the blog?")
     _save_trigger(response, trigger, client)
 
 
@@ -40,7 +40,7 @@ def respond_to_add_youtube(trigger, client):
     twitter_api = TwitterAPI()
     response = twitter_api.send_tweet_as_client_in_response(client_id=client.id,
                                                             tweet_to_respond_to=trigger.tweet.tweet_id,
-                                                            message=f"Awesome! What's the url of the podcast?")
+                                                            message=f"Awesome! What's the url of the youtube channel?")
     _save_trigger(response, trigger, client)
 
 
@@ -48,7 +48,7 @@ def respond_to_add_tiktok(trigger, client):
     twitter_api = TwitterAPI()
     response = twitter_api.send_tweet_as_client_in_response(client_id=client.id,
                                                             tweet_to_respond_to=trigger.tweet.tweet_id,
-                                                            message=f"Awesome! What's the url of the podcast?")
+                                                            message=f"Awesome! What's the url of the tiktok profile?")
     _save_trigger(response, trigger, client)
 
 
