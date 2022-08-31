@@ -90,7 +90,7 @@ services:
           name: servicedb
           property: connectionString
   - type: worker
-    name: scheduler
+    name: basicworker
     region: ohio
     env: python
     buildCommand: "./build.sh"
