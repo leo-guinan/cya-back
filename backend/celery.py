@@ -82,5 +82,11 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=0),
         'options': {'queue': 'default'}
 
+    },
+    'update_accounts_missing_data': {
+        'task': 'populate_account_data',
+        'schedule': crontab(minute='*/15'),
+        'options': {'queue': 'default'}
     }
+
 }

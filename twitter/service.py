@@ -1,3 +1,7 @@
+from datetime import datetime, timedelta
+
+from pytz import utc
+
 from client.models import ClientAccount
 from twitter.models import TwitterAccount, Tweet, Relationship
 from twitter_api.twitter_api import TwitterAPI
@@ -15,16 +19,12 @@ def refresh_twitter_account(twitter_id, client_account_id=None):
     twitter_api = TwitterAPI()
     raw_user = twitter_api.lookup_user(twitter_id=twitter_id, client_account_id=client_account_id)
     account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
-    if not account:
-        account = TwitterAccount()
-        account.twitter_id = raw_user.id
-    account.twitter_bio = raw_user.description
-    account.twitter_name = raw_user.name
-    account.twitter_username = raw_user.username
-    account.twitter_profile_picture_url = raw_user.profile_image_url
-    account.protected = raw_user.protected
-    account.save()
-    return account
+    if raw_user:
+        return save_twitter_account_to_database(raw_user)
+    else:
+        if account:
+            account.delete()
+    return None
 
 
 def update_users_following_twitter_account(twitter_id=None, client_account_id=None, client=None):
@@ -38,8 +38,6 @@ def update_users_following_twitter_account(twitter_id=None, client_account_id=No
         twitter_account = get_twitter_account(user.id, client_account_id)
         relationship = Relationship(this_account=twitter_account, follows_this_account=current_user)
         relationship.save()
-    print(
-        f'Number of users following current account: {Relationship.objects.filter(follows_this_account=current_user).count()}')
 
 
 def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None, client=None):
@@ -53,8 +51,6 @@ def update_twitter_accounts_user_is_following(twitter_id, client_account_id=None
         twitter_account = get_twitter_account(user.id, client_account_id)
         relationship = Relationship(this_account=current_user, follows_this_account=twitter_account)
         relationship.save()
-    print(
-        f'Number of users current account is following: {Relationship.objects.filter(this_account=current_user).count()}')
 
 
 def account_check_request(client_account_id, twitter_id):
@@ -82,10 +78,27 @@ def unfollow_account(client_account_id, twitter_id_to_unfollow):
 def get_most_recent_tweet(client_account_id, twitter_id_to_lookup, staff_account=False):
     twitter_api = TwitterAPI()
 
-    most_recent_tweet = twitter_api.get_most_recent_tweet_for_user(client_account_id=client_account_id,
-                                                                   twitter_id=twitter_id_to_lookup,
-                                                                   staff_account=staff_account)
-    return most_recent_tweet
+    most_recent_tweet, author = twitter_api.get_most_recent_tweet_for_user(client_account_id=client_account_id,
+                                                                           twitter_id=twitter_id_to_lookup,
+                                                                           staff_account=staff_account)
+    if author:
+        save_twitter_account_to_database(author)
+    update_twitter_account_with_most_recent_tweet(most_recent_tweet)
+    return most_recent_tweet, author
+
+
+def update_twitter_account_with_most_recent_tweet(most_recent_tweet):
+    twitter_account = TwitterAccount.objects.filter(twitter_id=most_recent_tweet.author_id).first()
+
+    if not twitter_account:
+        raise Exception("Twitter account should exist here.")
+    if most_recent_tweet is not None:
+        twitter_account.last_tweet_date = most_recent_tweet.created_at
+        twitter_account.save()
+    else:
+        # when no tweet, just set last tweet date to 5 years ago
+        twitter_account.last_tweet_date = utc.localize(datetime.now() - timedelta(weeks=52 * 5))
+        twitter_account.save()
 
 
 def get_recent_tweets(client_account_id, twitter_id, staff_account=False):
@@ -117,6 +130,21 @@ def save_tweet_to_database(raw_tweet):
     tweet.message = raw_tweet.text
     tweet.save()
     return tweet
+
+
+def save_twitter_account_to_database(raw_user):
+    twitter_account = TwitterAccount.objects.filter(twitter_id=raw_user.id).first()
+    if not twitter_account:
+        twitter_account = TwitterAccount()
+        twitter_account.twitter_id = raw_user.id
+        twitter_account.save()
+    twitter_account.twitter_username = raw_user.username
+    twitter_account.twitter_bio = raw_user.description
+    twitter_account.twitter_name = raw_user.name
+    twitter_account.twitter_profile_picture_url = raw_user.profile_image_url
+    twitter_account.protected = raw_user.protected
+    twitter_account.save()
+    return twitter_account
 
 
 def get_tweet(tweet_id):

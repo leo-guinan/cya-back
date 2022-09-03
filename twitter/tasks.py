@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from PIL import ImageFont
+from django.db.models import Q
 from pytz import utc
 
 from backend.celery import app
@@ -96,3 +97,16 @@ def get_latest_tweets_for_account(client_account_id, twitter_id):
             except Exception as nested_e:
                 print(nested_e)
                 continue
+
+@app.task(name="populate_account_data")
+def lookup_accounts_that_are_missing_data():
+    # limit on Twitter API is 900 requests per 15 minutes, so target slightly less than that every 15 minutes
+    accounts = TwitterAccount.objects.filter(Q(twitter_username__isnull=True) | Q(twitter_bio__isnull=True)).all()[:850]
+    for account in accounts:
+        print(f"refreshing account: {account.twitter_id}")
+        new_account = refresh_twitter_account(account.twitter_id)
+        if new_account:
+            print(f"updated username: {new_account.twitter_username}: {new_account.twitter_bio}")
+        else:
+            print("account deleted")
+

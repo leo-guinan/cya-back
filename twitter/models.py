@@ -53,3 +53,7 @@ class Relationship(models.Model):
                                      on_delete=models.CASCADE)
     follows_this_account = models.ForeignKey("twitter.TwitterAccount", related_name="explicit_followed_by",
                                              on_delete=models.CASCADE)
+
+class Media(models.Model):
+    tweet = models.ForeignKey("twitter.Tweet", on_delete=models.CASCADE, related_name="media_items")
+    type = models.CharField("", max_length=255)
