@@ -54,3 +54,13 @@ class BetaAccount(models.Model):
     client_account = models.ForeignKey("client.ClientAccount", related_name="beta", on_delete=models.CASCADE)
     beta_code = models.CharField("beta access code", max_length=255)
     messaged = models.BooleanField("did we send the dm?", default=False)
+
+
+class AccountConfig(models.Model):
+    class NotificationPreference(models.TextChoices):
+        TWEET = 'TW', ('Tweet')
+        EMAIL = 'EM', ('Email')
+        DIRECT_MESSAGE = "DM", ("Direct Message")
+    client_account = models.OneToOneField("client.ClientAccount", related_name="config", on_delete=models.CASCADE)
+    notification_preference = models.CharField(max_length=2, choices=NotificationPreference.choices, default=NotificationPreference.TWEET)
+    notification_requested = models.BooleanField("Has the user requested notification?", default=False)

@@ -154,3 +154,13 @@ def get_tweet(tweet_id):
         raw_tweet = twitter_api.get_tweet(tweet_id)
         existing_tweet = save_tweet_to_database(raw_tweet)
     return existing_tweet
+
+
+def send_tweet(from_client, message):
+    twitter_api = TwitterAPI()
+    twitter_api.send_tweet_as_client(app_client=from_client, message=message)
+
+
+def send_dm_to_account(from_client, to_twitter_id, message):
+    twitter_api = TwitterAPI()
+    twitter_api.send_dm_to_user(from_client.id, to_twitter_id, message)

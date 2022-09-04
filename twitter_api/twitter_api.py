@@ -185,6 +185,13 @@ class TwitterAPI:
         response = client.create_tweet(text=message, user_auth=True)
         return response.data
 
+    def send_tweet_as_client(self, app_client, message):
+        client = tweepy.Client(consumer_key=app_client.consumer_key, consumer_secret=app_client.consumer_secret,
+                               access_token=app_client.access_token,
+                               access_token_secret=app_client.access_secret)
+        response = client.create_tweet(text=message, user_auth=True)
+        return response.data
+
     def send_tweet_as_client_in_response(self, client_id, tweet_to_respond_to, message):
         app_client = Client.objects.filter(id=client_id).first()
         client = tweepy.Client(consumer_key=app_client.consumer_key, consumer_secret=app_client.consumer_secret,
@@ -195,7 +202,6 @@ class TwitterAPI:
 
     def send_dm_to_user(self, client_id, twitter_user_to_message, message):
         client = Client.objects.filter(id=client_id).first()
-
         auth = tweepy.OAuth1UserHandler(
             client.consumer_key, client.consumer_secret,
             client.access_token, client.access_secret

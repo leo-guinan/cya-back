@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from client.exception import UnknownClient, UnknownClientAccount
-from client.models import Client, ClientAccount
+from client.models import Client, ClientAccount, AccountConfig
 from twitter.models import TwitterAccount
 from unfollow.tasks import lookup_twitter_user
 
@@ -35,6 +35,10 @@ def client_account_login(request):
         client_account = ClientAccount()
         client_account.client = client
         client_account.twitter_account = twitter_account
+        account_config = AccountConfig()
+        account_config.notification_preference = AccountConfig.NotificationPreference.TWEET
+        account_config.save()
+        client_account.config = account_config
     client_account.email = email
     client_account.access_key = access_key
     client_account.secret_access_key = secret_access_key
