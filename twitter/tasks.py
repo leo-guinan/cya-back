@@ -8,11 +8,10 @@ from backend.celery import app
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, StaffAccount
 from tweetpik.tweetpik import TweetPik
-from twitter.models import TwitterAccount, Tweet, Relationship
+from twitter.models import TwitterAccount, Relationship
 from twitter.service import refresh_twitter_account, get_twitter_account, unfollow_account, \
     update_twitter_accounts_user_is_following, \
     update_users_following_twitter_account, get_recent_tweets
-from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import UnfollowRequest
 
 FONT_USER_INFO = ImageFont.truetype("arial.ttf", 90, encoding="utf-8")
@@ -41,7 +40,6 @@ def populate_user_data_from_twitter_id(twitter_id, client_account_id=None):
         current_user.save()
 
 
-
 @app.task(name="create_screenshot_from_tweet")
 def create_screenshot(tweet_id):
     tweet_pik = TweetPik()
@@ -62,9 +60,6 @@ def get_users_following_for_client_account(client_account_id):
                                            client_account_id=client_account_id)
 
 
-
-
-
 @app.task(name="unfollow_user")
 def unfollow_user_for_client_account(client_account_id, twitter_id_to_unfollow, request_id):
     client_account = ClientAccount.objects.filter(id=client_account_id).first()
@@ -82,6 +77,7 @@ def unfollow_user_for_client_account(client_account_id, twitter_id_to_unfollow, 
         request.unfollowed = utc.localize(datetime.now())
         request.save()
 
+
 @app.task(name="get_latest_tweets")
 def get_latest_tweets_for_account(client_account_id, twitter_id):
     client_account = ClientAccount.objects.filter(id=client_account_id).first()
@@ -98,15 +94,25 @@ def get_latest_tweets_for_account(client_account_id, twitter_id):
                 print(nested_e)
                 continue
 
+
 @app.task(name="populate_account_data")
 def lookup_accounts_that_are_missing_data():
-    # limit on Twitter API is 900 requests per 15 minutes, so target slightly less than that every 15 minutes
-    accounts = TwitterAccount.objects.filter(Q(twitter_username__isnull=True) | Q(twitter_bio__isnull=True)).all()[:850]
+    staff_accounts = StaffAccount.objects.all()
+    current_staff_account = 0
+    # limit on Twitter API is 900 requests per 15 minutes,
+    # so target slightly less than that every 15 minutes for each of 5 staff accounts
+    accounts = TwitterAccount.objects.filter(Q(twitter_username__isnull=True) | Q(twitter_bio__isnull=True)).all()[:4000]
     for account in accounts:
-        print(f"refreshing account: {account.twitter_id}")
-        new_account = refresh_twitter_account(account.twitter_id)
-        if new_account:
-            print(f"updated username: {new_account.twitter_username}: {new_account.twitter_bio}")
-        else:
-            print("account deleted")
-
+        try:
+            refresh_twitter_account(account.twitter_id,
+                                    client_account_id=staff_accounts[current_staff_account].id,
+                                    staff_account=True)
+        except:
+            # move to next staff account
+            if current_staff_account == len(staff_accounts) - 1:
+                current_staff_account = 0
+            else:
+                current_staff_account += 1
+            refresh_twitter_account(account.twitter_id,
+                                    client_account_id=staff_accounts[current_staff_account].id,
+                                    staff_account=True)

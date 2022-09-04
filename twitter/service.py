@@ -15,9 +15,9 @@ def get_twitter_account(twitter_id, client_account_id=None):
     return account
 
 
-def refresh_twitter_account(twitter_id, client_account_id=None):
+def refresh_twitter_account(twitter_id, client_account_id=None, staff_account=False):
     twitter_api = TwitterAPI()
-    raw_user = twitter_api.lookup_user(twitter_id=twitter_id, client_account_id=client_account_id)
+    raw_user = twitter_api.lookup_user(twitter_id=twitter_id, client_account_id=client_account_id, staff_account=staff_account)
     account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
     if raw_user:
         return save_twitter_account_to_database(raw_user)

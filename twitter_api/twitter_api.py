@@ -108,9 +108,9 @@ class TwitterAPI:
             return tweet, author
         return None, None
 
-    def lookup_user(self, twitter_id, client_account_id=None):
+    def lookup_user(self, twitter_id, client_account_id=None, staff_account=False):
         """Get the account information for a given Twitter account"""
-        client, user_auth = self.get_client_for_account(client_account_id)
+        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
         user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS, user_auth=user_auth)
         return user.data
 
@@ -300,7 +300,7 @@ class TwitterAPI:
     def get_client_for_account(self, client_account_id, staff_account=False):
         user_auth = False
         if not client_account_id:
-            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
+            client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=False)
             return client, user_auth
         if not staff_account:
             client_account = ClientAccount.objects.filter(id=client_account_id).first()
