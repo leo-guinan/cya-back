@@ -6,6 +6,7 @@ from pytz import utc
 from backend.celery import app
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, BetaAccount
+from client.tasks import send_user_a_notification
 from twitter.tasks import populate_user_data_from_twitter_id, unfollow_user_for_client_account
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AccountCheck, UnfollowRequest
@@ -72,3 +73,17 @@ def unfollow_accounts_needing():
     for request in unfollow_requests:
         unfollow_user_for_client_account.delay(request.requesting_account.id, request.account_to_unfollow.twitter_id,
                                                request.id)
+
+
+@app.task(name="notify_accounts_analysis_finished")
+def notify_accounts():
+    accounts_requesting_notified = ClientAccount.objects.filter(client__name="UNFOLLOW",
+                                                                config__notification_requested=True).all()
+    for account in accounts_requesting_notified:
+        if AccountCheck.objects.filter(last_analyzed__isnull=True, account_id=account.id).count() == 0:
+            send_user_a_notification(account.id,
+                                     """Account analysis from @should_unfollow has finished.                                      
+                                     View your results here: 
+                                     https://app.whoshouldiunfollow.com/analyze""")
+            account.config.notification_requested = False
+            account.config.save()

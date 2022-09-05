@@ -87,6 +87,11 @@ app.conf.beat_schedule = {
         'task': 'populate_account_data',
         'schedule': crontab(minute='*/15'),
         'options': {'queue': 'default'}
+    },
+    'notify_unfollow_analysis_complete': {
+        'task': 'notify_accounts_analysis_finished',
+        'schedule': crontab(minute='*/5'),
+        'options': {'queue': 'default'}
     }
 
 }

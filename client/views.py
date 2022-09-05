@@ -61,3 +61,30 @@ def refresh_account_token(request):
     client_account.token = token
     client_account.save()
     return Response({"refresh": "success"})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def update_client_account_preferences(request):
+    body = json.loads(request.body)
+    client_account_id = body['client_account_id']
+    email = body['email']
+    notification_preference = body['notification_preference']
+    notification_requested = body['notification_requested']
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    config = client_account.config
+    if not config:
+        config = AccountConfig()
+        config.client_account = client_account
+    if notification_preference == 'email':
+        config.notification_preference = AccountConfig.NotificationPreference.EMAIL
+    elif notification_preference == "dm":
+        config.notification_preference = AccountConfig.NotificationPreference.DIRECT_MESSAGE
+    else:
+        config.notification_preference = AccountConfig.NotificationPreference.TWEET
+    config.notification_requested = notification_requested
+    config.save()
+    if email:
+        client_account.email = email
+    client_account.save()
+    return Response({"refresh": "success"})
