@@ -25,4 +25,5 @@ urlpatterns = [
     path('api/client/', include('client.urls')),
     path('api/feather/', include('feather.urls')),
     path('api/twitter/', include('twitter.urls')),
+    path('api/admin/', include('appadmin.urls')),
 ]
