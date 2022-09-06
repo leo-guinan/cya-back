@@ -35,8 +35,10 @@ def client_account_login(request):
         client_account = ClientAccount()
         client_account.client = client
         client_account.twitter_account = twitter_account
+        client_account.save()
         account_config = AccountConfig()
         account_config.notification_preference = AccountConfig.NotificationPreference.TWEET
+        account_config.client_account=client_account
         account_config.save()
         client_account.config = account_config
     client_account.email = email
