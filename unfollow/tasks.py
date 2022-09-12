@@ -15,13 +15,13 @@ from unfollow.service import get_twitter_account_info_for_check
 
 @app.task(name="lookup_twitter_user", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
           retry_kwargs={'max_retries': 8})
-def lookup_twitter_user(client_account_id):
+def lookup_twitter_user(client_account_id, force=False):
     client_account = ClientAccount.objects.filter(id=client_account_id).first()
     if not client_account:
         raise UnknownClientAccount()
     current_user = client_account.twitter_account
 
-    if not current_user.last_checked or current_user.last_checked < (date.today() - timedelta(days=2)):
+    if force or not current_user.last_checked or current_user.last_checked < (date.today() - timedelta(days=2)):
         populate_user_data_from_twitter_id.delay(current_user.twitter_id, client_account_id)
         current_user.last_checked = utc.localize(datetime.now())
         current_user.save()

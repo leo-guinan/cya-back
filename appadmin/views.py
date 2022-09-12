@@ -13,6 +13,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount
 from twitter.models import Relationship
+from unfollow.tasks import lookup_twitter_user
 
 
 @api_view(('POST',))
@@ -44,6 +45,20 @@ def lookup_client_account(request):
         "following_count": following_count,
         "follower_count": follower_count,
         "dormant_count": dormant_count,
-        "followers_to_analyze": followers_to_analyze
+        "followers_to_analyze": followers_to_analyze,
+        "last_analyzed": current_user.last_checked
     }
     return Response(result)
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def refresh_client_account(request):
+    body = json.loads(request.body)
+    client_account_id = body['client_account_id']
+    client_account = ClientAccount.objects.filter(id=client_account_id).first()
+    if not client_account:
+        raise UnknownClientAccount()
+    lookup_twitter_user.delay(client_account_id=client_account_id, force=True)
+    return Response({"success": True})
