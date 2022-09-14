@@ -91,21 +91,24 @@ class TwitterAPI:
         client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
         next_token = ''
         print(f'checking user: {twitter_id}')
+        if client_account_id:
+            print(f"for client account: {client_account_id}")
         results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
                                           user_fields=self.USER_FIELDS,
                                           expansions="author_id",
-                                          max_results=1, user_auth=user_auth)
+                                          max_results=5, user_auth=user_auth)
         while not results.data and results.meta.get(next_token, ""):
             print(f'rechecking user: {twitter_id}, results: {results}')
             results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
                                               user_fields=self.USER_FIELDS,
                                               expansions="author_id",
-                                              max_results=1, pagination_token=next_token, user_auth=user_auth)
+                                              max_results=5, pagination_token=next_token, user_auth=user_auth)
         if results.data[0]:
-            print(results)
+            print(f"{len(results.data)} results found")
             tweet = results.data[0]
             author = results.includes['users'][0] if results.includes["users"][0] else None
             return tweet, author
+        print("No tweets found")
         return None, None
 
     def lookup_user(self, twitter_id, client_account_id=None, staff_account=False):

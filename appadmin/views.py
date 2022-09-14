@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 from django.shortcuts import render
 
@@ -10,9 +11,9 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
-from client.exception import UnknownClientAccount
-from client.models import ClientAccount
-from twitter.models import Relationship
+from client.exception import UnknownClientAccount, UnknownClient
+from client.models import ClientAccount, Client, AccountConfig
+from twitter.models import Relationship, TwitterAccount
 from unfollow.tasks import lookup_twitter_user
 
 
@@ -64,3 +65,41 @@ def refresh_client_account(request):
         raise UnknownClientAccount()
     lookup_twitter_user.delay(client_account_id=client_account_id, force=True)
     return Response({"success": True})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def create_client_account(request):
+    body = json.loads(request.body)
+    twitter_id = body['twitter_id']
+    client_name = body['client_name']
+    email = body['email']
+    access_key = body['access_key']
+    secret_access_key = body['secret_access_key']
+    client = Client.objects.filter(name=client_name).first()
+    if not client:
+        raise UnknownClient()
+    twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
+    if not twitter_account:
+        twitter_account = TwitterAccount()
+        twitter_account.twitter_id = twitter_id
+        twitter_account.save()
+    client_account = ClientAccount.objects.filter(twitter_account=twitter_account, client=client).first()
+    if not client_account:
+        client_account = ClientAccount()
+        client_account.client = client
+        client_account.twitter_account = twitter_account
+        client_account.save()
+        account_config = AccountConfig()
+        account_config.notification_preference = AccountConfig.NotificationPreference.TWEET
+        account_config.client_account = client_account
+        account_config.save()
+        client_account.config = account_config
+    client_account.email = email
+    client_account.access_key = access_key
+    client_account.secret_access_key = secret_access_key
+    client_account.refreshed = timezone.now()
+    client_account.save()
+    lookup_twitter_user.delay(client_account_id=client_account.id)
+    return Response({"client_account_id": client_account.id})
