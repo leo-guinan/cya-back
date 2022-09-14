@@ -9,17 +9,21 @@ from unfollow.models import AccountCheck
 
 def get_twitter_account_info_for_check(account_check_id):
     check = AccountCheck.objects.filter(id=account_check_id).first()
+    print(f'checking account_check: {account_check_id}')
     if account_recently_checked(check):
+        print("account recently checked.")
         return
 
     twitter_account = check.account
     if account_tweeted_recently(twitter_account):
+        print("account tweeted recently.")
         check.last_analyzed = utc.localize(datetime.now())
         check.save()
         return
 
     for client_account in check.requests.all():
         try:
+            print(f"running check for client account: {client_account.id}")
             get_most_recent_tweet(client_account_id=client_account.id,
                                   twitter_id_to_lookup=twitter_account.twitter_id)
             check.last_analyzed = utc.localize(datetime.now())
@@ -32,6 +36,7 @@ def get_twitter_account_info_for_check(account_check_id):
     staff = StaffAccount.objects.filter(client__name="UNFOLLOW").all()
     for staff_members in staff:
         try:
+            print(f'running staff check with id: {staff_members.id}')
             get_most_recent_tweet(client_account_id=staff_members.id,
                                   twitter_id_to_lookup=twitter_account.twitter_id,
                                   staff_account=True)
