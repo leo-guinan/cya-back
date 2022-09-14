@@ -46,7 +46,9 @@ def lookup_client_account(request):
         "follower_count": follower_count,
         "dormant_count": dormant_count,
         "followers_to_analyze": followers_to_analyze,
-        "last_analyzed": current_user.last_checked
+        "last_analyzed": current_user.last_checked,
+        "twitter_username": current_user.twitter_username,
+        "twitter_name": current_user.twitter_name
     }
     return Response(result)
 
