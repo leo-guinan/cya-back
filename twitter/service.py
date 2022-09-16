@@ -65,6 +65,7 @@ def account_check_request(client_account_id, twitter_id):
         if not existing_check:
             existing_check = AccountCheck()
             existing_check.account = twitter_account
+            existing_check.status = AccountCheck.CheckStatus.REQUESTED
             existing_check.save()
         existing_check.requests.add(client_account)
         existing_check.save()
