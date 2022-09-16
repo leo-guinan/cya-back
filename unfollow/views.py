@@ -17,7 +17,7 @@ from twitter.service import unfollow_account
 from twitter.tasks import unfollow_user_for_client_account
 from twitter_api.twitter_api import TwitterAPI
 # Create your views here.
-from .models import UnfollowRequest
+from .models import UnfollowRequest, AccountCheck
 from .tasks import lookup_twitter_user, unfollow_accounts_needing
 
 utc = pytz.UTC
@@ -58,7 +58,7 @@ def get_account_analysis(request):
         if relationship and relationship.follows_this_account.last_tweet_date:
             if relationship.follows_this_account.last_tweet_date < date_to_compare_against:
                 dormant_count += 1
-    followers_to_analyze = client_account.accounts_to_analyze.filter(last_analyzed__isnull=True).count()
+    followers_to_analyze = client_account.accounts_to_analyze.filter(status__in=[AccountCheck.CheckStatus.REQUESTED, AccountCheck.CheckStatus.IN_PROGRESS]).count()
     result = {
         "following_count": follower_count,
         "dormant_count": dormant_count,

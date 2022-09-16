@@ -14,6 +14,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 from client.exception import UnknownClientAccount, UnknownClient
 from client.models import ClientAccount, Client, AccountConfig
 from twitter.models import Relationship, TwitterAccount
+from unfollow.models import AccountCheck
 from unfollow.tasks import lookup_twitter_user
 
 
@@ -41,7 +42,7 @@ def lookup_client_account(request):
         if relationship and relationship.follows_this_account.last_tweet_date:
             if relationship.follows_this_account.last_tweet_date < date_to_compare_against:
                 dormant_count += 1
-    followers_to_analyze = client_account.accounts_to_analyze.filter(last_analyzed__isnull=True).count()
+    followers_to_analyze = client_account.accounts_to_analyze.filter(status__in=[AccountCheck.CheckStatus.REQUESTED, AccountCheck.CheckStatus.IN_PROGRESS]).count()
     result = {
         "following_count": following_count,
         "follower_count": follower_count,
