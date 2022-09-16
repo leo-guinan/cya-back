@@ -103,7 +103,7 @@ class TwitterAPI:
                                               user_fields=self.USER_FIELDS,
                                               expansions="author_id",
                                               max_results=5, pagination_token=next_token, user_auth=user_auth)
-        if results.data[0]:
+        if results.data and results.data[0]:
             print(f"{len(results.data)} results found")
             tweet = results.data[0]
             author = results.includes['users'][0] if results.includes["users"][0] else None
