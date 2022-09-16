@@ -36,6 +36,7 @@ class AccountCheck(models.Model):
     requests = models.ManyToManyField("client.ClientAccount", related_name="accounts_to_analyze")
     last_requested = models.DateTimeField("last time requested", auto_now=True)
     last_analyzed = models.DateTimeField("last time analyzed", null=True)
+    error = models.CharField("Error encountered", max_length=1024, null=True, blank=True)
 
 
 class UnfollowRequest(models.Model):

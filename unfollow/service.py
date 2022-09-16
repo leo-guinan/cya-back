@@ -33,6 +33,9 @@ def get_twitter_account_info_for_check(account_check_id):
         except TooManyRequests:
             # do nothing, rate limit issues. Try next client_account
             continue
+        except Exception as e:
+            check.error = f"Unable to lookup as client: {e}"
+            check.save()
     # if made it here, tried all client accounts already, so let's try the staff accounts
     staff = StaffAccount.objects.filter(client__name="UNFOLLOW").all()
     for staff_members in staff:
@@ -47,6 +50,9 @@ def get_twitter_account_info_for_check(account_check_id):
         except TooManyRequests:
             # do nothing, probably rate limit issues. Try next staff_member
             continue
+        except Exception as e:
+            check.error = f"Unable to lookup as staff: {e}"
+            check.save()
 
 
 def account_recently_checked(check):
