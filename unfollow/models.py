@@ -31,12 +31,24 @@ class Analysis(models.Model):
 
 
 class AccountCheck(models.Model):
+    class CheckStatus(models.TextChoices):
+        REQUESTED = 'RE', ('Requested')
+        IN_PROGRESS = 'IP', ('In progress')
+        COMPLETE = 'CP', ('Complete')
+        ERROR = 'ER', ('Error')
+
+    status = models.CharField(
+        max_length=2,
+        choices=CheckStatus.choices,
+        default=CheckStatus.REQUESTED,
+    )
     account = models.OneToOneField("twitter.TwitterAccount", related_name="account_check", on_delete=models.CASCADE,
                                    unique=True)
     requests = models.ManyToManyField("client.ClientAccount", related_name="accounts_to_analyze")
     last_requested = models.DateTimeField("last time requested", auto_now=True)
     last_analyzed = models.DateTimeField("last time analyzed", null=True)
     error = models.CharField("Error encountered", max_length=1024, null=True, blank=True)
+
 
 
 class UnfollowRequest(models.Model):

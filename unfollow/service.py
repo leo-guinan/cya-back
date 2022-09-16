@@ -13,12 +13,15 @@ def get_twitter_account_info_for_check(account_check_id):
     print(f'checking account_check: {account_check_id}')
     if account_recently_checked(check):
         print("account recently checked.")
+        check.status = AccountCheck.CheckStatus.COMPLETE
+        check.save()
         return
 
     twitter_account = check.account
     if account_tweeted_recently(twitter_account):
         print("account tweeted recently.")
         check.last_analyzed = utc.localize(datetime.now())
+        check.status = AccountCheck.CheckStatus.COMPLETE
         check.save()
         return
 
@@ -28,6 +31,7 @@ def get_twitter_account_info_for_check(account_check_id):
             get_most_recent_tweet(client_account_id=client_account.id,
                                   twitter_id_to_lookup=twitter_account.twitter_id)
             check.last_analyzed = utc.localize(datetime.now())
+            check.status = AccountCheck.CheckStatus.COMPLETE
             check.save()
             return
         except TooManyRequests:
@@ -35,6 +39,7 @@ def get_twitter_account_info_for_check(account_check_id):
             continue
         except Exception as e:
             check.error = f"Unable to lookup as client: {e}"
+            check.status = AccountCheck.CheckStatus.ERROR
             check.save()
     # if made it here, tried all client accounts already, so let's try the staff accounts
     staff = StaffAccount.objects.filter(client__name="UNFOLLOW").all()
@@ -45,6 +50,7 @@ def get_twitter_account_info_for_check(account_check_id):
                                   twitter_id_to_lookup=twitter_account.twitter_id,
                                   staff_account=True)
             check.last_analyzed = utc.localize(datetime.now())
+            check.status = AccountCheck.CheckStatus.COMPLETE
             check.save()
             return
         except TooManyRequests:
@@ -52,6 +58,7 @@ def get_twitter_account_info_for_check(account_check_id):
             continue
         except Exception as e:
             check.error = f"Unable to lookup as staff: {e}"
+            check.status = AccountCheck.CheckStatus.ERROR
             check.save()
 
 
