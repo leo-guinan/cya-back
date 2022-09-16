@@ -84,12 +84,12 @@ def get_most_recent_tweet(client_account_id, twitter_id_to_lookup, staff_account
                                                                            staff_account=staff_account)
     if author:
         save_twitter_account_to_database(author)
-    update_twitter_account_with_most_recent_tweet(most_recent_tweet)
+    update_twitter_account_with_most_recent_tweet(twitter_id_to_lookup, most_recent_tweet)
     return most_recent_tweet, author
 
 
-def update_twitter_account_with_most_recent_tweet(most_recent_tweet):
-    twitter_account = TwitterAccount.objects.filter(twitter_id=most_recent_tweet.author_id).first()
+def update_twitter_account_with_most_recent_tweet(twitter_id_to_lookup, most_recent_tweet):
+    twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id_to_lookup).first()
 
     if not twitter_account:
         raise Exception("Twitter account should exist here.")
