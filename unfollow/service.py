@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from pytz import utc
+from tweepy import TooManyRequests
 
 from client.models import StaffAccount
 from twitter.service import get_most_recent_tweet
@@ -29,8 +30,8 @@ def get_twitter_account_info_for_check(account_check_id):
             check.last_analyzed = utc.localize(datetime.now())
             check.save()
             return
-        except Exception as e:
-            # do nothing, probably rate limit issues. Try next client_account
+        except TooManyRequests:
+            # do nothing, rate limit issues. Try next client_account
             continue
     # if made it here, tried all client accounts already, so let's try the staff accounts
     staff = StaffAccount.objects.filter(client__name="UNFOLLOW").all()
@@ -43,7 +44,7 @@ def get_twitter_account_info_for_check(account_check_id):
             check.last_analyzed = utc.localize(datetime.now())
             check.save()
             return
-        except Exception as e:
+        except TooManyRequests:
             # do nothing, probably rate limit issues. Try next staff_member
             continue
 

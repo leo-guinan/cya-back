@@ -3,6 +3,7 @@ from datetime import datetime
 from PIL import ImageFont
 from django.db.models import Q
 from pytz import utc
+from tweepy import TooManyRequests
 
 from backend.celery import app
 from client.exception import UnknownClientAccount
@@ -107,7 +108,7 @@ def lookup_accounts_that_are_missing_data():
             refresh_twitter_account(account.twitter_id,
                                     client_account_id=staff_accounts[current_staff_account].id,
                                     staff_account=True)
-        except:
+        except TooManyRequests:
             # move to next staff account
             if current_staff_account == len(staff_accounts) - 1:
                 current_staff_account = 0
@@ -116,3 +117,5 @@ def lookup_accounts_that_are_missing_data():
             refresh_twitter_account(account.twitter_id,
                                     client_account_id=staff_accounts[current_staff_account].id,
                                     staff_account=True)
+        except Exception as e:
+            print(e)
