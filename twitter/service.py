@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from django.utils.encoding import smart_str
 from pytz import utc
 
 from client.models import ClientAccount
@@ -141,12 +142,12 @@ def save_twitter_account_to_database(raw_user):
         twitter_account.twitter_id = raw_user.id
         twitter_account.save()
     try:
-        print(f"Saving {raw_user.name} to database")
-        print(f"Saving {raw_user.username} to database")
-        print(f"Saving {raw_user.description} to database")
-        twitter_account.twitter_username = raw_user.username.replace("\x00", "\uFFFD")
-        twitter_account.twitter_bio = raw_user.description.replace("\x00", "\uFFFD")
-        twitter_account.twitter_name = raw_user.name.replace("\x00", "\uFFFD")
+        print(f"Saving {smart_str(raw_user.name)} to database")
+        print(f"Saving {smart_str(raw_user.username)} to database")
+        print(f"Saving {smart_str(raw_user.description)} to database")
+        twitter_account.twitter_username = smart_str(raw_user.username)
+        twitter_account.twitter_bio = smart_str(raw_user.description)
+        twitter_account.twitter_name = smart_str(raw_user.name)
         twitter_account.twitter_profile_picture_url = raw_user.profile_image_url
         twitter_account.protected = raw_user.protected
         twitter_account.save()
