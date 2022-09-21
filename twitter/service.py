@@ -139,9 +139,12 @@ def save_twitter_account_to_database(raw_user):
         twitter_account = TwitterAccount()
         twitter_account.twitter_id = raw_user.id
         twitter_account.save()
-    twitter_account.twitter_username = raw_user.username.decode("utf-8", errors="replace").replace("\x00", "\uFFFD")
-    twitter_account.twitter_bio = raw_user.description.decode("utf-8", errors="replace").replace("\x00", "\uFFFD")
-    twitter_account.twitter_name = raw_user.name.decode("utf-8", errors="replace").replace("\x00", "\uFFFD")
+    print(f"Saving {raw_user.name} to database")
+    print(f"Saving {raw_user.username} to database")
+    print(f"Saving {raw_user.description} to database")
+    twitter_account.twitter_username = raw_user.username.replace("\x00", "\uFFFD")
+    twitter_account.twitter_bio = raw_user.description.replace("\x00", "\uFFFD")
+    twitter_account.twitter_name = raw_user.name.replace("\x00", "\uFFFD")
     twitter_account.twitter_profile_picture_url = raw_user.profile_image_url
     twitter_account.protected = raw_user.protected
     twitter_account.save()
