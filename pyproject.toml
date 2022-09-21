@@ -25,6 +25,8 @@ whitenoise = {extras = ["brotli"], version = "^6.1.0"}
 Pillow = "^9.2.0"
 stripe = "^3.5.0"
 sendgrid = "^6.9.7"
+feedparser = "^6.0.10"
+channels = "^3.0.5"
 
 [tool.poetry.dev-dependencies]
 
