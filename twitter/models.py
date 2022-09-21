@@ -57,3 +57,8 @@ class Relationship(models.Model):
 class Media(models.Model):
     tweet = models.ForeignKey("twitter.Tweet", on_delete=models.CASCADE, related_name="media_items")
     type = models.CharField("", max_length=255)
+
+class AccountError(models.Model):
+    account = models.ForeignKey("twitter.TwitterAccount", related_name="errors", on_delete=models.CASCADE)
+    error = models.CharField("Error encountered", max_length=1024, null=True, blank=True)
+    date = models.DateTimeField("Date error occurred", auto_now_add=True)

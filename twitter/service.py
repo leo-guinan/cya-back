@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from pytz import utc
 
 from client.models import ClientAccount
-from twitter.models import TwitterAccount, Tweet, Relationship
+from twitter.models import TwitterAccount, Tweet, Relationship, AccountError
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AccountCheck
 
@@ -134,20 +134,28 @@ def save_tweet_to_database(raw_tweet):
 
 
 def save_twitter_account_to_database(raw_user):
+
     twitter_account = TwitterAccount.objects.filter(twitter_id=raw_user.id).first()
     if not twitter_account:
         twitter_account = TwitterAccount()
         twitter_account.twitter_id = raw_user.id
         twitter_account.save()
-    print(f"Saving {raw_user.name} to database")
-    print(f"Saving {raw_user.username} to database")
-    print(f"Saving {raw_user.description} to database")
-    twitter_account.twitter_username = raw_user.username.replace("\x00", "\uFFFD")
-    twitter_account.twitter_bio = raw_user.description.replace("\x00", "\uFFFD")
-    twitter_account.twitter_name = raw_user.name.replace("\x00", "\uFFFD")
-    twitter_account.twitter_profile_picture_url = raw_user.profile_image_url
-    twitter_account.protected = raw_user.protected
-    twitter_account.save()
+    try:
+        print(f"Saving {raw_user.name} to database")
+        print(f"Saving {raw_user.username} to database")
+        print(f"Saving {raw_user.description} to database")
+        twitter_account.twitter_username = raw_user.username.replace("\x00", "\uFFFD")
+        twitter_account.twitter_bio = raw_user.description.replace("\x00", "\uFFFD")
+        twitter_account.twitter_name = raw_user.name.replace("\x00", "\uFFFD")
+        twitter_account.twitter_profile_picture_url = raw_user.profile_image_url
+        twitter_account.protected = raw_user.protected
+        twitter_account.save()
+    except Exception as e:
+        error = AccountError()
+        error.account = twitter_account
+        error.error = str(e)
+        error.save()
+        print("Error saving to database")
     return twitter_account
 
 
