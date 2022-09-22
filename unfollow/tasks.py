@@ -63,7 +63,7 @@ Here’s your beta code to use:
 
 @app.task(name="analyze_accounts_that_need_it")
 def analyze_accounts_needing():
-    checks = AccountCheck.objects.filter(status=AccountCheck.CheckStatus.REQUESTED).all()
+    checks = AccountCheck.objects.filter(status=AccountCheck.CheckStatus.REQUESTED).all()[:1000]
     for check in checks:
         print(check)
         check.status = AccountCheck.CheckStatus.IN_PROGRESS
