@@ -135,7 +135,7 @@ def save_tweet_to_database(raw_tweet):
 
 
 def save_twitter_account_to_database(raw_user):
-
+    print(raw_user)
     twitter_account = TwitterAccount.objects.filter(twitter_id=raw_user.id).first()
     if not twitter_account:
         twitter_account = TwitterAccount()
