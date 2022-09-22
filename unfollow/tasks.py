@@ -29,6 +29,7 @@ def lookup_twitter_user(client_account_id, force=False):
 
 @app.task(name="check_account")
 def check_twitter_account(account_check_id):
+    print(f"Checking account: {account_check_id}")
     get_twitter_account_info_for_check(account_check_id)
 
 
@@ -64,6 +65,7 @@ Here’s your beta code to use:
 def analyze_accounts_needing():
     checks = AccountCheck.objects.filter(status=AccountCheck.CheckStatus.REQUESTED).all()
     for check in checks:
+        print(check)
         check.status = AccountCheck.CheckStatus.IN_PROGRESS
         check.save()
         check_twitter_account.delay(check.id)

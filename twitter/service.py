@@ -83,6 +83,8 @@ def get_most_recent_tweet(client_account_id, twitter_id_to_lookup, staff_account
     most_recent_tweet, author = twitter_api.get_most_recent_tweet_for_user(client_account_id=client_account_id,
                                                                            twitter_id=twitter_id_to_lookup,
                                                                            staff_account=staff_account)
+    print(most_recent_tweet)
+
     if author:
         save_twitter_account_to_database(author)
     update_twitter_account_with_most_recent_tweet(twitter_id_to_lookup, most_recent_tweet)
