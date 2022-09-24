@@ -16,6 +16,7 @@ from unfollow.tasks import lookup_twitter_user
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
 def client_account_login(request):
+    print("client_account_login")
     body = json.loads(request.body)
     twitter_id = body['twitter_id']
     client_name = body['client']

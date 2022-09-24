@@ -88,6 +88,6 @@ def notify_accounts():
             send_user_a_notification(account.id,
                                      """Account analysis from @should_unfollow has finished.                                      
                                      View your results here: 
-                                     https://app.whoshouldiunfollow.com/analyze""")
+                                     https://tools.whoshouldiunfollow.com/analyze""")
             account.config.notification_requested = False
             account.config.save()

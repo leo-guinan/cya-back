@@ -44,6 +44,7 @@ def sortKeyFunctionLastTweetDate(e):
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
 def get_account_analysis(request):
+    print("get_account_analysis")
     body = json.loads(request.body)
     client_account_id = body['client_account_id']
     client_account = ClientAccount.objects.filter(id=client_account_id).first()
