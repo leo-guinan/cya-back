@@ -13,6 +13,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from client.exception import UnknownClientAccount, UnknownClient
 from client.models import ClientAccount, Client, AccountConfig
+from client.serializers import ClientAccountSerializer
 from twitter.models import Relationship, TwitterAccount
 from unfollow.models import AccountCheck
 from unfollow.tasks import lookup_twitter_user
@@ -104,3 +105,19 @@ def create_client_account(request):
     client_account.save()
     lookup_twitter_user.delay(client_account_id=client_account.id)
     return Response({"client_account_id": client_account.id})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def fetch_users(request):
+    print("Fetching users")
+    body = json.loads(request.body)
+    client_name = body['client']
+    client = Client.objects.filter(name=client_name).first()
+    accounts = ClientAccount.objects.filter(client=client).all()
+    results = []
+    for account in accounts:
+        serializer = ClientAccountSerializer(account)
+        results.append(serializer.data)
+    return Response(results)
