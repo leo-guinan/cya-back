@@ -28,6 +28,7 @@ sendgrid = "^6.9.7"
 feedparser = "^6.0.10"
 setuptools = "^65.4.1"
 importlib-metadata = "^5.0.0"
+typing-extensions = "^4.3.0"
 
 [tool.poetry.dev-dependencies]
 
