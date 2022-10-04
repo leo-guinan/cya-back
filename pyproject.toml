@@ -29,6 +29,7 @@ feedparser = "^6.0.10"
 setuptools = "^65.4.1"
 importlib-metadata = "^5.0.0"
 typing-extensions = "^4.3.0"
+cached-property = "^1.5.2"
 
 [tool.poetry.dev-dependencies]
 
