@@ -25,6 +25,8 @@ services:
           name: celery-redis
           type: redis
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.8.12
   - type: worker
     name: queue
     region: ohio
@@ -41,6 +43,8 @@ services:
         fromDatabase:
           name: servicedb
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.8.12
   - type: worker
     name: bot
     region: ohio
@@ -57,6 +61,8 @@ services:
         fromDatabase:
           name: servicedb
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.8.12
   - type: web
     name: flower
     region: ohio
@@ -73,6 +79,8 @@ services:
         fromDatabase:
           name: servicedb
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.8.12
   - type: worker
     name: scheduler
     region: ohio
@@ -89,6 +97,8 @@ services:
         fromDatabase:
           name: servicedb
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.8.12
   - type: worker
     name: basicworker
     region: ohio
@@ -105,7 +115,8 @@ services:
         fromDatabase:
           name: servicedb
           property: connectionString
-
+      - key: PYTHON_VERSION
+        value: 3.8.12
   - type: redis
     name: celery-redis
     region: ohio
