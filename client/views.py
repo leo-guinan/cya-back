@@ -50,6 +50,32 @@ def client_account_login(request):
     lookup_twitter_user.delay(client_account_id=client_account.id)
     return Response({"client_account_id": client_account.id})
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def client_email_account_login(request):
+    print("client_account_login")
+    body = json.loads(request.body)
+    client_name = body['client']
+    email = body['email']
+    client = Client.objects.filter(name=client_name).first()
+    if not client:
+        raise UnknownClient()
+    client_account = ClientAccount.objects.filter(email=email, client=client).first()
+    if not client_account:
+        client_account = ClientAccount()
+        client_account.client = client
+        client_account.save()
+        account_config = AccountConfig()
+        account_config.notification_preference = AccountConfig.NotificationPreference.TWEET
+        account_config.client_account=client_account
+        account_config.save()
+        client_account.config = account_config
+    client_account.email = email
+    client_account.refreshed = timezone.now()
+    client_account.save()
+    return Response({"client_account_id": client_account.id})
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))

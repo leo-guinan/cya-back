@@ -32,7 +32,7 @@ class ClientAccount(models.Model):
     refresh_token = models.CharField("twitter oauth2 refresh token", max_length=255, default="", null=True, blank=True)
     email = models.CharField("account email address", max_length=255, null=True, blank=True)
     twitter_account = models.ForeignKey("twitter.TwitterAccount", related_name="client_accounts",
-                                        on_delete=models.CASCADE)
+                                        on_delete=models.CASCADE, null=True)
     refreshed = models.DateTimeField("time the token was refreshed", default=django.utils.timezone.now)
     access_key = models.CharField("oauth v1 access key", max_length=255, null=True, blank=True)
     secret_access_key = models.CharField("oauth v2 secret key", max_length=255, null=True, blank=True)
