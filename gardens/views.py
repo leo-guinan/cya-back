@@ -54,9 +54,12 @@ def add_feed(request):
 def get_feeds(request):
     body = json.loads(request.body)
     feed_ids = body['feed_ids']
+    print(feed_ids)
     feeds = ContentFeed.objects.filter(id__in=feed_ids).all()
+    print(len(feeds))
     results = []
     for feed in feeds:
         serializer = ContentFeedSerializer(feed)
         results.append(serializer.data)
+        print(serializer.data)
     return Response({"feeds": results})
