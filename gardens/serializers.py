@@ -26,6 +26,7 @@ class ContentSerializer(serializers.ModelSerializer):
             'published',
             'type',
             'owner',
+            'image',
         ]
 
 

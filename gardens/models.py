@@ -20,6 +20,7 @@ class Content(models.Model):
     title = models.CharField("title of the content", max_length=1024, null=True, blank=True)
     summary = models.CharField("summary of the content", max_length=4096, null=True, blank=True)
     published = models.DateTimeField("time the content was published", null=True, blank=True)
+    image = models.CharField("image for the content", max_length=1024, null=True, blank=True)
 
 
 

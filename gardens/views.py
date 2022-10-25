@@ -10,7 +10,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from client.models import ClientAccount
 from gardens.models import ContentFeed, ContentSource, Content
-from gardens.serializers import ContentFeedSerializer
+from gardens.serializers import ContentFeedSerializer, ContentSerializer
 from gardens.tasks import fetch_content_for_feed
 
 
@@ -44,6 +44,7 @@ def add_feed(request):
     feed.save()
 
     #get content for feed url
+    print("fetching content for feed")
     fetch_content_for_feed.delay(feed_id=feed.id)
     return Response({"content_feed_id": feed.id})
 
@@ -63,3 +64,18 @@ def get_feeds(request):
         results.append(serializer.data)
         print(serializer.data)
     return Response({"feeds": results})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def get_content_for_feed(request):
+    body = json.loads(request.body)
+    feed_id = body['feed_id']
+    feed = ContentFeed.objects.filter(id=feed_id).first()
+    content = Content.objects.filter(feed=feed).all()
+    results = []
+    for c in content:
+        serializer = ContentSerializer(c)
+        results.append(serializer.data)
+    return Response({"content": results})
