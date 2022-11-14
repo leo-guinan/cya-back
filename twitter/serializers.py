@@ -36,7 +36,7 @@ class TweetSerializer(serializers.ModelSerializer):
     author = TwitterAccountSerializer(many=False, read_only=True)
 
     class Meta:
-        model: Tweet
+        model = Tweet
         fields = [
             "tweet_id",
             "tweet_created_at",

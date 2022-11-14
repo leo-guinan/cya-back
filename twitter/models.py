@@ -62,3 +62,10 @@ class AccountError(models.Model):
     account = models.ForeignKey("twitter.TwitterAccount", related_name="errors", on_delete=models.CASCADE)
     error = models.CharField("Error encountered", max_length=1024, null=True, blank=True)
     date = models.DateTimeField("Date error occurred", auto_now_add=True)
+
+class IncludedLink(models.Model):
+    includingTweet = models.ForeignKey("twitter.Tweet", related_name="included_links", on_delete=models.CASCADE)
+    link = models.CharField("Link included in tweet", max_length=1024)
+    original_image_url = models.CharField("URL of the image that was included in the tweet", max_length=1024, null=True, blank=True)
+    thumbnail_image_url = models.CharField("URL of the thumbnail image that was included in the tweet", max_length=1024, null=True, blank=True)
+    title = models.CharField("Title of the page that was linked to", max_length=1024, null=True, blank=True)

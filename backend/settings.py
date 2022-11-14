@@ -62,7 +62,8 @@ INSTALLED_APPS = [
     'crawler',
     'friendcontent',
     "appadmin",
-    'gardens'
+    'gardens',
+    'bookmarks'
 ]
 SITE_ID = 2
 
