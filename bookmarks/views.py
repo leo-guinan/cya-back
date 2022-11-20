@@ -1,6 +1,8 @@
 import json
 import tweepy
 import pandas as pd
+from django.core.files import File
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils.encoding import smart_str
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
@@ -90,7 +92,8 @@ def get_bookmarks_for_user(request):
 
     users = []
 
-    for user in bookmarks.includes['users']:
+
+    for user in bookmarks.includes.get('users', []):
         user_data = {
             'twitter_id': user.id,
             'name': user.name,
@@ -118,9 +121,26 @@ def get_bookmarks_for_user(request):
         serializer = BookmarkSerializer(bookmark)
         results.append(serializer.data)
 
-
-
-
     return Response(results)
 
-
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def update_bookmark_name(request):
+    body = json.loads(request.body)
+    twitter_id = body['twitter_id']
+    tweet_id = body['tweet_id']
+    name = body['name']
+    tweet = Tweet.objects.filter(tweet_id=tweet_id).first()
+    if not tweet:
+        return Response({'error': 'Tweet not found'})
+    bookmarking_user = get_twitter_account(twitter_id)
+    if not bookmarking_user:
+        return Response({'error': 'User not found'})
+    bookmark = Bookmark.objects.filter(tweet=tweet, owner=bookmarking_user).first()
+    if not bookmark:
+        return Response({'error': 'Bookmark not found'})
+    bookmark.name = name
+    bookmark.save()
+    serializer = BookmarkSerializer(bookmark)
+    return Response(serializer.data)

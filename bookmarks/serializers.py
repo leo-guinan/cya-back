@@ -10,4 +10,4 @@ class BookmarkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bookmark
-        fields = ('tweet', 'owner', 'link')
+        fields = ('tweet', 'owner', 'link', 'name')
