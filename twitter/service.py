@@ -144,9 +144,6 @@ def save_twitter_account_to_database(raw_user):
         twitter_account.twitter_id = raw_user.id
         twitter_account.save()
     try:
-        print(f"Saving {smart_str(raw_user.name)} to database")
-        print(f"Saving {smart_str(raw_user.username)} to database")
-        print(f"Saving {smart_str(raw_user.description)} to database")
         twitter_account.twitter_username = smart_str(raw_user.username)
         twitter_account.twitter_bio = smart_str(raw_user.description)
         twitter_account.twitter_name = smart_str(raw_user.name)

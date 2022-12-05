@@ -92,6 +92,16 @@ app.conf.beat_schedule = {
         'task': 'notify_accounts_analysis_finished',
         'schedule': crontab(minute='*/5'),
         'options': {'queue': 'default'}
+    },
+    'weekly_update_followers': {
+        'task': 'refresh_subscriber_followers',
+        'schedule': crontab(hour=0, day_of_week='sun'),
+        'options': {'queue': 'default'}
+    },
+    'weekly_send_follower_reports': {
+        'task': 'send_report_emails',
+        'schedule': crontab(hour=12, day_of_week='mon'),
+        'options': {'queue': 'default'}
     }
 
 }

@@ -16,7 +16,6 @@ from unfollow.tasks import lookup_twitter_user
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
 def client_account_login(request):
-    print("client_account_login")
     body = json.loads(request.body)
     twitter_id = body['twitter_id']
     client_name = body['client']
@@ -45,6 +44,43 @@ def client_account_login(request):
     client_account.email = email
     client_account.access_key = access_key
     client_account.secret_access_key = secret_access_key
+    client_account.refreshed = timezone.now()
+    client_account.save()
+    lookup_twitter_user.delay(client_account_id=client_account.id)
+    return Response({"client_account_id": client_account.id})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def client_account_login_v2(request):
+    body = json.loads(request.body)
+    twitter_id = body['twitter_id']
+    client_name = body['client']
+    email = body['email']
+    access_token = body['access_token']
+    refresh_token = body['refresh_token']
+    client = Client.objects.filter(name=client_name).first()
+    if not client:
+        raise UnknownClient()
+    twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
+    if not twitter_account:
+        twitter_account = TwitterAccount()
+        twitter_account.twitter_id = twitter_id
+        twitter_account.save()
+    client_account = ClientAccount.objects.filter(twitter_account=twitter_account, client=client).first()
+    if not client_account:
+        client_account = ClientAccount()
+        client_account.client = client
+        client_account.twitter_account = twitter_account
+        client_account.save()
+        account_config = AccountConfig()
+        account_config.notification_preference = AccountConfig.NotificationPreference.TWEET
+        account_config.client_account=client_account
+        account_config.save()
+        client_account.config = account_config
+    client_account.email = email
+    client_account.token = access_token
+    client_account.refresh_token = refresh_token
     client_account.refreshed = timezone.now()
     client_account.save()
     lookup_twitter_user.delay(client_account_id=client_account.id)

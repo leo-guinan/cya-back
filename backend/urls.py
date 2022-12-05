@@ -28,4 +28,6 @@ urlpatterns = [
     path('api/admin/', include('appadmin.urls')),
     path('api/garden/', include('gardens.urls')),
     path('api/bookmarks/', include('bookmarks.urls')),
+    path('api/followed/', include('followed.urls')),
+    path('webhooks/', include('webhooks.urls')),
 ]

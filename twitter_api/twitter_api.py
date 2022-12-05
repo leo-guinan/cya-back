@@ -299,6 +299,7 @@ class TwitterAPI:
         client_account.refresh_token = results['refresh_token']
         client_account.refreshed = timezone.now()
         client_account.save()
+        return results['access_token']
 
     def get_client_for_account(self, client_account_id, staff_account=False):
         user_auth = False
@@ -312,8 +313,8 @@ class TwitterAPI:
         if not client_account:
             raise UnknownClientAccount()
         if client_account.client.auth_version == "V2":
-            print("Using V2 User auth client")
-            token = client_account.token
+
+            token = self.refresh_oauth2_token(client_account_id)
             client = tweepy.Client(token,
                                    wait_on_rate_limit=True)
         else:

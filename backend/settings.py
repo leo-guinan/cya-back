@@ -27,7 +27,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY', default='django-insecure-g%%6#-0b%*0qz
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '82e6-2603-6010-b000-ba40-00-1000.ngrok.io',
+    'localhost',
+]
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -63,7 +66,9 @@ INSTALLED_APPS = [
     'friendcontent',
     "appadmin",
     'gardens',
-    'bookmarks'
+    'bookmarks',
+    'webhooks',
+    'followed',
 ]
 SITE_ID = 2
 
