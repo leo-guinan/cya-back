@@ -26,25 +26,33 @@ def subscribe(request):
 
     client_account = ClientAccount.objects.filter(id=client_account_id, client__name=CLIENT_NAME).first()
     twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
+    print(f'twitter_account: {twitter_account.id}')
     if not twitter_account:
         twitter_account = TwitterAccount()
         twitter_account.twitter_id = twitter_id
         twitter_account.save()
+        print(f'twitter_account: {twitter_account.id}')
+    print(f'client_account: {client_account.id}')
+
     if not client_account:
         client_account = ClientAccount()
         client_account.twitter_account = twitter_account
         client = Client.objects.filter(name=CLIENT_NAME).first()
         client_account.client = client
         client_account.save()
+        print(f'client_account: {client_account.id}')
+
     if not client_account.twitter_account:
         client_account.twitter_account = twitter_account
         client_account.save()
     subscriber = Subscriber.objects.filter(client_account=client_account).first()
+    print(f'subscriber: {subscriber.id}')
     if not subscriber:
         subscriber = Subscriber()
         subscriber.client_account = client_account
         subscriber.save()
         refresh_followers.delay(subscriber.id)
+        print(f'subscriber: {subscriber.id}')
     return Response({"subscriber_id": subscriber.id})
 
 @api_view(('POST',))
@@ -53,7 +61,7 @@ def subscribe(request):
 def latest(request):
     body = json.loads(request.body)
     subscription_id = body['subscription_id']
-    print(subscription_id)
     report = FollowerReport.objects.filter(subscriber_id=subscription_id).first()
-
+    if not report:
+        return Response({"error": "No report found."})
     return Response({"date": report.date, "total_followers": report.followers.count()})
