@@ -4,12 +4,14 @@ from followed.service import create_follower_record_for_subscriber, get_report_d
 
 
 @app.task(name='refresh_subscriber_followers')
+def refresh_followers(subscriber_id):
+    create_follower_record_for_subscriber(subscriber_id)
+
+@app.task(name='refresh_all_subscriber_followers')
 def refresh_followers():
     subscribers = Subscriber.objects.all()
     for subscriber in subscribers:
         create_follower_record_for_subscriber(subscriber.id)
-
-
 
 @app.task(name='send_report_emails')
 def send_report_emails():

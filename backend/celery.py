@@ -94,7 +94,7 @@ app.conf.beat_schedule = {
         'options': {'queue': 'default'}
     },
     'weekly_update_followers': {
-        'task': 'refresh_subscriber_followers',
+        'task': 'refresh_all_subscriber_followers',
         'schedule': crontab(hour=0, day_of_week='sun'),
         'options': {'queue': 'default'}
     },
