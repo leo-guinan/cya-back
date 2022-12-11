@@ -13,7 +13,7 @@ class TwitterAPI:
     USER_FIELDS = "id,profile_image_url,name,description,protected"
     TWEET_FIELDS = "public_metrics,entities,created_at,author_id,conversation_id"
 
-    def __init__(self, client = None):
+    def __init__(self, client=None):
         self.oauth_callback_url = config('TWITTER_OAUTH_CALLBACK_URL')
         if not client:
             self.api_key = config('TWITTER_API_KEY')
@@ -31,7 +31,6 @@ class TwitterAPI:
             self.access_token = client.access_token
             self.access_token_secret = client.access_secret
             self.bearer_token = client.bearer_token
-
 
     def get_all_bookmarks(self, access_token, access_token_secret):
         """Get all Twitter bookmarks for a given user"""
@@ -217,8 +216,10 @@ class TwitterAPI:
         client = tweepy.Client(bearer_token=app_client.bearer_token)
         mentions = client.get_users_mentions(id=app_client.twitter_account.twitter_id,
                                              since_id=since,
-                                             tweet_fields="author_id,created_at,conversation_id", max_results=50) if since else client.get_users_mentions(
-            id=app_client.twitter_account.twitter_id, tweet_fields="author_id,created_at,conversation_id", max_results=50)
+                                             tweet_fields="author_id,created_at,conversation_id",
+                                             max_results=50) if since else client.get_users_mentions(
+            id=app_client.twitter_account.twitter_id, tweet_fields="author_id,created_at,conversation_id",
+            max_results=50)
         return mentions.data if mentions.data else None
 
     def get_latest_tweets(self, twitter_id, since_tweet_id=None, client_account_id=None, staff_account=False):
@@ -279,6 +280,23 @@ class TwitterAPI:
                 next_token = added_tweets.meta.get("next_token", "")
         return tweets, raw_data
 
+    def get_bio_and_recent_tweets_for_account(self, twitter_id, number_of_tweets=25, exclude_fields="replies,retweets",
+                                              client_account_id=None, staff_account=False):
+        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
+        response = client.get_users_tweets(id=twitter_id,
+                                           exclude=exclude_fields,
+                                           expansions="attachments.media_keys,author_id",
+                                           media_fields="media_key,type,url,height,width",
+                                           tweet_fields=self.TWEET_FIELDS,
+                                           user_fields=self.USER_FIELDS,
+                                           max_results=number_of_tweets,
+                                           user_auth=user_auth)
+
+        print(response)
+        tweets = response.data if response.data else []
+        user = response.includes['users'][0] if response.includes.get('users') else {}
+        return tweets, user
+
     def get_tweet(self, tweet_id, client_account_id=None, staff_account=False):
         client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
         response = client.get_tweet(id=tweet_id, tweet_fields=self.TWEET_FIELDS, user_auth=user_auth)
@@ -295,6 +313,7 @@ class TwitterAPI:
         }
         response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
         results = response.json()
+        print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
         client_account.refreshed = timezone.now()
@@ -321,7 +340,7 @@ class TwitterAPI:
             client = tweepy.Client(consumer_key=client_account.client.consumer_key,
                                    consumer_secret=client_account.client.consumer_secret,
                                    access_token=client_account.access_key,
-                                   access_token_secret=client_account.secret_access_key,)
+                                   access_token_secret=client_account.secret_access_key, )
             print("Using V1 User auth client")
 
             user_auth = True

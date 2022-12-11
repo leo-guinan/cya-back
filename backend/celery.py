@@ -102,6 +102,16 @@ app.conf.beat_schedule = {
         'task': 'send_report_emails',
         'schedule': crontab(hour=12, day_of_week='mon'),
         'options': {'queue': 'default'}
+    },
+    'daily_update_followers': {
+        'task': 'refresh_all_beta_subscriber_followers',
+        'schedule': crontab(hour=0, day_of_week='*'),
+        'options': {'queue': 'default'}
+    },
+    'daily_send_follower_reports': {
+        'task': 'send_beta_report_emails',
+        'schedule': crontab(hour=12, day_of_week='*'),
+        'options': {'queue': 'default'}
     }
 
 }

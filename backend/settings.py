@@ -69,6 +69,8 @@ INSTALLED_APPS = [
     'bookmarks',
     'webhooks',
     'followed',
+    'open_ai',
+    'enhancer',
 ]
 SITE_ID = 2
 

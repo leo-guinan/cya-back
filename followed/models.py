@@ -6,6 +6,8 @@ from django.db import models
 class Subscriber(models.Model):
     client_account = models.OneToOneField("client.ClientAccount",  related_name="followed_subscription", on_delete=models.CASCADE)
     subscription_end_date = models.DateTimeField('subscription end date', null=True, blank=True)
+    beta = models.BooleanField("is this a beta account", default=False)
+
 
 
 class FollowerReport(models.Model):
