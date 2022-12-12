@@ -1,6 +1,5 @@
 import json
 
-from django.shortcuts import render
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -9,8 +8,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 from client.models import ClientAccount, Client
 from followed.config import CLIENT_NAME
 from followed.models import Subscriber, FollowerReport
-from followed.serializers import FollowerReportSerializer
-from followed.tasks import refresh_followers
+from followed.tasks import refresh_followers_for_account
 from twitter.models import TwitterAccount
 
 
@@ -33,7 +31,6 @@ def subscribe(request):
         print(f'twitter_account: {twitter_account.id}')
     print(f'twitter_account: {twitter_account.id}')
 
-
     if not client_account:
         client_account = ClientAccount()
         client_account.twitter_account = twitter_account
@@ -51,10 +48,11 @@ def subscribe(request):
         subscriber = Subscriber()
         subscriber.client_account = client_account
         subscriber.save()
-        refresh_followers.delay(subscriber.id)
+        refresh_followers_for_account.delay(subscriber.id)
         print(f'subscriber: {subscriber.id}')
     print(f'subscriber: {subscriber.id}')
     return Response({"subscriber_id": subscriber.id})
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
