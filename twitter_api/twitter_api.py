@@ -320,7 +320,7 @@ class TwitterAPI:
         }
         response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
         results = response.json()
-        client_account.access_token = results['access_token']
+        client_account.token = results['access_token']
         client_account.refresh_token = results['refresh_token']
         client_account.refreshed = timezone.now()
         client_account.save()
@@ -342,7 +342,7 @@ class TwitterAPI:
             if refresh:
                 token = self.refresh_oauth2_token(client_account_id)
             else:
-                token = client_account.access_token
+                token = client_account.token
             client = tweepy.Client(token,
                                    wait_on_rate_limit=True)
         else:
