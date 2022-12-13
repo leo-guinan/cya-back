@@ -12,13 +12,9 @@ from twitter.service import get_bio_and_recent_tweets_for_account, get_twitter_a
 
 def has_previous_analysis(enhanced_twitter_account):
     date_to_compare_against = utc.localize(datetime.now() - timedelta(days=7))
-    print(date_to_compare_against)
-    print(enhanced_twitter_account.enhancement_run_at)
-    print(enhanced_twitter_account.enhancement_run_at > date_to_compare_against)
     previous_analysis = enhanced_twitter_account.enhancement_run_at and \
                         (enhanced_twitter_account.status == EnhancedTwitterAccount.EnhancedTwitterAccountAnalysisStatus.OKAY) and \
                         (enhanced_twitter_account.enhancement_run_at > date_to_compare_against)
-    print(previous_analysis)
     return previous_analysis
 
 

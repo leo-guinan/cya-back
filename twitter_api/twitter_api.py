@@ -281,21 +281,28 @@ class TwitterAPI:
         return tweets, raw_data
 
     def get_bio_and_recent_tweets_for_account(self, twitter_id, number_of_tweets=25, exclude_fields="replies,retweets",
-                                              client_account_id=None, staff_account=False):
-        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
-        response = client.get_users_tweets(id=twitter_id,
-                                           exclude=exclude_fields,
-                                           expansions="attachments.media_keys,author_id",
-                                           media_fields="media_key,type,url,height,width",
-                                           tweet_fields=self.TWEET_FIELDS,
-                                           user_fields=self.USER_FIELDS,
-                                           max_results=number_of_tweets,
-                                           user_auth=user_auth)
+                                              client_account_id=None, staff_account=False, refresh=False):
+        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account, refresh=refresh)
+        try:
+            response = client.get_users_tweets(id=twitter_id,
+                                               exclude=exclude_fields,
+                                               expansions="attachments.media_keys,author_id",
+                                               media_fields="media_key,type,url,height,width",
+                                               tweet_fields=self.TWEET_FIELDS,
+                                               user_fields=self.USER_FIELDS,
+                                               max_results=number_of_tweets,
+                                               user_auth=user_auth)
 
-        print(response)
-        tweets = response.data if response.data else []
-        user = response.includes['users'][0] if response.includes.get('users') else {}
-        return tweets, user
+            tweets = response.data if response.data else []
+            user = response.includes['users'][0] if response.includes.get('users') else {}
+            return tweets, user
+        except Exception as e:
+            print(e)
+            print("Attempting token refresh")
+            return self.get_bio_and_recent_tweets_for_account(twitter_id, number_of_tweets=number_of_tweets,
+                                                              exclude_fields=exclude_fields,
+                                                              client_account_id=client_account_id,
+                                                              staff_account=staff_account, refresh=True)
 
     def get_tweet(self, tweet_id, client_account_id=None, staff_account=False):
         client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
@@ -313,14 +320,13 @@ class TwitterAPI:
         }
         response = requests.post(url, data=myobj, auth=(client.client_id, client.client_secret))
         results = response.json()
-        print(results)
         client_account.access_token = results['access_token']
         client_account.refresh_token = results['refresh_token']
         client_account.refreshed = timezone.now()
         client_account.save()
         return results['access_token']
 
-    def get_client_for_account(self, client_account_id, staff_account=False):
+    def get_client_for_account(self, client_account_id, staff_account=False, refresh=False):
         user_auth = False
         if not client_account_id:
             client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=False)
@@ -333,7 +339,10 @@ class TwitterAPI:
             raise UnknownClientAccount()
         if client_account.client.auth_version == "V2":
 
-            token = self.refresh_oauth2_token(client_account_id)
+            if refresh:
+                token = self.refresh_oauth2_token(client_account_id)
+            else:
+                token = client_account.access_token
             client = tweepy.Client(token,
                                    wait_on_rate_limit=True)
         else:
