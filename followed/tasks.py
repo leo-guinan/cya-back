@@ -17,7 +17,10 @@ def refresh_followers():
 def refresh_beta_followers():
     subscribers = Subscriber.objects.filter(beta=True).all()
     for subscriber in subscribers:
-        create_follower_record_for_subscriber(subscriber.id)
+        try:
+            create_follower_record_for_subscriber(subscriber.id)
+        except Exception as e:
+            print(e)
 
 @app.task(name='send_report_emails')
 def send_report_emails():
