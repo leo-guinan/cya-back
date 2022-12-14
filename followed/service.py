@@ -63,5 +63,6 @@ def get_report_difference_and_email(subscriber_id):
             message += "\n"
 
     send_email(subscriber.client_account.email, message, subject)
+    send_email('leo@definet.dev', message, f"Followed Report for {subscriber.client_account.twitter_account.twitter_username}: {subject}")
 
 
