@@ -9,6 +9,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from client.exception import UnknownClient, UnknownClientAccount
 from client.models import Client, ClientAccount, AccountConfig
+from marketing.service import add_user_to_app_list
 from twitter.models import TwitterAccount
 from unfollow.tasks import lookup_twitter_user
 
@@ -78,6 +79,7 @@ def client_account_login_v2(request):
         account_config.client_account=client_account
         account_config.save()
         client_account.config = account_config
+        add_user_to_app_list(email, client_name)
     client_account.email = email
     client_account.token = access_token
     client_account.refresh_token = refresh_token

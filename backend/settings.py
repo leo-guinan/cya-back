@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'followed',
     'open_ai',
     'enhancer',
+    'marketing'
 ]
 SITE_ID = 2
 
