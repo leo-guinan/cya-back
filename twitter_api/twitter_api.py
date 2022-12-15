@@ -69,21 +69,29 @@ class TwitterAPI:
         print(f'found {len(following)} users that {twitter_id} is following')
         return following
 
-    def get_users_following_account(self, twitter_id, client_account_id):
+    def get_users_following_account(self, twitter_id, client_account_id, refresh=False):
         """Get the users following a given Twitter account"""
-        client, user_auth = self.get_client_for_account(client_account_id)
+        try:
+            client, user_auth = self.get_client_for_account(client_account_id)
 
-        results = client.get_users_followers(id=twitter_id, max_results=1000, user_auth=user_auth)
-        followers = results.data
-        next_token = results.meta.get("next_token", "")
-        while next_token:
-            added_following = client.get_users_followers(id=twitter_id, max_results=1000, pagination_token=next_token,
-                                                         user_auth=user_auth)
-            followers.extend(added_following.data)
-            next_token = added_following.meta.get("next_token", "")
+            results = client.get_users_followers(id=twitter_id, max_results=1000, user_auth=user_auth)
+            followers = results.data
+            next_token = results.meta.get("next_token", "")
+            while next_token:
+                added_following = client.get_users_followers(id=twitter_id, max_results=1000, pagination_token=next_token,
+                                                             user_auth=user_auth)
+                followers.extend(added_following.data)
+                next_token = added_following.meta.get("next_token", "")
 
-        print(f'found {len(followers)} users following {twitter_id}')
-        return followers
+            print(f'found {len(followers)} users following {twitter_id}')
+            return followers
+        except Exception as e:
+            print(e)
+            print("Attempting token refresh")
+            if not refresh:
+                return self.get_users_following_account(twitter_id, client_account_id, refresh=True)
+            else:
+                raise e
 
     def get_most_recent_tweet_for_user(self, twitter_id, client_account_id=None, staff_account=False):
         """Get the most recent tweet for a given user."""
@@ -299,10 +307,13 @@ class TwitterAPI:
         except Exception as e:
             print(e)
             print("Attempting token refresh")
-            return self.get_bio_and_recent_tweets_for_account(twitter_id, number_of_tweets=number_of_tweets,
+            if not refresh:
+                return self.get_bio_and_recent_tweets_for_account(twitter_id, number_of_tweets=number_of_tweets,
                                                               exclude_fields=exclude_fields,
                                                               client_account_id=client_account_id,
                                                               staff_account=staff_account, refresh=True)
+            else:
+                raise e
 
     def get_tweet(self, tweet_id, client_account_id=None, staff_account=False):
         client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)

@@ -32,7 +32,7 @@ def get_report_difference_and_email(subscriber_id):
     subscriber = Subscriber.objects.filter(id=subscriber_id).first()
     if not subscriber:
         return
-    reports = subscriber.reports.all()
+    reports = subscriber.reports.exclude(followers=None).all()
     if len(reports) < 2:
         return
     message = ""
