@@ -42,6 +42,7 @@ def client_account_login(request):
         account_config.client_account=client_account
         account_config.save()
         client_account.config = account_config
+        add_user_to_app_list(email, client_name)
     client_account.email = email
     client_account.access_key = access_key
     client_account.secret_access_key = secret_access_key
