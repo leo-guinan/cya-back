@@ -6,7 +6,7 @@ from transformer.transformers import podcast_transcript_to_summary, podcast_tran
 
 
 def transform_podcast_transcript(transcript):
-    splitter = NLTKTextSplitter()
+    splitter = NLTKTextSplitter(chunk_size=8000, chunk_overlap=100)
     chunks = splitter.split_text(transcript)
     openai = OpenAIAPI()
 
@@ -28,3 +28,14 @@ def transform_podcast_transcript(transcript):
 
     return "\n".join(summary_chunks), "\n".join(key_points_chunks), "\n".join(links_to_include_chunks)
 
+def create_embeddings_for_podcast_transcript(transcript):
+    splitter = NLTKTextSplitter(chunk_size=15000, chunk_overlap=100)
+    chunks = splitter.split_text(transcript)
+    openai = OpenAIAPI()
+
+    embeddings = []
+
+    for chunk in chunks:
+        embeddings.append(openai.embeddings(chunk))
+
+    return embeddings
