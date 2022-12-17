@@ -9,6 +9,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
+from mail.service import send_email
 from webhooks.activity import Activity
 
 
@@ -80,3 +81,16 @@ def subscribe_twitter_webhook(request):
     activity = Activity()
     activity.subscribe()
     return Response(activity.webhooks())
+
+@api_view(('POST', 'GET'))
+@renderer_classes((JSONRenderer,))
+@authentication_classes([])
+@permission_classes([HasAPIKey])
+@csrf_exempt
+def email_received(request):
+    body = json.loads(request.body)
+    from_email = body['from']
+    message = body['text']
+    print(len(message))
+    send_email(from_email, "We have received your transcript.", "Thanks!")
+    return Response({'status': 'ok'}, status=200)

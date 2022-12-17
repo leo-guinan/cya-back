@@ -29,5 +29,6 @@ urlpatterns = [
     path('api/garden/', include('gardens.urls')),
     path('api/bookmarks/', include('bookmarks.urls')),
     path('api/followed/', include('followed.urls')),
+    path('api/podcast/', include('podcast_toolkit.urls')),
     path('webhooks/', include('webhooks.urls')),
 ]
