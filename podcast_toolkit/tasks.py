@@ -2,6 +2,7 @@ import json
 
 from backend.celery import app
 from podcast_toolkit.models import Podcast
+from podcast_toolkit.service import send_podcast_components
 from transformer.service import transform_podcast_transcript, create_embeddings_for_podcast_transcript
 from webhooks.models import TranscriptRequestEmail
 
@@ -20,5 +21,7 @@ def process_transcript_request(request_id):
             podcast.links_to_include = links_to_include
             podcast.transcript_embeddings = json.dumps(embeddings)
             podcast.save()
+            request.podcast = podcast
             request.processed = True
             request.save()
+        send_podcast_components(request.podcast.id)
