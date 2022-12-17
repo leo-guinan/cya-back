@@ -15,11 +15,12 @@ def process_transcript_request(request_id):
             embeddings = create_embeddings_for_podcast_transcript(request.transcript)
             podcast = Podcast(title=request.title, transcript=request.transcript)
             podcast.save()
-            summary, key_points, links_to_include = transform_podcast_transcript(request.transcript)
+            summary, key_points, links_to_include, show_notes = transform_podcast_transcript(request.transcript)
             podcast.summary = summary
             podcast.key_points = key_points
             podcast.links_to_include = links_to_include
             podcast.transcript_embeddings = json.dumps(embeddings)
+            podcast.show_notes = show_notes
             podcast.save()
             request.podcast = podcast
             request.processed = True
