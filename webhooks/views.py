@@ -10,7 +10,9 @@ from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from mail.service import send_email
+from podcast_toolkit.tasks import process_transcript_request
 from webhooks.activity import Activity
+from webhooks.models import TranscriptRequestEmail
 
 
 # Create your views here.
@@ -91,6 +93,10 @@ def email_received(request):
     body = json.loads(request.body)
     from_email = body['from']
     message = body['text']
-    print(len(message))
-    send_email(from_email, "We have received your transcript.", "Thanks!")
+    title = body['title']
+    record = TranscriptRequestEmail.objects.filter(from_email=from_email, title=title).first()
+    if record is None:
+        record = TranscriptRequestEmail(from_email=from_email, title=title, transcript=message)
+        record.save()
+        process_transcript_request.delay(record.id)
     return Response({'status': 'ok'}, status=200)

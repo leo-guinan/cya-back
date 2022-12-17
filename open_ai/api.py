@@ -24,5 +24,7 @@ class OpenAIAPI:
                                             max_tokens=max_tokens,
                                             stop=stop_tokens
                                             )
-        print(response)
-        return response
+        return response.choices[0].text
+
+    def embeddings(self, text):
+        return openai.Embedding.create(input=text, engine='text-embedding-ada-002')['data'][0]['embedding']
