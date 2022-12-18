@@ -12,4 +12,4 @@ poetry run pip install --force-reinstall -U setuptools
 python manage.py collectstatic --no-input
 python manage.py migrate
 
-python -m nltk.downloader -d /usr/local/share/nltk_data all
+python -m nltk.downloader -d /opt/render/project/src/nltk all
