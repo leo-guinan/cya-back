@@ -27,10 +27,10 @@ def transform_podcast_transcript(transcript):
         key_points_chunks.append(key_points)
         links_to_include_chunks.append(links_to_include)
 
-    summary = summarize_podcast_section_summaries(summary_chunks)
-    key_points = summarize_podcast_section_key_points(key_points_chunks)
-    links_to_include = summarize_podcast_section_links_to_include(links_to_include_chunks)
-    show_notes = generate_show_notes(summary, key_points, links_to_include)
+    summary = openai.complete(summarize_podcast_section_summaries(summary_chunks) )
+    key_points = openai.complete(summarize_podcast_section_key_points(key_points_chunks))
+    links_to_include = openai.complete(summarize_podcast_section_links_to_include(links_to_include_chunks))
+    show_notes = openai.complete(generate_show_notes(summary, key_points, links_to_include))
 
     return summary, key_points, links_to_include, show_notes
 
