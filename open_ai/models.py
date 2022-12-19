@@ -7,7 +7,7 @@ from django.utils import timezone
 class OpenAICall(models.Model):
     tokens_used = models.IntegerField()
     source = models.CharField(max_length=255)
-    request_id = models.IntegerField()
+    request_id = models.CharField(max_length=255)
     request_type = models.CharField(max_length=255)
     model = models.CharField(max_length=255)
     created_at = models.DateTimeField()
