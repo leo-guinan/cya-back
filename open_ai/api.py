@@ -1,6 +1,9 @@
-from decouple import config
+import uuid
 
 import openai
+from decouple import config
+
+from open_ai.models import OpenAICall
 
 
 class OpenAIAPI:
@@ -9,7 +12,9 @@ class OpenAIAPI:
 
     def complete(self,
                  prompt,
-                 stop_tokens = None,
+                 source,
+                 parent_id = None,
+                 stop_tokens=None,
                  max_tokens=1024,
                  temperature=0.7,
                  top_p=1,
@@ -19,18 +24,39 @@ class OpenAIAPI:
                  ):
         if stop_tokens:
             response = openai.Completion.create(model=engine,
-                                            prompt=prompt,
-                                            temperature=temperature,
-                                            max_tokens=max_tokens,
-                                            stop=stop_tokens
-                                            )
+                                                prompt=prompt,
+                                                temperature=temperature,
+                                                max_tokens=max_tokens,
+                                                stop=stop_tokens
+                                                )
         else:
             response = openai.Completion.create(model=engine,
                                                 prompt=prompt,
                                                 temperature=temperature,
                                                 max_tokens=max_tokens,
                                                 )
+        call = OpenAICall(tokens_used=response['usage']['total_tokens'],
+                          source=source,
+                          request_id=uuid.uuid4(),
+                          request_type='completion',
+                          model=engine,
+                          parent_id=parent_id
+                          )
+        call.save()
         return response.choices[0].text
 
-    def embeddings(self, text):
-        return openai.Embedding.create(input=text, engine='text-embedding-ada-002')['data'][0]['embedding']
+    def embeddings(self,
+                   text,
+                   source,
+                 parent_id = None,
+                   ):
+        response = openai.Embedding.create(input=text, engine='text-embedding-ada-002')
+        call = OpenAICall(tokens_used=response['usage']['total_tokens'],
+                          source=source,
+                          request_id=uuid.uuid4(),
+                          request_type='completion',
+                          model='text-embedding-ada-002',
+                          parent_id=parent_id
+                          )
+        call.save()
+        return response['data'][0]['embedding']

@@ -7,7 +7,7 @@ from django.utils import timezone
 class TranscriptRequestEmail(models.Model):
     class Meta:
         unique_together = (('from_email', 'title'),)
-
+    client_account = models.ForeignKey('client.ClientAccount', related_name="podcast_transcript_requests", null=True, on_delete=models.SET_NULL)
     from_email = models.CharField(max_length=255)
     title = models.CharField(max_length=255)
     transcript = models.TextField()

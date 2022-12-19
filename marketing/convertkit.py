@@ -7,11 +7,13 @@ class Convertkit:
     def __init__(self):
         self.api_key = config('CONVERTKIT_API_KEY')
 
-    def add_subscriber_to_form(self, form_id, email):
+    def add_subscriber_to_form(self, form_id, email, tags=None):
         url = f"{self.BASE_URL}forms/{form_id}/subscribe"
         data = {
             "api_key": self.api_key,
             "email": email
         }
+        if tags:
+            data['tags'] = tags
         response = requests.post(url, data=data)
         return response.json()

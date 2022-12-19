@@ -37,6 +37,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append('api.feathercrm.io')
     ALLOWED_HOSTS.append('app.whoshouldiunfollow.com')
     ALLOWED_HOSTS.append('tools.whoshouldiunfollow.com')
+    ALLOWED_HOSTS.append('automations.buildinpublicuniversity.com')
 
 
 # Application definition
