@@ -92,6 +92,7 @@ def subscribe_twitter_webhook(request):
 @renderer_classes((JSONRenderer,))
 @authentication_classes([])
 @permission_classes([HasAPIKey])
+@csrf_exempt
 def email_received(request):
     body = json.loads(request.body)
     from_email = body['from']
