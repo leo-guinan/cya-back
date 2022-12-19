@@ -98,7 +98,7 @@ def email_received(request):
     from_email = body['from']
     message = body['text']
     title = body['title']
-    client_account = ClientAccount.objects.get(email=from_email, client__name="PODCAST_TOOLKIT").first()
+    client_account = ClientAccount.objects.filter(email=from_email, client__name="PODCAST_TOOLKIT").first()
     if not client_account:
         # add to marketing list and send invite to signup
         add_user_to_app_list(from_email, "PODCAST_TOOLKIT", ["new_user"])
@@ -106,7 +106,7 @@ def email_received(request):
 
         client_account = ClientAccount()
         client_account.email = from_email
-        client = Client.objects.get(name="PODCAST_TOOLKIT").first()
+        client = Client.objects.get(name="PODCAST_TOOLKIT")
         client_account.client = client
         client_account.save()
     record = TranscriptRequestEmail.objects.filter(from_email=from_email, title=title, client_account=client_account).first()
