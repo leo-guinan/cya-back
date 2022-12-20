@@ -38,7 +38,7 @@ def get_report_difference_and_email(subscriber_id):
     message = ""
     current_report = reports[len(reports) - 1]
     previous_report = reports[len(reports) - 2]
-    difference_report = DifferenceReport.objects.filter(current_report=current_report, previous_report=previous_report).first()
+    difference_report = DifferenceReport.objects.filter(newer_report=current_report, older_report=previous_report).first()
     if difference_report:
         if not difference_report.sent:
             message = difference_report.message
