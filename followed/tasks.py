@@ -32,4 +32,7 @@ def send_report_emails():
 def send_beta_report_emails():
     subscribers = Subscriber.objects.filter(beta=True).all()
     for subscriber in subscribers:
-        get_report_difference_and_email(subscriber.id)
+        try:
+            get_report_difference_and_email(subscriber.id)
+        except Exception as e:
+            print(e)
