@@ -15,6 +15,8 @@ def create_follower_record_for_subscriber(subscriber_id):
     subscriber = Subscriber.objects.filter(id=subscriber_id).first()
     if not subscriber:
         return None
+    if not subscriber.client_account or not subscriber.client_account.twitter_account:
+        return None
     twitter_id = subscriber.client_account.twitter_account.twitter_id
     client_account_id = subscriber.client_account.id
     follower_report = FollowerReport()
