@@ -357,7 +357,7 @@ class TwitterAPI:
             client = tweepy.Client(token,
                                    wait_on_rate_limit=True)
         else:
-            access_token = client_account.access_token if client_account.access_token else client_account.client.access_token
+            access_token = client_account.access_key if client_account.access_key else client_account.client.access_token
             access_token_secret = client_account.secret_access_key if client_account.secret_access_key else client_account.client.access_secret
             client = tweepy.Client(consumer_key=client_account.client.consumer_key,
                                    consumer_secret=client_account.client.consumer_secret,
