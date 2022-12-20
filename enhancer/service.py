@@ -34,8 +34,7 @@ def get_analysis(twitter_id, client_account_id):
     if not account_is_likely_spam(bio, recent_tweets):
         openai_api = OpenAIAPI()
         prompt = twitter_account_analysis_prompt(bio, recent_tweets)
-        raw_analysis = openai_api.complete(prompt, source="FOLLOWED", stop_tokens=['##END_TWEET##', '##END_BIO##'], temperature=0).choices[
-            0].text
+        raw_analysis = openai_api.complete(prompt, source="FOLLOWED", stop_tokens=['##END_TWEET##', '##END_BIO##'], temperature=0)
         try:
             analysis = json.loads(ANALYSIS_PROMPT_STARTER + raw_analysis, strict=False)
             enhanced_twitter_account.analysis = analysis
