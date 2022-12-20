@@ -3,7 +3,7 @@ from datetime import datetime
 from client.models import Client
 from enhancer.service import enhance_twitter_account_with_summary
 from followed.config import CLIENT_NAME
-from followed.models import Subscriber, FollowerReport
+from followed.models import Subscriber, FollowerReport, DifferenceReport
 from twitter.service import get_twitter_account
 from twitter_api.twitter_api import TwitterAPI
 from mail.service import send_email
@@ -38,13 +38,26 @@ def get_report_difference_and_email(subscriber_id):
     message = ""
     current_report = reports[len(reports) - 1]
     previous_report = reports[len(reports) - 2]
+    difference_report = DifferenceReport.objects.filter(current_report=current_report, previous_report=previous_report).first()
+    if difference_report:
+        if not difference_report.sent:
+            message = difference_report.message
+            subject = difference_report.subject
+            send_email(subject=subject, message=message)
+            difference_report.sent = True
+            difference_report.save()
+            return
+        else:
+            return
+
+    difference_report = DifferenceReport()
     subject = f"Follower report for {previous_report.date} to {current_report.date}:\n"
     message += subject
     message += "-"*50
     message += "\n"
 
-    current_followers = [{"id": follower.twitter_id, "name": follower.twitter_username, "bio": follower.twitter_bio} for follower in current_report.followers.all() ]
-    previous_followers = [{"id": follower.twitter_id, "name": follower.twitter_username, "bio": follower.twitter_bio} for follower in previous_report.followers.all()]
+    current_followers = current_report.followers.all()
+    previous_followers = previous_report.followers.all()
     new_followers = [follower for follower in current_followers if follower not in previous_followers]
     lost_followers = [follower for follower in previous_followers if follower not in current_followers]
     message += f"Number of new followers: {len(new_followers)}\n"
@@ -61,8 +74,18 @@ def get_report_difference_and_email(subscriber_id):
             message += f"Account summary: {enhanced_twitter_account.summary}\n"
             message += "-"*25
             message += "\n"
+            difference_report.new_followers.add(enhanced_twitter_account.twitter_account)
+    if len(lost_followers) > 0:
+        for follower in lost_followers:
+            difference_report.lost_followers.add(follower)
 
+    difference_report.current_report = current_report
+    difference_report.previous_report = previous_report
+    difference_report.message = message
+    difference_report.subject = subject
+    difference_report.save()
     send_email(subscriber.client_account.email, message, subject)
     send_email('leo@definet.dev', message, f"Followed Report for {subscriber.client_account.twitter_account.twitter_username}: {subject}")
-
+    difference_report.sent = True
+    difference_report.save()
 
