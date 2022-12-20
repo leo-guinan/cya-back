@@ -43,7 +43,7 @@ def get_report_difference_and_email(subscriber_id):
         if not difference_report.sent:
             message = difference_report.message
             subject = difference_report.subject
-            send_email(subject=subject, message=message)
+            send_email(subscriber.client_account.email, subject=subject, message=message)
             difference_report.sent = True
             difference_report.save()
             return
@@ -79,8 +79,8 @@ def get_report_difference_and_email(subscriber_id):
         for follower in lost_followers:
             difference_report.lost_followers.add(follower)
 
-    difference_report.current_report = current_report
-    difference_report.previous_report = previous_report
+    difference_report.newer_report = current_report
+    difference_report.older_report = previous_report
     difference_report.message = message
     difference_report.subject = subject
     difference_report.save()
