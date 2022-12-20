@@ -51,6 +51,10 @@ def get_report_difference_and_email(subscriber_id):
             return
 
     difference_report = DifferenceReport()
+
+    difference_report.newer_report = current_report
+    difference_report.older_report = previous_report
+    difference_report.save()
     subject = f"Follower report for {previous_report.date} to {current_report.date}:\n"
     message += subject
     message += "-"*50
@@ -67,7 +71,7 @@ def get_report_difference_and_email(subscriber_id):
     message += "New followers:\n"
     if len(new_followers) > 0:
         for follower in new_followers:
-            enhanced_twitter_account = enhance_twitter_account_with_summary(follower["id"], subscriber.client_account.id)
+            enhanced_twitter_account = enhance_twitter_account_with_summary(follower.id, subscriber.client_account.id)
             message += f"Profile: https://twitter.com/{enhanced_twitter_account.twitter_account.twitter_username}\n"
             message += f"Name: {enhanced_twitter_account.twitter_account.twitter_name}\n"
             message += f"Bio: {enhanced_twitter_account.twitter_account.twitter_bio}\n"
@@ -79,8 +83,6 @@ def get_report_difference_and_email(subscriber_id):
         for follower in lost_followers:
             difference_report.lost_followers.add(follower)
 
-    difference_report.newer_report = current_report
-    difference_report.older_report = previous_report
     difference_report.message = message
     difference_report.subject = subject
     difference_report.save()
