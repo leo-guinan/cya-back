@@ -189,3 +189,149 @@ if not DEBUG:    # Tell Django to copy statics to the `staticfiles` directory
     # Turn on WhiteNoise storage backend that takes care of compressing static files
     # and creating unique names for each version so they can safely be cached forever.
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+LOGLEVEL = os.environ.get('LOGLEVEL', 'info').upper()
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'console': {
+            # exact format is not important, this is the minimum information
+            'format': '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'console',
+        },
+    },
+    'loggers': {
+    # root logger
+        '': {
+            'level': 'WARNING',
+            'handlers': ['console',],
+        },
+        'backend': {
+            'level': LOGLEVEL,
+            'handlers': ['console',],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'bookmarks': {
+            'level': LOGLEVEL,
+            'handlers': ['console',],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'client': {
+            'level': LOGLEVEL,
+            'handlers': ['console',],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'crawler': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'enhancer': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'feather': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'followed': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'friendcontent': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'gardens': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'mail': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'marketing': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'open_ai': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'podcast_toolkit': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'rss': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'transformer': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'twitter': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'twitter_api': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'unfollow': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'watchtweet': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'webhooks': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+
+    },
+}

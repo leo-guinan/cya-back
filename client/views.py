@@ -1,4 +1,5 @@
 import json
+import logging
 
 # Create your views here.
 from django.utils import timezone
@@ -12,6 +13,7 @@ from client.models import Client, ClientAccount, AccountConfig
 from marketing.service import add_user_to_app_list
 from twitter.models import TwitterAccount
 from unfollow.tasks import lookup_twitter_user
+logger = logging.getLogger(__name__)
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -93,7 +95,7 @@ def client_account_login_v2(request):
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
 def client_email_account_login(request):
-    print("client_account_login")
+    logger.debug("client_account_login")
     body = json.loads(request.body)
     client_name = body['client']
     email = body['email']

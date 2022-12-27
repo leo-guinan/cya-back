@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 
 from decouple import config
 from django.views.decorators.csrf import csrf_exempt
@@ -16,6 +17,7 @@ from marketing.service import add_user_to_app_list
 from podcast_toolkit.tasks import process_transcript_request
 from webhooks.activity import Activity
 from webhooks.models import TranscriptRequestEmail
+logger = logging.getLogger(__name__)
 
 
 # Create your views here.
@@ -41,7 +43,7 @@ def twitter_webhook(request):
     elif request.method == 'POST':
         # do something with the request
         # TODO: do something with the event
-        print(request.body)
+        logger.debug(request.body)
         return Response({'status': 'ok'}, status=200)
 
 

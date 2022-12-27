@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timedelta
 
 from pytz import utc
@@ -8,6 +9,7 @@ from enhancer.models import EnhancedTwitterAccount
 from open_ai.api import OpenAIAPI
 from twitter.models import TwitterAccount
 from twitter.service import get_bio_and_recent_tweets_for_account, get_twitter_account
+logger = logging.getLogger(__name__)
 
 
 def has_previous_analysis(enhanced_twitter_account):
@@ -45,8 +47,8 @@ def get_analysis(twitter_id, client_account_id):
             enhanced_twitter_account.status = EnhancedTwitterAccount.EnhancedTwitterAccountAnalysisStatus.OKAY
         except json.decoder.JSONDecodeError as e:
             # TODO: fix json with openai
-            print(e)
-            print(ANALYSIS_PROMPT_STARTER + raw_analysis)
+            logger.error(e)
+            logger.debug(ANALYSIS_PROMPT_STARTER + raw_analysis)
             analysis = {
                 "error": e.msg,
                 "summary": "There was an error with the analysis. Please send @leo_guinan a DM and let him know you received this error."

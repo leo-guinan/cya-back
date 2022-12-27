@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timedelta
 from django.utils import timezone
 
@@ -17,6 +18,7 @@ from client.serializers import ClientAccountSerializer
 from twitter.models import Relationship, TwitterAccount
 from unfollow.models import AccountCheck
 from unfollow.tasks import lookup_twitter_user
+logger = logging.getLogger(__name__)
 
 
 @api_view(('POST',))
@@ -111,7 +113,7 @@ def create_client_account(request):
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
 def fetch_users(request):
-    print("Fetching users")
+    logger.debug("Fetching users")
     body = json.loads(request.body)
     client_name = body['client']
     client = Client.objects.filter(name=client_name).first()

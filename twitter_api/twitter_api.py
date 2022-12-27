@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 import requests
 import tweepy
@@ -7,6 +8,7 @@ from django.utils import timezone
 
 from client.exception import UnknownClientAccount
 from client.models import ClientAccount, Client, StaffAccount
+logger = logging.getLogger(__name__)
 
 
 class TwitterAPI:
@@ -66,7 +68,7 @@ class TwitterAPI:
             following.extend(added_following.data)
             next_token = added_following.meta.get("next_token", "")
 
-        print(f'found {len(following)} users that {twitter_id} is following')
+        logger.debug(f'found {len(following)} users that {twitter_id} is following')
         return following
 
     def get_users_following_account(self, twitter_id, client_account_id, refresh=False):
@@ -83,12 +85,12 @@ class TwitterAPI:
                 followers.extend(added_following.data)
                 next_token = added_following.meta.get("next_token", "")
 
-            print(f'found {len(followers)} users following {twitter_id}')
+            logger.debug(f'found {len(followers)} users following {twitter_id}')
             return followers
         except Exception as e:
-            print(e)
-            print("Attempting token refresh")
+            logger.error(e)
             if not refresh:
+                logger.error("Attempting token refresh")
                 return self.get_users_following_account(twitter_id, client_account_id, refresh=True)
             else:
                 raise e
@@ -97,25 +99,25 @@ class TwitterAPI:
         """Get the most recent tweet for a given user."""
         client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
         next_token = ''
-        print(f'checking user: {twitter_id}')
+        logger.debug(f'checking user: {twitter_id}')
         if client_account_id:
-            print(f"for client account: {client_account_id}")
+            logger.debug(f"for client account: {client_account_id}")
         results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
                                           user_fields=self.USER_FIELDS,
                                           expansions="author_id",
                                           max_results=5, user_auth=user_auth)
         while not results.data and results.meta.get(next_token, ""):
-            print(f'rechecking user: {twitter_id}, results: {results}')
+            logger.debug(f'rechecking user: {twitter_id}, results: {results}')
             results = client.get_users_tweets(id=twitter_id, tweet_fields=["created_at"], exclude="replies,retweets",
                                               user_fields=self.USER_FIELDS,
                                               expansions="author_id",
                                               max_results=5, pagination_token=next_token, user_auth=user_auth)
         if results.data and results.data[0]:
-            print(f"{len(results.data)} results found")
+            logger.debug(f"{len(results.data)} results found")
             tweet = results.data[0]
             author = results.includes['users'][0] if results.includes["users"][0] else None
             return tweet, author
-        print("No tweets found")
+        logger.info("No tweets found")
         return None, None
 
     def lookup_user(self, twitter_id, client_account_id=None, staff_account=False):
@@ -135,9 +137,9 @@ class TwitterAPI:
         client, user_auth = self.get_client_for_account(client_account_id)
         try:
             response = client.unfollow_user(twitter_id_to_unfollow, user_auth=user_auth)
-            print(response)
+            logger.debug(response)
         except Exception as e:
-            print(e)
+            logger.error(e)
             raise e
 
     def get_responses_to_tweet(self, tweet_id, since_id=None):
@@ -305,9 +307,9 @@ class TwitterAPI:
             user = response.includes['users'][0] if response.includes.get('users') else {}
             return tweets, user
         except Exception as e:
-            print(e)
-            print("Attempting token refresh")
+            logger.error(e)
             if not refresh:
+                logger.info("Attempting token refresh")
                 return self.get_bio_and_recent_tweets_for_account(twitter_id, number_of_tweets=number_of_tweets,
                                                               exclude_fields=exclude_fields,
                                                               client_account_id=client_account_id,
@@ -363,7 +365,7 @@ class TwitterAPI:
                                    consumer_secret=client_account.client.consumer_secret,
                                    access_token=access_token,
                                    access_token_secret=access_token_secret, )
-            print("Using V1 User auth client")
+            logger.debug("Using V1 User auth client")
 
             user_auth = True
         return client, user_auth

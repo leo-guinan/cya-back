@@ -1,9 +1,12 @@
+import logging
+
 from backend.celery import app
 from client.models import ClientAccount, AccountConfig
 from client.service import send_notification_email, send_notification_dm, send_notification_tweet
 from twitter.tasks import populate_user_data_from_twitter_id
 from twitter_api.twitter_api import TwitterAPI
 
+logger = logging.getLogger(__name__)
 
 @app.task(name='refresh_client_accounts')
 def refresh_client_accounts():
@@ -23,7 +26,7 @@ def refresh_client_twitter_tokens():
         try:
             twitter_api.refresh_oauth2_token(account.id)
         except Exception as e:
-            print(f"Error refreshing token: {e}")
+            logger.error(f"Error refreshing token: {e}")
 
 
 @app.task(name='notify_user')

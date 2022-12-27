@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.shortcuts import render
 
@@ -12,6 +13,7 @@ from client.models import ClientAccount
 from gardens.models import ContentFeed, ContentSource, Content
 from gardens.serializers import ContentFeedSerializer, ContentSerializer
 from gardens.tasks import fetch_content_for_feed
+logger = logging.getLogger(__name__)
 
 
 @api_view(('POST',))
@@ -44,7 +46,7 @@ def add_feed(request):
     feed.save()
 
     #get content for feed url
-    print("fetching content for feed")
+    logger.debug("fetching content for feed")
     fetch_content_for_feed.delay(feed_id=feed.id)
     return Response({"content_feed_id": feed.id})
 
@@ -55,14 +57,14 @@ def add_feed(request):
 def get_feeds(request):
     body = json.loads(request.body)
     feed_ids = body['feed_ids']
-    print(feed_ids)
+    logger.debug(feed_ids)
     feeds = ContentFeed.objects.filter(id__in=feed_ids).all()
-    print(len(feeds))
+    logger.debug(len(feeds))
     results = []
     for feed in feeds:
         serializer = ContentFeedSerializer(feed)
         results.append(serializer.data)
-        print(serializer.data)
+        logger.debug(serializer.data)
     return Response({"feeds": results})
 
 

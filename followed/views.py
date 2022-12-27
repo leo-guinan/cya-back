@@ -1,4 +1,5 @@
 import json
+import logging
 
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
 from rest_framework.renderers import JSONRenderer
@@ -10,6 +11,7 @@ from followed.config import CLIENT_NAME
 from followed.models import Subscriber, FollowerReport
 from followed.tasks import refresh_followers_for_account
 from twitter.models import TwitterAccount
+logger = logging.getLogger(__name__)
 
 
 @api_view(('POST',))
@@ -28,8 +30,8 @@ def subscribe(request):
         twitter_account = TwitterAccount()
         twitter_account.twitter_id = twitter_id
         twitter_account.save()
-        print(f'twitter_account: {twitter_account.id}')
-    print(f'twitter_account: {twitter_account.id}')
+        logger.debug(f'subscribed new twitter_account: {twitter_account.id}')
+    logger.debug(f'subscription for twitter_account: {twitter_account.id}')
 
     if not client_account:
         client_account = ClientAccount()
@@ -37,8 +39,8 @@ def subscribe(request):
         client = Client.objects.filter(name=CLIENT_NAME).first()
         client_account.client = client
         client_account.save()
-        print(f'client_account: {client_account.id}')
-    print(f'client_account: {client_account.id}')
+        logger.debug(f'subscribed new client_account: {client_account.id}')
+    logger.debug(f'subscription for client_account: {client_account.id}')
 
     if not client_account.twitter_account:
         client_account.twitter_account = twitter_account
@@ -49,8 +51,8 @@ def subscribe(request):
         subscriber.client_account = client_account
         subscriber.save()
         refresh_followers_for_account.delay(subscriber.id)
-        print(f'subscriber: {subscriber.id}')
-    print(f'subscriber: {subscriber.id}')
+        logger.debug(f'new subscriber record created: {subscriber.id}')
+    logger.debug(f'subscriber record: {subscriber.id}')
     return Response({"subscriber_id": subscriber.id})
 
 

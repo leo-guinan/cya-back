@@ -1,7 +1,10 @@
+import logging
+
 from backend.celery import app
 from twitter_api.twitter_api import TwitterAPI
 from watchtweet.models import WatchTweet, PromptQuestion, PromptResponse
 
+logger = logging.getLogger(__name__)
 
 def int_response_id_for_tweet(tweet):
     return tweet.response_id
@@ -23,7 +26,7 @@ def record_prompt_answers(watched_tweet_id):
     if parent:
         tweet_id_to_lookup = parent.tweet_id
     responses = twitter_api.get_responses_to_prompt_in_conversation(tweet_id=tweet_id_to_lookup)
-    print(responses)
+    logger.debug(responses)
     if not responses:
         return
     for reply in responses:

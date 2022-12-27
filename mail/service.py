@@ -1,3 +1,5 @@
+import logging
+
 from decouple import config
 from python_http_client import HTTPError
 from sendgrid import SendGridAPIClient
@@ -5,6 +7,7 @@ from sendgrid.helpers.mail import *
 
 FROM_EMAIL = 'leo@definet.dev'
 
+logger = logging.getLogger(__name__)
 
 # def send_email(to, message, client=None):
 #     message = Mail(
@@ -64,5 +67,5 @@ def send_email(to, message, subject, client=None):
         response = sg.send(message)
         return str(response.status_code)
     except HTTPError as e:
-        print("Error: {0}".format(e.to_dict))
+        logger.error("Error: {0}".format(e.to_dict))
         return str("error")

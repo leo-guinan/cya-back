@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 from django.utils.encoding import smart_str
@@ -8,6 +9,7 @@ from twitter.models import TwitterAccount, Tweet, Relationship, AccountError
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AccountCheck
 
+logger = logging.getLogger(__name__)
 
 def get_twitter_account(twitter_id, client_account_id=None):
     account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
@@ -83,7 +85,7 @@ def get_most_recent_tweet(client_account_id, twitter_id_to_lookup, staff_account
     most_recent_tweet, author = twitter_api.get_most_recent_tweet_for_user(client_account_id=client_account_id,
                                                                            twitter_id=twitter_id_to_lookup,
                                                                            staff_account=staff_account)
-    print(most_recent_tweet)
+    logger.debug(most_recent_tweet)
 
     if author:
         save_twitter_account_to_database(author)
@@ -95,6 +97,7 @@ def update_twitter_account_with_most_recent_tweet(twitter_id_to_lookup, most_rec
     twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id_to_lookup).first()
 
     if not twitter_account:
+        logger.error("No twitter account found for twitter id: %s" % twitter_id_to_lookup)
         raise Exception("Twitter account should exist here.")
     if most_recent_tweet is not None:
         twitter_account.last_tweet_date = most_recent_tweet.created_at
@@ -118,14 +121,14 @@ def get_recent_tweets(client_account_id, twitter_id, staff_account=False):
         tweets = twitter_api.get_latest_tweets(twitter_id,
                                                client_account_id=client_account_id, staff_account=staff_account)
     if not tweets or len(tweets) == 0:
-        print("no tweets found for user...")
+        logger.info("no tweets found for user %s" % twitter_id)
         return
     for tweet in tweets:
         save_tweet_to_database(tweet)
 
 
 def save_tweet_to_database(raw_tweet):
-    print(raw_tweet)
+    logger.debug(raw_tweet)
     author = get_twitter_account(raw_tweet.author_id)
     tweet = Tweet()
     tweet.tweet_id = raw_tweet.id
@@ -137,7 +140,7 @@ def save_tweet_to_database(raw_tweet):
 
 
 def save_twitter_account_to_database(raw_user):
-    print(raw_user)
+    logger.debug(raw_user)
     twitter_account = TwitterAccount.objects.filter(twitter_id=raw_user.id).first()
     if not twitter_account:
         twitter_account = TwitterAccount()
@@ -155,7 +158,7 @@ def save_twitter_account_to_database(raw_user):
         error.account = twitter_account
         error.error = str(e)
         error.save()
-        print("Error saving to database")
+        logger.error("Error saving to database for twitter account %s" % twitter_account.twitter_id)
     return twitter_account
 
 

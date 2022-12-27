@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from client.models import Client
@@ -7,6 +8,8 @@ from followed.models import Subscriber, FollowerReport, DifferenceReport
 from twitter.service import get_twitter_account
 from twitter_api.twitter_api import TwitterAPI
 from mail.service import send_email
+logger = logging.getLogger(__name__)
+
 CLIENT = Client.objects.filter(name=CLIENT_NAME).first()
 
 
@@ -86,7 +89,7 @@ def get_report_difference_and_email(subscriber_id):
                 message += "\n"
                 difference_report.new_followers.add(enhanced_twitter_account.twitter_account)
             except Exception as e:
-                print(e)
+                logger.error(e)
                 send_email('leo@definet.dev', subject='Error in follower report', message=str(e))
                 continue
     if len(lost_followers) > 0:

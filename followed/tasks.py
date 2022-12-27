@@ -1,6 +1,9 @@
+import logging
+
 from backend.celery import app
 from followed.models import Subscriber
 from followed.service import create_follower_record_for_subscriber, get_report_difference_and_email
+logger = logging.getLogger(__name__)
 
 
 @app.task(name='refresh_subscriber_followers')
@@ -20,7 +23,7 @@ def refresh_beta_followers():
         try:
             create_follower_record_for_subscriber(subscriber.id)
         except Exception as e:
-            print(e)
+            logger.error(e)
 
 @app.task(name='send_report_emails')
 def send_report_emails():
@@ -35,4 +38,4 @@ def send_beta_report_emails():
         try:
             get_report_difference_and_email(subscriber.id)
         except Exception as e:
-            print(e)
+            logger.error(e)

@@ -1,3 +1,4 @@
+import logging
 import random
 from datetime import date, datetime, timedelta
 from pytz import utc
@@ -8,6 +9,7 @@ from friendcontent.util import extract_url_from_text
 from twitter.models import Tweet, Relationship
 from twitter.service import refresh_twitter_account, update_twitter_accounts_user_is_following
 from twitter_api.twitter_api import TwitterAPI
+logger = logging.getLogger(__name__)
 
 CLIENT = Client.objects.filter(name="FRIENDCONTENT").first()
 
@@ -55,7 +57,7 @@ def respond_to_add_tiktok(trigger, client):
 def add_podcast(mention, author, trigger, client):
     twitter_api = TwitterAPI()
     content = Content()
-    print(mention.text)
+    logger.debug(mention.text)
     url = extract_url_from_text(mention.text)
     content.url = url
     content.content_type = 'PC'
@@ -69,7 +71,7 @@ def add_podcast(mention, author, trigger, client):
 def add_blog(mention, author, trigger, client):
     twitter_api = TwitterAPI()
     content = Content()
-    print(mention.text)
+    logger.debug(mention.text)
     url = extract_url_from_text(mention.text)
     content.url = url
     content.content_type = 'BL'
@@ -83,7 +85,7 @@ def add_blog(mention, author, trigger, client):
 def add_youtube(mention, author, trigger, client):
     twitter_api = TwitterAPI()
     content = Content()
-    print(mention.text)
+    logger.debug(mention.text)
     url = extract_url_from_text(mention.text)
     content.url = url
     content.content_type = 'YT'
@@ -97,7 +99,7 @@ def add_youtube(mention, author, trigger, client):
 def add_tiktok(mention, author, trigger, client):
     twitter_api = TwitterAPI()
     content = Content()
-    print(mention.text)
+    logger.debug(mention.text)
     url = extract_url_from_text(mention.text)
     content.url = url
     content.content_type = 'TT'

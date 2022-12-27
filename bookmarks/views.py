@@ -56,7 +56,6 @@ def save_tweet_to_database(raw_tweet, bookmarking_user_twitter_id):
 
 def has_external_link(row):
     entities = row['entities']
-    # print(entities)
     urls = []
     if not entities:
         return

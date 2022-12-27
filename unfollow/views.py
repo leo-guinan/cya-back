@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timedelta
 
 import pytz
@@ -22,6 +23,7 @@ from .tasks import lookup_twitter_user, unfollow_accounts_needing
 
 utc = pytz.UTC
 
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 class TwitterAccountList(ListCreateAPIView):
@@ -44,7 +46,7 @@ def sortKeyFunctionLastTweetDate(e):
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
 def get_account_analysis(request):
-    print("get_account_analysis")
+    logger.debug("get_account_analysis")
     body = json.loads(request.body)
     client_account_id = body['client_account_id']
     client_account = ClientAccount.objects.filter(id=client_account_id).first()
@@ -133,7 +135,7 @@ def unfollow_user(request):
     if not client_account:
         raise UnknownClientAccount()
     twitter_id_to_unfollow = body['twitter_id']
-    print(f"Unfollowing {twitter_id_to_unfollow}")
+    logger.debug(f"Unfollowing {twitter_id_to_unfollow}")
     unfollow_account(client_account_id, twitter_id_to_unfollow)
     current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
@@ -170,7 +172,7 @@ def protect_user(request):
     body = json.loads(request.body)
     logged_in_user_twitter_id = body['logged_in_user_id']
     twitter_id_to_unfollow = body['twitter_id']
-    print(f"Protecting {twitter_id_to_unfollow}")
+    logger.debug(f"Protecting {twitter_id_to_unfollow}")
     current_user = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
     user_to_protect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
     # if group doesn't exist for protected, create one
@@ -194,13 +196,13 @@ def unprotect_user(request):
     body = json.loads(request.body)
     logged_in_user_twitter_id = body['logged_in_user_id']
     twitter_id_to_unfollow = body['twitter_id']
-    print(f"Protecting {twitter_id_to_unfollow}")
-    currentUser = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
-    userToUnprotect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
-    if userToUnprotect in currentUser.groups.all():
-        currentUser.groups.remove(userToUnprotect)
-        currentUser.save()
-    serializer = TwitterAccountSerializer(userToUnprotect)
+    logger.debug(f"Unprotecting {twitter_id_to_unfollow}")
+    current_user = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    user_to_unprotect = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
+    if user_to_unprotect in current_user.groups.all():
+        current_user.groups.remove(user_to_unprotect)
+        current_user.save()
+    serializer = TwitterAccountSerializer(user_to_unprotect)
     return Response(serializer.data)
 
 
@@ -210,9 +212,9 @@ def unprotect_user(request):
 def get_protected_users(request):
     body = json.loads(request.body)
     logged_in_user_twitter_id = body['logged_in_user_id']
-    currentUser = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
+    current_user = TwitterAccount.objects.filter(twitter_id=logged_in_user_twitter_id).first()
     protected_users = []
-    for group in currentUser.groups.all():
+    for group in current_user.groups.all():
         for member in group.members.all():
             serializer = TwitterAccountSerializer(member)
             protected_users.append(serializer.data)

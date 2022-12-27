@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, date
 
 import tweepy
@@ -11,6 +12,7 @@ from twitter.tasks import populate_user_data_from_twitter_id, unfollow_user_for_
 from twitter_api.twitter_api import TwitterAPI
 from unfollow.models import AccountCheck, UnfollowRequest
 from unfollow.service import get_twitter_account_info_for_check
+logger = logging.getLogger(__name__)
 
 
 @app.task(name="lookup_twitter_user", autoretry_for=(tweepy.errors.TooManyRequests,), retry_backoff=60,
@@ -29,7 +31,7 @@ def lookup_twitter_user(client_account_id, force=False):
 
 @app.task(name="check_account")
 def check_twitter_account(account_check_id):
-    print(f"Checking account: {account_check_id}")
+    logger.debug(f"Checking account: {account_check_id}")
     get_twitter_account_info_for_check(account_check_id)
 
 
@@ -39,7 +41,7 @@ def dm_beta_users():
     beta_users = BetaAccount.objects.filter(messaged=False).all()
     for user in beta_users:
         try:
-            print(f"Sending DM to {user.client_account.twitter_account.twitter_name}")
+            logger.debug(f"Sending DM to {user.client_account.twitter_account.twitter_name}")
             twitter_api.send_dm_to_user(1, user.client_account.twitter_account.twitter_id, f'''Thanks for your interest in beta testing Who Should I Unfollow? 
 
 To get started, you can visit the site here: http://whoshouldiunfollow.com/
@@ -53,7 +55,7 @@ Here’s your beta code to use:
                                         )
 
         except Exception as e:
-            print(f"Error sending DM: {e}")
+            logger.error(f"Error sending DM: {e}")
             twitter_api.send_dm_to_user(1, "1325102346792218629",
                                         f"Error sending DM to {user.client_account.twitter_account.twitter_name}")
 
@@ -65,7 +67,7 @@ Here’s your beta code to use:
 def analyze_accounts_needing():
     checks = AccountCheck.objects.filter(status=AccountCheck.CheckStatus.REQUESTED).all()[:1000]
     for check in checks:
-        print(check)
+        logger.debug(check)
         check.status = AccountCheck.CheckStatus.IN_PROGRESS
         check.save()
         check_twitter_account.delay(check.id)

@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta
 from pytz import utc
 
@@ -13,6 +14,7 @@ from twitter.service import refresh_twitter_account, update_twitter_accounts_use
     update_users_following_twitter_account
 from twitter.tasks import populate_user_data_from_twitter_id, get_users_following_for_client_account
 from twitter_api.twitter_api import TwitterAPI
+logger = logging.getLogger(__name__)
 
 SUPPORTED_MEDIA = {
     'podcast': {
@@ -46,7 +48,7 @@ def handle_tweet():
     #if conversation_id === tweet_id, new thread started, no child. Else, should have a parent trigger with conversation id as trigger
     if mentions:
         for mention in mentions:
-            print(mention.conversation_id)
+            logger.debug(mention.conversation_id)
             tweet = Tweet.objects.filter(tweet_id=mention.id).first()
             if not tweet:
                 tweet = Tweet()
@@ -64,9 +66,9 @@ def handle_tweet():
             tweet.save()
             trigger = TriggerTweet()
             trigger.tweet = tweet
-            print(mention.id)
+            logger.debug(mention.id)
             if mention.id == mention.conversation_id:
-                print("parent response, new conversation")
+                logger.debug("parent response, new conversation")
                 # this is a new request. Act accordingly.
                 if 'add' in mention.text.lower():
                     respond_to_add(trigger, client)
@@ -90,7 +92,7 @@ def handle_tweet():
                 while parent.child:
                     #Get latest response
                     parent = parent.child
-                print("child response")
+                logger.debug("child response")
                 if 'podcast' in mention.text.lower():
                     trigger.action = 'PODCAST'
                 elif 'blog' in mention.text.lower():
@@ -142,7 +144,7 @@ def process_tweets():
             trigger.save()
         if 'ADD' in trigger.action:
             response = twitter_api.send_tweet_as_client_in_response(client_id=client.id, tweet_to_respond_to=trigger.tweet.tweet_id, message=f"@{trigger.tweet.author.twitter_username}: what kind of media would you like to add? Currently supported types: podcast")
-            print(response)
+            logger.debug(response)
             new_tweet = Tweet()
             new_tweet.tweet_id = response['id']
             new_tweet.message = response['text']

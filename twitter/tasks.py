@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from PIL import ImageFont
@@ -29,6 +30,7 @@ COORD_TAG = (600, 305)
 COORD_TEXT = (250, 510)
 LINE_MARGIN = 15
 
+logger = logging.getLogger(__name__)
 
 @app.task(name="populate_user_by_id")
 def populate_user_data_from_twitter_id(twitter_id, client_account_id=None):
@@ -66,7 +68,7 @@ def unfollow_user_for_client_account(client_account_id, twitter_id_to_unfollow, 
     client_account = ClientAccount.objects.filter(id=client_account_id).first()
     if not client_account:
         raise UnknownClientAccount()
-    print(f"Unfollowing {twitter_id_to_unfollow}")
+    logger.debug(f"Unfollowing {twitter_id_to_unfollow}")
     unfollow_account(client_account_id, twitter_id_to_unfollow)
     current_user = TwitterAccount.objects.filter(twitter_id=client_account.twitter_account.twitter_id).first()
     user_to_unfollow = TwitterAccount.objects.filter(twitter_id=twitter_id_to_unfollow).first()
@@ -85,14 +87,14 @@ def get_latest_tweets_for_account(client_account_id, twitter_id):
     try:
         get_recent_tweets(client_account_id=client_account_id, twitter_id=twitter_id)
     except Exception as e:
-        print(e)
+        logger.error(e)
         staff_accounts = StaffAccount.objects.filter(client=client_account.client).all()
         for staff_account in staff_accounts:
             try:
                 get_recent_tweets(client_account_id=staff_account.id, twitter_id=twitter_id, staff_account=True)
                 return
             except Exception as nested_e:
-                print(nested_e)
+                logger.error(nested_e)
                 continue
 
 
@@ -118,4 +120,4 @@ def lookup_accounts_that_are_missing_data():
                                     client_account_id=staff_accounts[current_staff_account].id,
                                     staff_account=True)
         except Exception as e:
-            print(e)
+            logger.error(e)
