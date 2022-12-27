@@ -63,5 +63,4 @@ def get_analysis(twitter_id, client_account_id):
 
 
 def enhance_twitter_account_with_summary(twitter_id, client_account_id):
-    twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
-    return get_analysis(twitter_account.twitter_id, client_account_id)
+    return get_analysis(twitter_id, client_account_id)
