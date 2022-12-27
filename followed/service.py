@@ -75,6 +75,9 @@ def get_report_difference_and_email(subscriber_id):
         for follower in new_followers:
             try:
                 enhanced_twitter_account = enhance_twitter_account_with_summary(follower.id, subscriber.client_account.id)
+                if not enhanced_twitter_account:
+                    # account no longer exists or is private, skipping
+                    continue
                 message += f"Profile: https://twitter.com/{enhanced_twitter_account.twitter_account.twitter_username}\n"
                 message += f"Name: {enhanced_twitter_account.twitter_account.twitter_name}\n"
                 message += f"Bio: {enhanced_twitter_account.twitter_account.twitter_bio}\n"

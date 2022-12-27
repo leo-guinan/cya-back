@@ -26,6 +26,8 @@ def get_analysis(twitter_id, client_account_id):
     twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
     if not twitter_account:
         twitter_account = get_twitter_account(twitter_id)
+        if not twitter_account:
+            return None
     enhanced_twitter_account = EnhancedTwitterAccount.objects.filter(twitter_account=twitter_account).first()
     if not enhanced_twitter_account:
         enhanced_twitter_account = EnhancedTwitterAccount()
