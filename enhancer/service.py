@@ -24,6 +24,8 @@ def account_is_likely_spam(bio, recent_tweets):
 
 def get_analysis(twitter_id, client_account_id):
     twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
+    if not twitter_account:
+        twitter_account = get_twitter_account(twitter_id)
     enhanced_twitter_account = EnhancedTwitterAccount.objects.filter(twitter_account=twitter_account).first()
     if not enhanced_twitter_account:
         enhanced_twitter_account = EnhancedTwitterAccount()
@@ -62,6 +64,4 @@ def get_analysis(twitter_id, client_account_id):
 
 def enhance_twitter_account_with_summary(twitter_id, client_account_id):
     twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
-    if not twitter_account:
-        twitter_account = get_twitter_account(twitter_id)
     return get_analysis(twitter_account.twitter_id, client_account_id)
