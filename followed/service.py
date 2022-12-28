@@ -77,6 +77,7 @@ def get_report_difference_and_email(subscriber_id):
     if len(new_followers) > 0:
         for follower in new_followers:
             try:
+                logger.debug(f"Enhancing twitter account {follower.twitter_id}")
                 enhanced_twitter_account = enhance_twitter_account_with_summary(follower.id, subscriber.client_account.id)
                 if not enhanced_twitter_account:
                     # account no longer exists or is private, skipping
