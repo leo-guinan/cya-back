@@ -28,12 +28,12 @@ def account_is_likely_spam(bio, recent_tweets):
 def get_analysis(twitter_id, client_account_id):
     logger.debug(f'getting analysis for twitter account: {twitter_id}')
     twitter_account = TwitterAccount.objects.filter(twitter_id=twitter_id).first()
-    logger.debug(f'got twitter account: {twitter_account.id}')
     if not twitter_account:
         twitter_account = get_twitter_account(twitter_id)
         if not twitter_account:
             logger.error(f'Unable to get twitter account for id: {twitter_id}')
             return None
+    logger.debug(f'got twitter account: {twitter_account.id}')
     enhanced_twitter_account = EnhancedTwitterAccount.objects.filter(twitter_account=twitter_account).first()
     if not enhanced_twitter_account:
         enhanced_twitter_account = EnhancedTwitterAccount()
