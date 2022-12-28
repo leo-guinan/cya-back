@@ -88,7 +88,7 @@ def get_report_difference_and_email(subscriber_id):
                 message += f"Account summary: {enhanced_twitter_account.summary}\n"
                 message += "-"*25
                 message += "\n"
-                difference_report.new_followers.add(enhanced_twitter_account.twitter_account)
+                difference_report.new_followers.add(enhanced_twitter_account)
             except Exception as e:
                 logger.error(e)
                 send_email('leo@definet.dev', subject='Error in follower report', message=str(e))
