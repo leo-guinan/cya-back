@@ -180,16 +180,28 @@ def send_dm_to_account(from_client, to_twitter_id, message):
     twitter_api = TwitterAPI()
     twitter_api.send_dm_to_user(from_client.id, to_twitter_id, message)
 
+
+
 def get_bio_and_recent_tweets_for_account(twitter_id, client_account_id):
     twitter_api = TwitterAPI()
     tweets, user = twitter_api.get_bio_and_recent_tweets_for_account(twitter_id, client_account_id=client_account_id)
+    bio = user['description'] if user.get('description') else ""
+    simplified_tweets = list(map(lambda raw_tweet: raw_tweet.text, tweets)) if tweets else []
+    if _is_account_likely_spam(bio, tweets):
+        return simplified_tweets, bio, True, []
+    saved_tweets = []
     for tweet in tweets:
         existing_tweet = Tweet.objects.filter(tweet_id=tweet.id).first()
         if not existing_tweet:
-            save_tweet_to_database(tweet)
-    simplified_tweets = list(map(lambda raw_tweet: raw_tweet.text, tweets)) if tweets else []
-    bio = user['description'] if user.get('description') else ""
+            existing_tweet = save_tweet_to_database(tweet)
+        saved_tweets.append(existing_tweet)
+
     if user:
         save_twitter_account_to_database(user)
-    return simplified_tweets, bio
+
+    return simplified_tweets, bio, False, saved_tweets
+
+
+def _is_account_likely_spam(bio, recent_tweets):
+    return not bio or not recent_tweets or len(recent_tweets) < 5 or len(bio) < 10
 

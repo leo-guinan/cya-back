@@ -290,7 +290,7 @@ class TwitterAPI:
                 next_token = added_tweets.meta.get("next_token", "")
         return tweets, raw_data
 
-    def get_bio_and_recent_tweets_for_account(self, twitter_id, number_of_tweets=25, exclude_fields="replies,retweets",
+    def get_bio_and_recent_tweets_for_account(self, twitter_id, number_of_tweets=36, exclude_fields="replies,retweets",
                                               client_account_id=None, staff_account=False, refresh=False):
         client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account, refresh=refresh)
         try:

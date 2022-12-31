@@ -25,6 +25,8 @@ def client_account_login(request):
     email = body['email']
     access_key = body['access_key']
     secret_access_key = body['secret_access_key']
+    print(access_key)
+    print(secret_access_key)
     client = Client.objects.filter(name=client_name).first()
     if not client:
         raise UnknownClient()

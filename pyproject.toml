@@ -35,6 +35,9 @@ pandas = "^1.5.1"
 openai = "^0.25.0"
 tokenizers = "^0.13.2"
 langchain = {extras = ["all"], version = "^0.0.38"}
+sklearn = "^0.0.post1"
+numpy = "^1.24.1"
+scikit-learn = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
 

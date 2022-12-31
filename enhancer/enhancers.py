@@ -53,3 +53,39 @@ def twitter_account_analysis_prompt(bio, tweets):
     """
     return prompt
 
+
+def tweet_grouping_enhancer(tweets: dict):
+    prompt = f"""
+    Given a list of tweets, identify the common topic shared by the tweets in the list, the specific topic of each tweet, and the sentiment of each tweet, labeling it as "POSITIVE", "NEGATIVE", or "NEUTRAL".
+
+    The tweets will be given in the following format:
+    <tweet_id>: <text_of_the_tweet>
+
+    Respond in the following JSON format:
+
+    {{
+    "shared_topics": "<identified_topics>",
+        "tweets": [
+    {{
+    "tweet_id": "<id_of_the_tweet_given>",
+    "topic": "<topic_of_the_tweet>",
+    "sentiment": "<sentiment>"
+    }}
+    }}
+
+    The tweets:
+    {'##END_TWEET##'.join([f'{key}: {value}' for (key,value) in tweets.items()])}
+    The Response:
+    """
+    return prompt
+
+def topic_summary(summaries):
+    prompt = f"""
+Given the following topics that a user has tweeted about, summarize what they tend to talk about.
+
+The topics:
+{"##END_TOPIC##".join(summaries)}
+The summary:
+
+"""
+    return prompt
