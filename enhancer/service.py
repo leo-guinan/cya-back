@@ -10,7 +10,7 @@ import numpy as np
 from pytz import utc
 
 from enhancer.enhancers import twitter_account_analysis_prompt, ANALYSIS_PROMPT_STARTER, tweet_grouping_enhancer, \
-    topic_summary
+    topic_summary, fix_json
 from enhancer.models import EnhancedTwitterAccount, EnhancedTweet, EnhancedTweetsGroup
 from open_ai.api import OpenAIAPI
 from twitter.models import TwitterAccount, Tweet
@@ -116,26 +116,41 @@ def categorize_grouping(df, parent_id):
     try:
         logger.debug(f'got response: {response}')
         parsed_response = json.loads(response, strict=False)
-        logger.debug(f'parsed response: {parsed_response}')
-        group.summary = parsed_response['shared_topics']
-        for tweet in parsed_response['tweets']:
-            enhanced_tweet = EnhancedTweet.objects.filter(tweet__tweet_id=tweet['tweet_id']).first()
-            enhanced_tweet.category = tweet['topic']
-            if tweet['sentiment'].lower() == 'positive':
-                enhanced_tweet.sentiment = EnhancedTweet.EnhancedTweetSentiment.POSITIVE
-            elif tweet['sentiment'].lower() == 'negative':
-                enhanced_tweet.sentiment = EnhancedTweet.EnhancedTweetSentiment.NEGATIVE
-            else:
-                enhanced_tweet.sentiment = EnhancedTweet.EnhancedTweetSentiment.NEUTRAL
-            enhanced_tweet.save()
-            group.enhanced_tweets.add(enhanced_tweet)
+
     except json.decoder.JSONDecodeError as e:
+        logger.error(f'Unable to parse response: {response}')
         logger.error(e)
+        logger.debug("attempting to fix response")
+        fixed_json_prompt = fix_json(response)
+        fixed_response = openai_api.complete(fixed_json_prompt, source="FOLLOWED", temperature=0,
+                                       parent_id=parent_id)
+
+        try:
+            parsed_response = json.loads(fixed_response, strict=False)
+        except json.decoder.JSONDecodeError as nested_e:
+            logger.error(f'Unable to parse response: {fixed_response}')
+            logger.error(nested_e)
+            group.summary = fixed_response
+            group.save()
+            return group
+    logger.debug(f'parsed response: {parsed_response}')
+    group.summary = parsed_response['shared_topics']
+    for tweet in parsed_response['tweets']:
+        enhanced_tweet = EnhancedTweet.objects.filter(tweet__tweet_id=tweet['tweet_id']).first()
+        enhanced_tweet.category = tweet['topic']
+        if tweet['sentiment'].lower() == 'positive':
+            enhanced_tweet.sentiment = EnhancedTweet.EnhancedTweetSentiment.POSITIVE
+        elif tweet['sentiment'].lower() == 'negative':
+            enhanced_tweet.sentiment = EnhancedTweet.EnhancedTweetSentiment.NEGATIVE
+        else:
+            enhanced_tweet.sentiment = EnhancedTweet.EnhancedTweetSentiment.NEUTRAL
+        enhanced_tweet.save()
+        group.enhanced_tweets.add(enhanced_tweet)
     group.save()
     return group
 
 def summarize_groups(groups, parent_id):
-    topic_summary_prompt = topic_summary([group.summary for group in groups])
+    topic_summary_prompt = topic_summary([group.summary for group in groups if group.summary])
     openai_api = OpenAIAPI()
     response = openai_api.complete(topic_summary_prompt, source="FOLLOWED", stop_tokens=['##END_TOPIC##'], temperature=0, parent_id=parent_id)
     return response

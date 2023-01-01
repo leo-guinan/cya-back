@@ -89,3 +89,12 @@ The summary:
 
 """
     return prompt
+
+def fix_json(malformed_json):
+    prompt = f"""
+    The following input is malformed JSON. Fix the formatting issue and return the result.
+Input:
+{malformed_json}
+Output:
+"""
+    return prompt
