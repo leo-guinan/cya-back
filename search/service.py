@@ -21,7 +21,7 @@ def save_item(text, title, description, link, content_type, creator):
         content_chunks = []
 
         for chunk in chunks:
-            embeddings = openai_api.embeddings(text, source='search', parent_id=parent_id)
+            embeddings = openai_api.embeddings(chunk, source='search', parent_id=parent_id)
             content_chunk = ContentChunk.objects.create(content=content, text=chunk, embeddings=embeddings)
             content_chunk.save()
             content_chunks.append(content_chunk)
