@@ -14,3 +14,4 @@ class ContentChunk(models.Model):
     text = models.TextField()
     embeddings = models.JSONField(null=True, blank=True)
     embeddings_saved = models.BooleanField(default=False)
+    chunk_id = models.CharField(max_length=255, unique=True)
