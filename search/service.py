@@ -28,7 +28,7 @@ def save_item(text, title, description, link, content_type, creator):
             content_chunks.append(content_chunk)
 
         pinecone = PineconeAPI()
-        pinecone.upsert([(content_chunk.chunk_id, content_chunk.embeddings) for content_chunk in content_chunks])
+        pinecone.upsert([(str(content_chunk.chunk_id), content_chunk.embeddings) for content_chunk in content_chunks])
         for content_chunk in content_chunks:
             content_chunk.embeddings_saved = True
             content_chunk.save()
