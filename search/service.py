@@ -3,7 +3,7 @@ from langchain.text_splitter import NLTKTextSplitter
 from open_ai.api import OpenAIAPI
 import uuid
 
-from pinecone.pinecone_api import PineconeAPI
+from pinecone_api.pinecone_api import PineconeAPI
 from search.models import Content, ContentChunk
 
 
