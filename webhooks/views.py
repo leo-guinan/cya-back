@@ -15,6 +15,7 @@ from client.models import ClientAccount, Client
 from mail.service import send_email
 from marketing.service import add_user_to_app_list
 from podcast_toolkit.tasks import process_transcript_request
+from search.tasks import save_content_task
 from webhooks.activity import Activity
 from webhooks.models import TranscriptRequestEmail
 logger = logging.getLogger(__name__)
@@ -117,4 +118,40 @@ def email_received(request):
         record.save()
         process_transcript_request.delay(record.id)
     send_email('leo@definet.dev', f"new transcript received: {client_account.id}", "Transcript Alert!")
+    return Response({'status': 'ok'}, status=200)
+
+
+@api_view(('POST', 'GET'))
+@renderer_classes((JSONRenderer,))
+@authentication_classes([])
+@permission_classes([HasAPIKey])
+@csrf_exempt
+def content_received(request):
+    body = json.loads(request.body)
+    author_email = body['author_email']
+    message = body['text']
+    title = body['title']
+    link = body['link']
+    content_type = body['type']
+    description = body['description']
+
+    # link = models.URLField(unique=True)
+    #     title = models.CharField(max_length=255)
+    #     description = models.TextField()
+    #     creator = models.ForeignKey('client.ClientAccount', related_name='created_items', on_delete=models.CASCADE)
+    #     type = models.CharField(max_length=255, null=True, blank=True)
+    client_account = ClientAccount.objects.filter(email=author_email, client__name="PODCAST_TOOLKIT").first()
+    if not client_account:
+        # add to marketing list and send invite to signup
+        # add_user_to_app_list(from_email, "PODCAST_TOOLKIT", ["new_user"])
+        # should I create account with trial here? could also tag with user id in case of email switch
+
+        client_account = ClientAccount()
+        client_account.email = author_email
+        client = Client.objects.get(name="SEARCH")
+        client_account.client = client
+        client_account.save()
+
+    save_content_task.delay(text=message, title=title, description=description, link=link, type=content_type, creator_id=client_account.id)
+    send_email('leo@definet.dev', f"new content received: {client_account.id}", "Transcript Alert!")
     return Response({'status': 'ok'}, status=200)

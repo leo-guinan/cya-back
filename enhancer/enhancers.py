@@ -71,6 +71,7 @@ def tweet_grouping_enhancer(tweets: dict):
     "topic": "<topic_of_the_tweet>",
     "sentiment": "<sentiment>"
     }}
+    ]
     }}
 
     The tweets:

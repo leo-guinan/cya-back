@@ -54,7 +54,7 @@ class OpenAIAPI:
         call = OpenAICall(tokens_used=response['usage']['total_tokens'],
                           source=source,
                           request_id=uuid.uuid4(),
-                          request_type='completion',
+                          request_type='embedding',
                           model='text-embedding-ada-002',
                           parent_id=parent_id
                           )

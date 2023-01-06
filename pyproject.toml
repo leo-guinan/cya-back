@@ -38,6 +38,7 @@ langchain = {extras = ["all"], version = "^0.0.38"}
 sklearn = "^0.0.post1"
 numpy = "^1.24.1"
 scikit-learn = "^1.2.0"
+pinecone-client = "^2.1.0"
 
 [tool.poetry.dev-dependencies]
 

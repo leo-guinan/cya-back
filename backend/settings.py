@@ -73,7 +73,8 @@ INSTALLED_APPS = [
     'open_ai',
     'enhancer',
     'marketing',
-    'podcast_toolkit'
+    'podcast_toolkit',
+    'search'
 ]
 SITE_ID = 2
 

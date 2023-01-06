@@ -25,7 +25,7 @@ class EnhancedTweet(models.Model):
         NEGATIVE = 'NG', ('Negative')
         NEUTRAL = 'NU', ('Neutral')
 
-    tweet = models.ForeignKey('twitter.Tweet', on_delete=models.CASCADE)
+    tweet = models.OneToOneField('twitter.Tweet', related_name='enhanced', on_delete=models.CASCADE)
     embeddings = models.JSONField(null=True, blank=True)
     enhancement_run_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=2, choices=EnhancedTweetAnalysisStatus.choices, default=EnhancedTweetAnalysisStatus.OKAY)

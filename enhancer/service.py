@@ -14,7 +14,8 @@ from enhancer.enhancers import twitter_account_analysis_prompt, ANALYSIS_PROMPT_
 from enhancer.models import EnhancedTwitterAccount, EnhancedTweet, EnhancedTweetsGroup
 from open_ai.api import OpenAIAPI
 from twitter.models import TwitterAccount, Tweet
-from twitter.service import get_bio_and_recent_tweets_for_account, get_twitter_account
+from twitter.service import get_bio_and_recent_tweets_for_account, get_twitter_account, get_tweet
+
 logger = logging.getLogger(__name__)
 
 
@@ -136,7 +137,13 @@ def categorize_grouping(df, parent_id):
     logger.debug(f'parsed response: {parsed_response}')
     group.summary = parsed_response['shared_topics']
     for tweet in parsed_response['tweets']:
+        logger.debug(f'adding tweet: {tweet}')
         enhanced_tweet = EnhancedTweet.objects.filter(tweet__tweet_id=tweet['tweet_id']).first()
+        if not enhanced_tweet:
+            logger.error(f'Unable to find enhanced tweet for tweet id: {tweet["tweet_id"]}')
+            new_tweet = get_tweet(tweet['tweet_id'])
+            enhanced_tweet = enhance_tweet(new_tweet, parent_id)
+
         enhanced_tweet.category = tweet['topic']
         if tweet['sentiment'].lower() == 'positive':
             enhanced_tweet.sentiment = EnhancedTweet.EnhancedTweetSentiment.POSITIVE
