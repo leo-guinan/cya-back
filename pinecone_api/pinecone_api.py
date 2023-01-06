@@ -11,5 +11,9 @@ class PineconeAPI:
     def upsert(self, vectors):
         self.index.upsert(vectors=vectors)
 
+    def search(self, query_vector, k=10):
+        return self.index.query(query_vector,
+                    top_k=k)
+
 
 

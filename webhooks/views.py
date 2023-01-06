@@ -18,6 +18,7 @@ from podcast_toolkit.tasks import process_transcript_request
 from search.tasks import save_content_task
 from webhooks.activity import Activity
 from webhooks.models import TranscriptRequestEmail
+from webhooks.tasks import twitter_user_experiment
 logger = logging.getLogger(__name__)
 
 
@@ -155,3 +156,16 @@ def content_received(request):
     save_content_task.delay(text=message, title=title, description=description, link=link, content_type=content_type, creator_id=client_account.id)
     send_email('leo@definet.dev', f"new content received: {client_account.id}", "Transcript Alert!")
     return Response({'status': 'ok'}, status=200)
+
+@api_view(('POST', 'GET'))
+@renderer_classes((JSONRenderer,))
+@authentication_classes([])
+@permission_classes([HasAPIKey])
+@csrf_exempt
+def process_twitter_user(request):
+    body = json.loads(request.body)
+    twitter_username = body['twitter_username']
+    twitter_user_experiment.delay(twitter_username)
+    return Response({'status': 'ok'}, status=200)
+
+

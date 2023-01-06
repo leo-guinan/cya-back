@@ -126,6 +126,12 @@ class TwitterAPI:
         user = client.get_user(id=twitter_id, user_fields=self.USER_FIELDS, user_auth=user_auth)
         return user.data
 
+    def lookup_username(self, twitter_username, client_account_id=None, staff_account=False):
+        """Get the account information for a given Twitter account"""
+        client, user_auth = self.get_client_for_account(client_account_id, staff_account=staff_account)
+        user = client.get_user(username=twitter_username, user_fields=self.USER_FIELDS, user_auth=user_auth)
+        return user.data
+
     def get_number_of_accounts_followed_by_account(self, twitter_id):
         """Get a count of the number of accounts a given twitter account is following"""
         client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)

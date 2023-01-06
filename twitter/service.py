@@ -29,6 +29,13 @@ def refresh_twitter_account(twitter_id, client_account_id=None, staff_account=Fa
             account.delete()
     return None
 
+def refresh_twitter_account_by_username(twitter_username, client_account_id=None, staff_account=False):
+    twitter_api = TwitterAPI()
+    raw_user = twitter_api.lookup_username(twitter_username=twitter_username, client_account_id=client_account_id, staff_account=staff_account)
+    if raw_user:
+        return save_twitter_account_to_database(raw_user)
+    return None
+
 
 def update_users_following_twitter_account(twitter_id=None, client_account_id=None, client=None):
     twitter_api = TwitterAPI(client)
