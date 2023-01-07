@@ -12,7 +12,7 @@ def query_topics(topics):
     pinecone = PineconeAPI()
     results = pinecone.search(query_vector=topics, k=10)
     matched_chunks= []
-    for result in results:
+    for result in results.matches:
         chunk = ContentChunk.objects.filter(chunk_id=result.id).first()
         matched_chunks.append(chunk)
     matched_content_ids = [chunk.content_id for chunk in matched_chunks]
