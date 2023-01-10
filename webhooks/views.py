@@ -165,7 +165,8 @@ def content_received(request):
 def process_twitter_user(request):
     body = json.loads(request.body)
     twitter_username = body['twitter_username']
-    twitter_user_experiment.delay(twitter_username)
+    for_author = body.get('for_author', None)
+    twitter_user_experiment.delay(twitter_username, for_author)
     return Response({'status': 'ok'}, status=200)
 
 
