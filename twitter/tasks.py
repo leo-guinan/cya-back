@@ -87,14 +87,14 @@ def get_latest_tweets_for_account(client_account_id, twitter_id):
     try:
         get_recent_tweets(client_account_id=client_account_id, twitter_id=twitter_id)
     except Exception as e:
-        logger.error(e)
+        logger.error(f'get_latest_tweets_for_account: {e}')
         staff_accounts = StaffAccount.objects.filter(client=client_account.client).all()
         for staff_account in staff_accounts:
             try:
                 get_recent_tweets(client_account_id=staff_account.id, twitter_id=twitter_id, staff_account=True)
                 return
             except Exception as nested_e:
-                logger.error(nested_e)
+                logger.error(f'get_latest_tweets_for_account - staff: {nested_e}')
                 continue
 
 
@@ -120,4 +120,4 @@ def lookup_accounts_that_are_missing_data():
                                     client_account_id=staff_accounts[current_staff_account].id,
                                     staff_account=True)
         except Exception as e:
-            logger.error(e)
+            logger.error(f'lookup_accounts_that_are_missing_data: {e}')
