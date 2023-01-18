@@ -2,8 +2,7 @@ from backend.celery import app
 from enhancer.service import enhance_twitter_account_with_summary
 from mail.service import send_email
 from open_ai.api import OpenAIAPI
-from pinecone_api.pinecone_api import PineconeAPI
-from search.models import ContentChunk, Content
+
 from search.service import query_topics
 from twitter.service import refresh_twitter_account_by_username
 

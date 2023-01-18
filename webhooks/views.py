@@ -154,7 +154,6 @@ def content_received(request):
         client_account.save()
 
     save_content_task.delay(text=message, title=title, description=description, link=link, content_type=content_type, creator_id=client_account.id)
-    send_email('leo@definet.dev', f"new content received: {client_account.id}", "Transcript Alert!")
     return Response({'status': 'ok'}, status=200)
 
 @api_view(('POST', 'GET'))
