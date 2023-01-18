@@ -1,6 +1,7 @@
 import json
 
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from search.service import search
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
+@csrf_exempt
 def search_creator_content(request):
 
     body = json.loads(request.body)
