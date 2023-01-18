@@ -30,5 +30,6 @@ urlpatterns = [
     path('api/bookmarks/', include('bookmarks.urls')),
     path('api/followed/', include('followed.urls')),
     path('api/podcast/', include('podcast_toolkit.urls')),
+    path('api/search/', include('search.urls')),
     path('webhooks/', include('webhooks.urls')),
 ]
