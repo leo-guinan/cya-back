@@ -15,6 +15,7 @@ from client.models import ClientAccount, Client
 from mail.service import send_email
 from marketing.service import add_user_to_app_list
 from podcast_toolkit.tasks import process_transcript_request
+from search.models import Content
 from search.tasks import save_content_task
 from webhooks.activity import Activity
 from webhooks.models import TranscriptRequestEmail
@@ -153,7 +154,12 @@ def content_received(request):
         client_account.client = client
         client_account.save()
 
-    save_content_task.delay(text=message, title=title, description=description, link=link, content_type=content_type, creator_id=client_account.id)
+    content = Content.objects.filter(link=link).first()
+    if content is None:
+        content = Content(link=link, title=title, description=description, creator=client_account, type=content_type, fulltext=message)
+        content.save()
+        save_content_task.delay(content.id)
+
     return Response({'status': 'ok'}, status=200)
 
 @api_view(('POST', 'GET'))

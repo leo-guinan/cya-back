@@ -1,8 +1,24 @@
 from backend.celery import app
-from client.models import ClientAccount
-from search.service import save_item
+from search.models import Content
+from search.service import split, save_embeddings, get_embeddings
+
 
 @app.task(name="search.save_content")
-def save_content_task(text, title, description, link, content_type, creator_id):
-    creator = ClientAccount.objects.filter(id=creator_id).first()
-    save_item(text, title, description, link, content_type, creator)
+def save_content_task(content_id):
+    content = Content.objects.filter(id=content_id).first()
+    if not content:
+        return
+
+    chunk_ids = split(content)
+    for chunk_id in chunk_ids:
+        get_embeddings_for_chunk.delay(chunk_id, content.creator.email, content.type)
+
+
+@app.task(name="search.save_content_chunk")
+def save_chunk(content_chunk_id, email, content_type):
+    save_embeddings(content_chunk_id, email, content_type)
+
+@app.task(name="search.get_embeddings_for_chunk")
+def get_embeddings_for_chunk(content_chunk_id, email, content_type):
+    chunk_id = get_embeddings(content_chunk_id)
+    save_chunk.delay(chunk_id, email, content_type)

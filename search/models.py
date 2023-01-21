@@ -7,6 +7,7 @@ class Content(models.Model):
     description = models.TextField()
     creator = models.ForeignKey('client.ClientAccount', related_name='created_items', on_delete=models.CASCADE)
     type = models.CharField(max_length=255, null=True, blank=True)
+    fulltext = models.TextField(null=True, blank=True)
 
 
 class ContentChunk(models.Model):
