@@ -1,7 +1,7 @@
 import pinecone
 from decouple import config
 class PineconeAPI:
-    index_name = 'leo-content'
+    index_name = 'content'
     def __init__(self):
         api_key = config('PINECONE_API_KEY')
         self.pinecone = pinecone.init(api_key=api_key, environment='us-west1-gcp')
