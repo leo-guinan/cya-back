@@ -20,10 +20,11 @@ def search_creator_content(request):
     body = json.loads(request.body)
     search_term = body['search_term']
     creator = body['creator']
-    title, link, description = search(search_term, creator)
+    title, link, description, chunk = search(search_term, creator)
     result = {
         'title': title,
         'link': link,
-        'description': description
+        'description': description,
+        'chunk': chunk
     }
     return Response(result)
