@@ -113,10 +113,5 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=12, minute=0, day_of_week='*'),
         'options': {'queue': 'default'}
     },
-    'hourly_save_unsaved_chunks': {
-        'task': 'search.save_unsaved_chunks',
-        'schedule': crontab(minute='30', hour='*'),
-        'options': {'queue': 'default'}
-    }
 
 }

@@ -6,25 +6,28 @@ from open_ai.api import OpenAIAPI
 import uuid
 
 from pinecone_api.pinecone_api import PineconeAPI
-from search.models import Content, ContentChunk
+from search.models import ContentChunk
 
 logger = logging.getLogger(__name__)
 
 def split(content):
-
     # split text into chunks
     text = content.fulltext
-
-
-    splitter = NLTKTextSplitter(chunk_size=2000, chunk_overlap=100)
+    splitter = NLTKTextSplitter(chunk_size=500)
     chunks = splitter.split_text(text)
     content_chunks = []
 
     for chunk in chunks:
-        content_chunk = ContentChunk.objects.create(content=content, text=chunk)
-        content_chunk.chunk_id = uuid.uuid4()
-        content_chunk.save()
-        content_chunks.append(content_chunk.id)
+        logger.debug(f"Saving chunk with size {len(chunk)}")
+        if len(chunk) > 500:
+            logger.debug(f"Chunk size is too big. Splitting again")
+            sub_chunks = splitter.split_text(chunk)
+            for sub_chunk in sub_chunks:
+                content_chunk = ContentChunk.objects.create(content=content, text=sub_chunk, chunk_id=uuid.uuid4())
+                content_chunks.append(content_chunk)
+        else:
+            content_chunk = ContentChunk.objects.create(content=content, text=chunk, chunk_id=uuid.uuid4())
+            content_chunks.append(content_chunk.id)
     return content_chunks
 
 
