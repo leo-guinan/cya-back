@@ -24,7 +24,7 @@ def split(content):
             sub_chunks = splitter.split_text(chunk)
             for sub_chunk in sub_chunks:
                 content_chunk = ContentChunk.objects.create(content=content, text=sub_chunk, chunk_id=uuid.uuid4())
-                content_chunks.append(content_chunk)
+                content_chunks.append(content_chunk.id)
         else:
             content_chunk = ContentChunk.objects.create(content=content, text=chunk, chunk_id=uuid.uuid4())
             content_chunks.append(content_chunk.id)
