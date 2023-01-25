@@ -16,5 +16,5 @@ def twitter_user_experiment(twitter_username, for_author):
     openai = OpenAIAPI()
 
     topic_embeddings = openai.embeddings(enhanced_twitter_account.summary, source="experiment")
-    title, link, _description, author = query_topics(topic_embeddings, for_author)
+    title, link, _description, snippet, author = query_topics(topic_embeddings, for_author)
     send_email(to="leo@definet.dev", message=f"Title: {title} Link: {link} by {author}", subject=f"Recommended podcast episode for {twitter_username}")
