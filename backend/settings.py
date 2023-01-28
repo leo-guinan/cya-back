@@ -74,7 +74,8 @@ INSTALLED_APPS = [
     'enhancer',
     'marketing',
     'podcast_toolkit',
-    'search'
+    'search',
+    'effortless_reach',
 ]
 SITE_ID = 2
 

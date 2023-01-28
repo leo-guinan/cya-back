@@ -4,7 +4,7 @@ import feedparser
 # containing the feed's title, link, and summary
 def parse_feed(url):
     feed = feedparser.parse(url)
-    return feed.entries
+    return feed
 
 
 

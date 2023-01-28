@@ -31,5 +31,6 @@ urlpatterns = [
     path('api/followed/', include('followed.urls')),
     path('api/podcast/', include('podcast_toolkit.urls')),
     path('api/search/', include('search.urls')),
+    path('api/effortless_reach/', include('effortless_reach.urls')),
     path('webhooks/', include('webhooks.urls')),
 ]
