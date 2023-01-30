@@ -1553,6 +1553,19 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "replicate"
+version = "0.4.0"
+description = "Python client for Replicate"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+packaging = "*"
+pydantic = "*"
+requests = "*"
+
+[[package]]
 name = "requests"
 version = "2.28.2"
 description = "Python HTTP for Humans."
@@ -2286,7 +2299,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8.1"
-content-hash = "985c0795bcd15bf558508ce6631847b8c87b536a174a31c13daeb6b5ec8bede9"
+content-hash = "ccdefaef443c224985faba2f7284449c58472cdce943397ccee9f484e793bfd3"
 
 [metadata.files]
 aiohttp = [
@@ -3930,6 +3943,9 @@ regex = [
     {file = "regex-2022.10.31-cp39-cp39-win32.whl", hash = "sha256:395161bbdbd04a8333b9ff9763a05e9ceb4fe210e3c7690f5e68cedd3d65d8e1"},
     {file = "regex-2022.10.31-cp39-cp39-win_amd64.whl", hash = "sha256:957403a978e10fb3ca42572a23e6f7badff39aa1ce2f4ade68ee452dc6807692"},
     {file = "regex-2022.10.31.tar.gz", hash = "sha256:a3a98921da9a1bf8457aeee6a551948a83601689e5ecdd736894ea9bbec77e83"},
+]
+replicate = [
+    {file = "replicate-0.4.0.tar.gz", hash = "sha256:8347121312608750d94c6826729c62d0717a4bda8c6f339e47326695442257d1"},
 ]
 requests = [
     {file = "requests-2.28.2-py3-none-any.whl", hash = "sha256:64299f4909223da747622c030b781c0d7811e359c37124b4bd368fb8c6518baa"},

@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from effortless_reach.models import Podcast, PodcastEpisode
+from effortless_reach.models import Podcast, PodcastEpisode, Transcript
+
+from whisper.whisper import Whisper
 
 
 def process_channel(channel, feed):
@@ -12,10 +14,13 @@ def process_channel(channel, feed):
     podcast.save()
     return podcast
 
-def process_entry(entry, podcast):
+def process_entry(entry, podcast, generator):
     episode = PodcastEpisode()
     episode.title = entry.title
-    episode.link = entry.link
+    if 'Transistor' in generator:
+        episode.link = entry.link
+    else:
+        episode.link = entry.links[0].href
     for link in entry.links:
         if link.type == "audio/mpeg":
             episode.download_link = link.href
@@ -25,3 +30,13 @@ def process_entry(entry, podcast):
     episode.podcast = podcast
     episode.save()
     return episode
+
+def transcribe_episode(episode_id):
+    podcast_episode = PodcastEpisode.objects.get(id=episode_id)
+    transcript = Transcript.objects.filter(episode=podcast_episode).first()
+    if transcript is None:
+        whisper = Whisper()
+        transcript = Transcript()
+        transcript.episode = podcast_episode
+        transcript.save()
+        whisper.transcribe_podcast(transcript.id)
