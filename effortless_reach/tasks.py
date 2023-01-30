@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from backend.celery import app
-from effortless_reach.models import RssFeed, Podcast, PodcastEpisode, Transcript
+from effortless_reach.models import RssFeed, Podcast, PodcastEpisode, Transcript, TranscriptRequest
 from effortless_reach.service import process_channel, process_entry, transcribe_episode
 from rss.service import parse_feed
 
@@ -25,4 +25,10 @@ def transcribe_podcast(podcast_episode_id):
     transcribe_episode(podcast_episode_id)
 
 
-
+@app.task(name="effortless_reach.transcribe_all_podcasts")
+def transcribe_all_podcasts():
+    transcription_requests = TranscriptRequest.objects.filter(status=TranscriptRequest.RequestStatus.PENDING).all()
+    for request in transcription_requests:
+        transcribe_podcast.apply_async([request.podcast_episode.id,], queue='bot' )
+        request.status = TranscriptRequest.RequestStatus.PROCESSING
+        request.save()

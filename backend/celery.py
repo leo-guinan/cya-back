@@ -113,5 +113,10 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=12, minute=0, day_of_week='*'),
         'options': {'queue': 'default'}
     },
+    'hourly_process_transcripts': {
+        'task': 'effortless_reach.transcribe_all_podcasts',
+        'schedule': crontab(hour='*', minute=0),
+        'options': {'queue': 'default'}
+    }
 
 }
