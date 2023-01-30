@@ -39,4 +39,15 @@ class Transcript(models.Model):
     error = models.TextField(null=True)
 
 
+class TranscriptRequest(models.Model):
+    class RequestStatus(models.TextChoices):
+        PENDING = 'PE', ('Pending')
+        PROCESSING = 'PR', ('Processing')
+        COMPLETED = 'CO', ('Completed')
+        FAILED = 'FA', ('Failed')
+
+    status = models.CharField(max_length=2, choices=RequestStatus.choices, default=RequestStatus.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    podcast_episode = models.OneToOneField(PodcastEpisode, related_name="transcript_requested", on_delete=models.CASCADE)
+    error = models.TextField(null=True)
 

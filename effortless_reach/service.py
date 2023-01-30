@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from effortless_reach.models import Podcast, PodcastEpisode, Transcript
-from effortless_reach.tasks import transcribe_podcast
+from effortless_reach.models import Podcast, PodcastEpisode, Transcript, TranscriptRequest
+
 from whisper.whisper import Whisper
 
 
@@ -29,7 +29,9 @@ def process_entry(entry, podcast, generator):
     episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %z")
     episode.podcast = podcast
     episode.save()
-    transcribe_podcast.delay(episode.id)
+    transcript_request = TranscriptRequest()
+    transcript_request.podcast_episode = episode
+    transcript_request.save()
     return episode
 
 def transcribe_episode(episode_id):
