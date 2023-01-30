@@ -14,7 +14,7 @@ class Podcast(models.Model):
     link = models.CharField(max_length=512)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    rss_feed = models.ForeignKey(RssFeed, on_delete=models.CASCADE)
+    rss_feed = models.OneToOneField(RssFeed, related_name="podcast", on_delete=models.CASCADE)
 
 class PodcastEpisode(models.Model):
     title = models.CharField(max_length=512)
@@ -26,7 +26,17 @@ class PodcastEpisode(models.Model):
     podcast = models.ForeignKey(Podcast, related_name="episodes", on_delete=models.CASCADE)
 
 class Transcript(models.Model):
+    class TranscriptStatus(models.TextChoices):
+        REQUESTED = 'RE', ('Requested')
+        PROCESSING = 'PR', ('Processing')
+        COMPLETED = 'CO', ('Completed')
+        FAILED = 'FA', ('Failed')
+
+    status = models.CharField(max_length=2, choices=TranscriptStatus.choices, default=TranscriptStatus.REQUESTED)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     episode = models.OneToOneField(PodcastEpisode, related_name="transcript", on_delete=models.CASCADE)
+    error = models.TextField(null=True)
+
+
 
