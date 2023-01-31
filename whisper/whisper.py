@@ -1,10 +1,12 @@
 import json
+import logging
 
 import requests
 from decouple import config
 
 from effortless_reach.models import Transcript
 
+logger = logging.getLogger(__name__)
 
 class Whisper:
     def __init__(self):
@@ -30,7 +32,7 @@ class Whisper:
 
             response = requests.post(self.whisper_url, headers=headers, data=data)
             transcribed_text = json.loads(response.content.decode("utf-8"))
-
+            logger.debug(transcribed_text)
             transcript.text = transcribed_text['text']
             transcript.status = Transcript.TranscriptStatus.COMPLETED
             transcript.save()
