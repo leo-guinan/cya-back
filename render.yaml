@@ -50,7 +50,7 @@ services:
     region: ohio
     env: python
     buildCommand: "./build.sh"
-    startCommand: "celery -A backend worker -Q bot --loglevel=info --concurrency=1"
+    startCommand: "celery -A backend worker -Q bot --loglevel=debug --concurrency=1"
     envVars:
       - key: REDIS_URL
         fromService:
