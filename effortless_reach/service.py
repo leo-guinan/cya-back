@@ -37,9 +37,17 @@ def process_entry(entry, podcast, generator):
 def transcribe_episode(episode_id):
     podcast_episode = PodcastEpisode.objects.get(id=episode_id)
     transcript = Transcript.objects.filter(episode=podcast_episode).first()
+    transcript_request = TranscriptRequest.objects.filter(podcast_episode=podcast_episode).first()
     if transcript is None:
-        whisper = Whisper()
-        transcript = Transcript()
-        transcript.episode = podcast_episode
-        transcript.save()
-        whisper.transcribe_podcast(transcript.id)
+        try:
+            whisper = Whisper()
+            transcript = Transcript()
+            transcript.episode = podcast_episode
+            transcript.save()
+            whisper.transcribe_podcast(transcript.id)
+            transcript_request.status = TranscriptRequest.RequestStatus.COMPLETED
+            transcript_request.save()
+        except Exception as e:
+            transcript_request.error = str(e)
+            transcript_request.status = TranscriptRequest.RequestStatus.FAILED
+            transcript_request.save()
