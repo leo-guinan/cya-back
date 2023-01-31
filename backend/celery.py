@@ -62,21 +62,6 @@ app.conf.beat_schedule = {
         'options': {'queue': 'default'}
 
     },
-    # 'refresh_twitter_tokens': {
-    #     'task': 'refresh_client_twitter_tokens',
-    #     'schedule': crontab(hour='*', minute=42)
-    # }
-    'watch_mentions': {
-        'task': 'handle_tweet',
-        'schedule': crontab(hour='*'),
-        'options': {'queue': 'bot'}
-    },
-    # 'process_triggers': {
-    #     'task': 'process_tweets',
-    #     'schedule': crontab(hour='*'),
-    #     'options': {'queue': 'bot'}
-    #
-    # },
     'daily_user_refresh': {
         'task': 'daily_user_refresh',
         'schedule': crontab(hour=0),
