@@ -20,6 +20,7 @@ class Whisper:
         url = transcript.episode.download_link
         try:
 
+            logger.info("Downloading podcast from %s", url)
             r = requests.get(url)
             data = r.content
 
@@ -30,9 +31,10 @@ class Whisper:
             }
 
 
+            logger.info("Sending podcast to whisper")
             response = requests.post(self.whisper_url, headers=headers, data=data)
             transcribed_text = json.loads(response.content.decode("utf-8"))
-            logger.debug(transcribed_text)
+            logger.info(transcribed_text)
             transcript.text = transcribed_text['text']
             transcript.status = Transcript.TranscriptStatus.COMPLETED
             transcript.save()
