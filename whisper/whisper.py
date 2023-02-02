@@ -3,9 +3,10 @@ import logging
 
 import requests
 from decouple import config
+import hashlib
 
 from effortless_reach.models import Transcript
-
+import boto3
 logger = logging.getLogger(__name__)
 
 class Whisper:
@@ -23,20 +24,13 @@ class Whisper:
             logger.info("Downloading podcast from %s", url)
             r = requests.get(url)
             data = r.content
-
-
-            headers = {
-                'Authorization': f'Bearer {self.hugging_face_token}',
-                'Content-Type': 'audio/mpeg',
-            }
-
-
-            logger.info("Sending podcast to whisper")
-            response = requests.post(self.whisper_url, headers=headers, data=data)
-            transcribed_text = json.loads(response.content.decode("utf-8"))
-            logger.info(transcribed_text)
-            transcript.text = transcribed_text['text']
-            transcript.status = Transcript.TranscriptStatus.COMPLETED
+            # upload to s3
+            s3 = boto3.client('s3')
+            owner_email = transcript.episode.podcast.owner.email
+            podcast_name = transcript.episode.podcast.title
+            owner_podcast_hash = hashlib.md5(f'{owner_email}-{podcast_name}'.lower().encode()).hexdigest()
+            s3.put_object(Body=data, Bucket='effortless-reach', Key=f'{owner_podcast_hash}/{transcript_id}.mp3')
+            transcript.hash = owner_podcast_hash
             transcript.save()
         except Exception as e:
             transcript.status = Transcript.TranscriptStatus.FAILED
