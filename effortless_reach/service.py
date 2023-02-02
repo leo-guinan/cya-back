@@ -45,8 +45,6 @@ def transcribe_episode(episode_id):
             transcript.episode = podcast_episode
             transcript.save()
             whisper.transcribe_podcast(transcript.id)
-            transcript_request.status = TranscriptRequest.RequestStatus.COMPLETED
-            transcript_request.save()
         except Exception as e:
             transcript_request.error = str(e)
             transcript_request.status = TranscriptRequest.RequestStatus.FAILED
