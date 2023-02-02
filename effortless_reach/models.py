@@ -37,6 +37,7 @@ class Transcript(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     episode = models.OneToOneField(PodcastEpisode, related_name="transcript", on_delete=models.CASCADE)
     error = models.TextField(null=True)
+    hash = models.CharField(max_length=512, null=True)
 
 
 class TranscriptRequest(models.Model):
