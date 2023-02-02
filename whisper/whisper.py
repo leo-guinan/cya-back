@@ -26,7 +26,7 @@ class Whisper:
             data = r.content
             # upload to s3
             s3 = boto3.client('s3')
-            owner_email = transcript.episode.podcast.owner.email
+            owner_email = transcript.episode.podcast.rss_feed.owner.email
             podcast_name = transcript.episode.podcast.title
             owner_podcast_hash = hashlib.md5(f'{owner_email}-{podcast_name}'.lower().encode()).hexdigest()
             s3.put_object(Body=data, Bucket='effortless-reach', Key=f'{owner_podcast_hash}/{transcript_id}.mp3')
