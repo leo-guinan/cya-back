@@ -3,7 +3,23 @@ import logging
 
 import requests
 from decouple import config
-import hashlib
+from os.path import splitext
+from pydub import AudioSegment
+
+
+def wav_to_flac(wav_path):
+    flac_path = "%s.flac" % splitext(wav_path)[0]
+    song = AudioSegment.from_wav(wav_path)
+    song.export(flac_path, format="flac")
+    return flac_path
+
+
+def mp3_to_flac(mp3_path):
+    flac_path = "%s.flac" % splitext(mp3_path)[0]
+    song = AudioSegment.from_mp3(mp3_path)
+    song.export(flac_path, format="flac")
+    return flac_path
+
 
 from effortless_reach.models import Transcript
 import boto3
@@ -22,15 +38,29 @@ class Whisper:
         try:
 
             logger.info("Downloading podcast from %s", url)
+            # download the file
             r = requests.get(url)
-            data = r.content
-            # upload to s3
-            s3 = boto3.client('s3')
-            owner_email = transcript.episode.podcast.rss_feed.owner.email
-            podcast_name = transcript.episode.podcast.title
-            owner_podcast_hash = hashlib.md5(f'{owner_email}-{podcast_name}'.lower().encode()).hexdigest()
-            s3.put_object(Body=data, Bucket='effortless-reach', Key=f'incoming/{owner_podcast_hash}/{transcript_id}.mp3')
-            transcript.hash = owner_podcast_hash
+            # get the file name
+            file_name = url.split("/")[-1]
+            with open(file_name, "wb") as f:
+                f.write(r.content)
+            # convert to flac
+            converted_file = ""
+            if file_name.endswith(".mp3"):
+                converted_file = mp3_to_flac(file_name)
+            elif file_name.endswith(".wav"):
+                converted_file = wav_to_flac(file_name)
+
+            files = [('files', open(converted_file, 'rb'))]
+            raw_transcript_response = requests.post(self.whisper_url, files=files)
+
+            # format of response [ {
+            #  filename: "file.ext",
+            #  transcript: "transcript text"
+            # } ]
+            transcript_response = json.loads(raw_transcript_response.text)
+            transcript.text = transcript_response[0]["transcript"]
+            transcript.status = Transcript.TranscriptStatus.COMPLETED
             transcript.save()
         except Exception as e:
             transcript.status = Transcript.TranscriptStatus.FAILED
