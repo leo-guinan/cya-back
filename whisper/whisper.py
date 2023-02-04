@@ -3,8 +3,10 @@ import logging
 
 import requests
 from decouple import config
+
 from os.path import splitext
 from pydub import AudioSegment
+
 
 
 def wav_to_flac(wav_path):
@@ -63,7 +65,7 @@ class Whisper:
             logger.info("Parsing response")
             logger.info(raw_transcript_response.text)
             transcript_response = json.loads(raw_transcript_response.text)
-            transcript.text = transcript_response[0]["transcript"]
+            transcript.text = transcript_response[file_name]
             transcript.status = Transcript.TranscriptStatus.COMPLETED
             transcript.save()
         except Exception as e:
