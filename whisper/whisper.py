@@ -46,18 +46,22 @@ class Whisper:
                 f.write(r.content)
             # convert to flac
             converted_file = ""
+            logger.info("Converting podcast to flac")
             if file_name.endswith(".mp3"):
                 converted_file = mp3_to_flac(file_name)
             elif file_name.endswith(".wav"):
                 converted_file = wav_to_flac(file_name)
 
             files = [('files', open(converted_file, 'rb'))]
+            logger.info("Sending podcast to endpoint")
             raw_transcript_response = requests.post(self.whisper_url, files=files)
 
             # format of response [ {
             #  filename: "file.ext",
             #  transcript: "transcript text"
             # } ]
+            logger.info("Parsing response")
+            logger.info(raw_transcript_response.text)
             transcript_response = json.loads(raw_transcript_response.text)
             transcript.text = transcript_response[0]["transcript"]
             transcript.status = Transcript.TranscriptStatus.COMPLETED
