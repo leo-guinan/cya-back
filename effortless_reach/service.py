@@ -1,9 +1,10 @@
 from datetime import datetime
 
 from effortless_reach.models import Podcast, PodcastEpisode, Transcript, TranscriptRequest
+from search.models import Content
 
 from whisper.whisper import Whisper
-
+from search.tasks import save_content_task
 
 def process_channel(channel, feed):
     podcast = Podcast()
@@ -49,3 +50,18 @@ def transcribe_episode(episode_id):
             transcript_request.error = str(e)
             transcript_request.status = TranscriptRequest.RequestStatus.FAILED
             transcript_request.save()
+
+def create_embeddings_for_podcast_episode(episode_id):
+    podcast_episode = PodcastEpisode.objects.get(id=episode_id)
+    transcript = Transcript.objects.filter(episode=podcast_episode).first()
+
+    if transcript is not None:
+        content = Content()
+        content.creator = podcast_episode.podcast.rss_feed.owner
+        content.type = "podcast"
+        content.fulltext = transcript.text
+        content.title = podcast_episode.title
+        content.description = podcast_episode.description
+        content.link = podcast_episode.link
+        content.save()
+        save_content_task.delay(content.id)
