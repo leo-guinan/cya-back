@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
 from pytz import utc
@@ -15,6 +16,8 @@ from rest_framework_api_key.permissions import HasAPIKey
 from client.exception import UnknownClientAccount, UnknownClient
 from client.models import ClientAccount, Client, AccountConfig
 from client.serializers import ClientAccountSerializer
+from effortless_reach.models import RssFeed
+from effortless_reach.tasks import process_rss_feed
 from twitter.models import Relationship, TwitterAccount
 from unfollow.models import AccountCheck
 from unfollow.tasks import lookup_twitter_user
@@ -123,3 +126,25 @@ def fetch_users(request):
         serializer = ClientAccountSerializer(account)
         results.append(serializer.data)
     return Response(results)
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+@csrf_exempt
+def add_rss_feed_effortless_reach(request):
+    body = json.loads(request.body)
+    url = body['url']
+    client = Client.objects.filter(name="EffortlessReach").first()
+    client_account = ClientAccount.objects.filter(email='admin@effortlessreach.com', client=client).first()
+    if not client_account:
+        client_account = ClientAccount.objects.create(email='admin@effortlessreach.com', client=client)
+        client_account.save()
+
+
+    existing_feed = RssFeed.objects.filter(url=url).first()
+    if not existing_feed:
+        existing_feed = RssFeed(url=url, owner=client_account)
+        existing_feed.save()
+    process_rss_feed.delay(existing_feed.id)
+    return Response({"feed_id": existing_feed.id, "client_account_id": client_account.id})
