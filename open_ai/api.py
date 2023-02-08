@@ -9,6 +9,7 @@ from open_ai.models import OpenAICall
 class OpenAIAPI:
     def __init__(self):
         openai.api_key = config('OPENAI_API_KEY')
+        openai.api_base = "https://oai.hconeai.com/v1"
 
     def complete(self,
                  prompt,

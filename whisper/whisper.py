@@ -44,6 +44,7 @@ class Whisper:
             r = requests.get(url)
             # get the file name
             file_name = url.split("/")[-1]
+            file_name = file_name.split("?")[0]
             with open(file_name, "wb") as f:
                 f.write(r.content)
             # convert to flac
