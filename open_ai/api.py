@@ -9,6 +9,7 @@ from open_ai.models import OpenAICall
 class OpenAIAPI:
     def __init__(self):
         openai.api_key = config('OPENAI_API_KEY')
+        openai.api_base = "https://oai.hconeai.com/v1"
 
     def complete(self,
                  prompt,
@@ -35,14 +36,14 @@ class OpenAIAPI:
                                                 temperature=temperature,
                                                 max_tokens=max_tokens,
                                                 )
-        call = OpenAICall(tokens_used=response['usage']['total_tokens'],
-                          source=source,
-                          request_id=uuid.uuid4(),
-                          request_type='completion',
-                          model=engine,
-                          parent_id=parent_id
-                          )
-        call.save()
+        # call = OpenAICall(tokens_used=response['usage']['total_tokens'],
+        #                   source=source,
+        #                   request_id=uuid.uuid4(),
+        #                   request_type='completion',
+        #                   model=engine,
+        #                   parent_id=parent_id
+        #                   )
+        # call.save()
         return response.choices[0].text
 
     def embeddings(self,
@@ -51,12 +52,12 @@ class OpenAIAPI:
                  parent_id = None,
                    ):
         response = openai.Embedding.create(input=text, engine='text-embedding-ada-002')
-        call = OpenAICall(tokens_used=response['usage']['total_tokens'],
-                          source=source,
-                          request_id=uuid.uuid4(),
-                          request_type='embedding',
-                          model='text-embedding-ada-002',
-                          parent_id=parent_id
-                          )
-        call.save()
+        # call = OpenAICall(tokens_used=response['usage']['total_tokens'],
+        #                   source=source,
+        #                   request_id=uuid.uuid4(),
+        #                   request_type='embedding',
+        #                   model='text-embedding-ada-002',
+        #                   parent_id=parent_id
+        #                   )
+        # call.save()
         return response['data'][0]['embedding']
