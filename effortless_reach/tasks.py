@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 def process_rss_feed(feed_id):
     feed = RssFeed.objects.get(id=feed_id)
     parsed_feed = parse_feed(feed.url)
+    logger.info(parsed_feed)
     channel = parsed_feed.channel
     logger.info(channel)
     feed_generator = channel.generator if hasattr(channel, 'generator') else ''
@@ -28,7 +29,7 @@ def process_rss_feed(feed_id):
 @app.task(name="effortless_reach.transcribe_podcast")
 def transcribe_podcast(podcast_episode_id):
     transcribe_episode(podcast_episode_id)
-    create_embeddings_for_episode.delay(podcast_episode_id)
+    create_embeddings_for_episode(podcast_episode_id)
 
 
 @app.task(name="effortless_reach.transcribe_all_podcasts")
