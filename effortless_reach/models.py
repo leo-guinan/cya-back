@@ -52,3 +52,10 @@ class TranscriptRequest(models.Model):
     podcast_episode = models.OneToOneField(PodcastEpisode, related_name="transcript_requested", on_delete=models.CASCADE)
     error = models.TextField(null=True)
 
+
+class TranscriptChunk(models.Model):
+    transcript = models.ForeignKey('effortless_reach.Transcript', related_name='chunks', on_delete=models.CASCADE)
+    text = models.TextField()
+    embeddings = models.JSONField(null=True, blank=True)
+    embeddings_saved = models.BooleanField(default=False)
+    chunk_id = models.CharField(max_length=255, unique=True)
