@@ -134,7 +134,7 @@ def fetch_users(request):
 @csrf_exempt
 def add_rss_feed_effortless_reach(request):
     body = json.loads(request.body)
-    url = body['url'].trim()
+    url = body['url'].strip()
     client = Client.objects.filter(name="EffortlessReach").first()
     client_account = ClientAccount.objects.filter(email='admin@effortlessreach.com', client=client).first()
     if not client_account:
