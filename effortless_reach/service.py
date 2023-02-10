@@ -37,7 +37,11 @@ def process_entry(entry, podcast, generator):
             episode.download_link = link.href
             break
     episode.description = entry.description
-    episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %z")
+    try:
+        episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %z")
+    except ValueError:
+        episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %Z")
+
     episode.podcast = podcast
     episode.save()
     transcript_request = TranscriptRequest()
