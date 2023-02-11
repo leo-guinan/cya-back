@@ -12,15 +12,15 @@ logger = logging.getLogger(__name__)
 def process_rss_feed(feed_id):
     feed = RssFeed.objects.get(id=feed_id)
     parsed_feed = parse_feed(feed.url)
-    logger.info(parsed_feed)
+    logger.debug(parsed_feed)
     channel = parsed_feed.channel
-    logger.info(channel)
+    logger.debug(channel)
     feed_generator = channel.generator if hasattr(channel, 'generator') else ''
 
     podcast = process_channel(channel, feed)
     entries = parsed_feed.entries
     for entry in entries:
-        logger.info(entry)
+        logger.debug(entry)
         process_entry(entry, podcast, feed_generator)
     feed.processed = True
     feed.processed_at = datetime.now()
