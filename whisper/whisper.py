@@ -65,7 +65,7 @@ class Whisper:
             #  transcript: "transcript text"
             # } ]
             logger.info("Parsing response")
-            logger.info(raw_transcript_response.text)
+            logger.debug(raw_transcript_response.text)
             transcript_response = json.loads(raw_transcript_response.text)
             transcript.text = transcript_response[converted_file]
             transcript.status = Transcript.TranscriptStatus.COMPLETED
