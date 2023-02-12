@@ -21,6 +21,7 @@ def process_channel(channel, feed):
     podcast.title = channel.title
     podcast.link = channel.link
     podcast.description = channel.description
+    podcast.image = channel.image.href
     podcast.rss_feed = feed
     podcast.save()
     return podcast
@@ -41,7 +42,7 @@ def process_entry(entry, podcast, generator):
         episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %z")
     except ValueError:
         episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %Z")
-
+    episode.image = entry.img
     episode.podcast = podcast
     episode.save()
     transcript_request = TranscriptRequest()

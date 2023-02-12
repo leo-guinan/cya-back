@@ -15,6 +15,7 @@ class Podcast(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     rss_feed = models.OneToOneField(RssFeed, related_name="podcast", on_delete=models.CASCADE)
+    image = models.CharField(max_length=512, null=True, blank=True)
 
 class PodcastEpisode(models.Model):
     title = models.CharField(max_length=512)
@@ -24,6 +25,7 @@ class PodcastEpisode(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     published_at = models.DateTimeField()
     podcast = models.ForeignKey(Podcast, related_name="episodes", on_delete=models.CASCADE)
+    image = models.CharField(max_length=512, null=True, blank=True)
 
 class Transcript(models.Model):
     class TranscriptStatus(models.TextChoices):

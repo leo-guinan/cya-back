@@ -1,14 +1,14 @@
 import logging
+import uuid
 
 from langchain.text_splitter import NLTKTextSplitter
 
 from open_ai.api import OpenAIAPI
-import uuid
-
 from pinecone_api.pinecone_api import PineconeAPI
 from search.models import ContentChunk
 
 logger = logging.getLogger(__name__)
+
 
 def split(content):
     # split text into chunks
@@ -45,22 +45,39 @@ def get_embeddings(content_chunk_id):
     # return embeddings
     return content_chunk_id
 
-def query_topics(topics, for_author=None):
+
+def query_topics(topics, for_author=None, metadata=None):
     pinecone = PineconeAPI()
-    results = pinecone.search(query_vector=topics, k=10, metadata={"author": {"$eq": for_author}} if for_author else None)
+    if not metadata:
+        if for_author:
+            metadata = {"author": {"$eq": for_author}}
+    results = pinecone.search(query_vector=topics, k=10, metadata=metadata)
     result = results.matches[0]
     chunk = ContentChunk.objects.filter(chunk_id=result.id).first()
     return chunk.content.title, chunk.content.link, chunk.content.description, chunk.text, chunk.content.creator.email
+
 
 def search(query, creator):
     openai = OpenAIAPI()
     topic_embeddings = openai.embeddings(query, source="search")
     return query_topics(topic_embeddings, creator)
 
-def curated(query):
+
+def curated(query, curator):
     openai = OpenAIAPI()
+    podcasts = [podcast.title for podcast in curator.podcasts.all()]
+    episodes = [episode.title for episode in curator.podcast_episodes.all()]
+    metadata = {
+        "$or": [
+            {"podcast": {"$in": podcasts}},
+            {"episode": {"$in": episodes}}
+        ]
+    }
+
     topic_embeddings = openai.embeddings(query, source="search")
-    return query_topics(topic_embeddings)
+    return query_topics(topic_embeddings, metadata=metadata)
+
+
 def save_embeddings(content_chunk_id, email, content_type):
     content_chunk = ContentChunk.objects.filter(id=content_chunk_id).first()
     pinecone = PineconeAPI()
