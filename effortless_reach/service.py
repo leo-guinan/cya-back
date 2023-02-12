@@ -18,31 +18,40 @@ logger = logging.getLogger(__name__)
 
 def process_channel(channel, feed):
     podcast = Podcast()
-    podcast.title = channel.title
-    podcast.link = channel.link
-    podcast.description = channel.description
-    podcast.image = channel.image.href
+    try:
+        podcast.title = channel.title
+        podcast.link = channel.link
+        podcast.description = channel.description
+        podcast.image = channel.image.href
+    except:
+        logger.error("Error while processing channel: %s", channel)
+        logger.error("saving minimal info")
     podcast.rss_feed = feed
     podcast.save()
     return podcast
 
 def process_entry(entry, podcast, generator):
     episode = PodcastEpisode()
-    episode.title = entry.title
-    if 'Transistor' in generator:
-        episode.link = entry.link
-    else:
-        episode.link = entry.links[0].href
-    for link in entry.links:
-        if link.type == "audio/mpeg":
-            episode.download_link = link.href
-            break
-    episode.description = entry.description
     try:
-        episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %z")
-    except ValueError:
-        episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %Z")
-    episode.image = entry.img
+        episode.title = entry.title
+        if 'Transistor' in generator:
+            episode.link = entry.link
+        else:
+            episode.link = entry.links[0].href
+        for link in entry.links:
+            if link.type == "audio/mpeg":
+                episode.download_link = link.href
+                break
+        episode.description = entry.description
+        try:
+            episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %z")
+        except ValueError:
+            episode.published_at = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %Z")
+        episode.image = entry.img
+    except Exception as e:
+        logger.error("Error while processing entry: %s", entry)
+        logger.error(str(e))
+        logger.error("saving minimal info")
     episode.podcast = podcast
     episode.save()
     transcript_request = TranscriptRequest()

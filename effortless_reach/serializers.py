@@ -36,6 +36,19 @@ class PodcastEpisodeSerializer(serializers.ModelSerializer):
         ]
 
 class PodcastSerializer(serializers.ModelSerializer):
+
+
+    class Meta:
+        model = Podcast
+        fields = [
+            'id',
+            'title',
+            'link',
+            'description',
+            'image',
+        ]
+
+class PodcastWithEpisodeSerializer(serializers.ModelSerializer):
     episodes = PodcastEpisodeSerializer(many=True)
 
 

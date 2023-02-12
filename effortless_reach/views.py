@@ -8,7 +8,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from client.models import ClientAccount, Client
 from effortless_reach.models import RssFeed, Podcast
-from effortless_reach.serializers import PodcastSerializer
+from effortless_reach.serializers import PodcastSerializer, PodcastWithEpisodeSerializer
 from effortless_reach.tasks import process_rss_feed
 
 
@@ -50,5 +50,5 @@ def get_podcast_episodes(request):
     podcast = rss_feed.podcast
     if podcast.rss_feed.owner != client_account:
         return Response({'error': 'client account does not own podcast'})
-    serializer = PodcastSerializer(podcast)
+    serializer = PodcastWithEpisodeSerializer(podcast)
     return Response(serializer.data)

@@ -33,4 +33,5 @@ urlpatterns = [
     path('api/search/', include('search.urls')),
     path('api/effortless_reach/', include('effortless_reach.urls')),
     path('webhooks/', include('webhooks.urls')),
+    path('api/payments/', include('payments.urls')),
 ]
