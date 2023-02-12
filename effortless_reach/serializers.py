@@ -32,6 +32,7 @@ class PodcastEpisodeSerializer(serializers.ModelSerializer):
             'published_at',
             'transcript',
             'transcript_status',
+            'image',
         ]
 
 class PodcastSerializer(serializers.ModelSerializer):
@@ -41,10 +42,12 @@ class PodcastSerializer(serializers.ModelSerializer):
     class Meta:
         model = Podcast
         fields = [
+            'id',
             'title',
             'link',
             'description',
             'episodes',
+            'image',
         ]
 
 

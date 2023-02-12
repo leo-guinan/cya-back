@@ -37,6 +37,11 @@ class ClientAccount(models.Model):
     access_key = models.CharField("oauth v1 access key", max_length=255, null=True, blank=True)
     secret_access_key = models.CharField("oauth v2 secret key", max_length=255, null=True, blank=True)
 
+    def get_curator(self):
+        if hasattr(self, 'curation'):
+            return self.curation
+        return None
+
 
 class StaffAccount(models.Model):
     client = models.ForeignKey("client.Client", related_name="staff", on_delete=models.CASCADE)
@@ -61,6 +66,8 @@ class AccountConfig(models.Model):
         TWEET = 'TW', ('Tweet')
         EMAIL = 'EM', ('Email')
         DIRECT_MESSAGE = "DM", ("Direct Message")
+
     client_account = models.OneToOneField("client.ClientAccount", related_name="config", on_delete=models.CASCADE)
-    notification_preference = models.CharField(max_length=2, choices=NotificationPreference.choices, default=NotificationPreference.TWEET)
+    notification_preference = models.CharField(max_length=2, choices=NotificationPreference.choices,
+                                               default=NotificationPreference.TWEET)
     notification_requested = models.BooleanField("Has the user requested notification?", default=False)

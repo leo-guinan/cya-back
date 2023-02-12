@@ -44,4 +44,14 @@ def transcribe_all_podcasts():
 def create_embeddings_for_episode(podcast_episode_id):
     create_embeddings_for_podcast_episode(podcast_episode_id)
 
+@app.task(name="effortless_reach.get_image_for_podcasts")
+def get_image_for_podcasts():
+    podcasts = Podcast.objects.filter(image=None).all()
+    for podcast in podcasts:
+        rss_feed = podcast.rss_feed
+        parsed_feed = parse_feed(rss_feed.url)
+        channel = parsed_feed.channel
+        podcast.image = channel.image.href
+        podcast.save()
+
 

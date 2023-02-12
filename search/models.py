@@ -16,3 +16,8 @@ class ContentChunk(models.Model):
     embeddings = models.JSONField(null=True, blank=True)
     embeddings_saved = models.BooleanField(default=False)
     chunk_id = models.CharField(max_length=255, unique=True)
+
+class Curator(models.Model):
+    client_account = models.OneToOneField('client.ClientAccount', related_name='curation', on_delete=models.CASCADE)
+    podcasts = models.ManyToManyField('effortless_reach.Podcast', related_name='curators')
+    podcast_episodes = models.ManyToManyField('effortless_reach.PodcastEpisode', related_name='curators')
