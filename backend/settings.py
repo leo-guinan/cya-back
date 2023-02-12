@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'podcast_toolkit',
     'search',
     'effortless_reach',
+    'payments'
 ]
 SITE_ID = 2
 

@@ -36,7 +36,7 @@ class ClientAccount(models.Model):
     refreshed = models.DateTimeField("time the token was refreshed", default=django.utils.timezone.now)
     access_key = models.CharField("oauth v1 access key", max_length=255, null=True, blank=True)
     secret_access_key = models.CharField("oauth v2 secret key", max_length=255, null=True, blank=True)
-
+    stripe_customer_id = models.CharField("stripe customer id", max_length=255, null=True, blank=True)
     def get_curator(self):
         if hasattr(self, 'curation'):
             return self.curation
