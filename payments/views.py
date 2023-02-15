@@ -33,9 +33,9 @@ def create_checkout_session(request):
                 'quantity': 1,
             },
         ],
-        mode='payment',
+        mode='subscription',
         success_url=domain + '/success/',
         cancel_url=domain + '/cancel/',
     )
-
-    return Response({"checkout_session_id": checkout_session.id})
+    print(checkout_session)
+    return Response({"checkout_session_id": checkout_session.id, "checkout_url": checkout_session.url})

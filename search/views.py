@@ -109,6 +109,22 @@ def browse_podcasts(request):
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
+def curated_podcasts(request):
+    body = json.loads(request.body)
+    curator_id = body['curator_id']
+    podcasts = Podcast.objects.filter(curators__id=curator_id)
+    results = []
+    for podcast in podcasts:
+        serializer = PodcastSerializer(podcast)
+        extended_podcast = serializer.data
+        extended_podcast['curated'] = podcast.curators.filter(id=curator_id).exists()
+        results.append(extended_podcast)
+
+    return Response({"podcasts": results})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
 def curate_podcast(request):
     body = json.loads(request.body)
     curator_id = body['curator_id']
