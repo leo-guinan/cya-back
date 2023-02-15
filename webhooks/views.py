@@ -5,6 +5,7 @@ import json
 import logging
 
 from decouple import config
+from django.core.exceptions import SuspiciousOperation
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, renderer_classes, authentication_classes, permission_classes
 from rest_framework.renderers import JSONRenderer
@@ -174,4 +175,34 @@ def process_twitter_user(request):
     twitter_user_experiment.delay(twitter_username, for_author)
     return Response({'status': 'ok'}, status=200)
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@authentication_classes([])
+@permission_classes([HasAPIKey])
+@csrf_exempt
+def stripe(request):
+    payload = request.body
+    sig_header = request.META['HTTP_STRIPE_SIGNATURE']
+    event = None
+
+    # Try to validate and create a local instance of the event
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, config('STRIPE_WEBHOOK_SECRET'))
+    except ValueError as e:
+        # Invalid payload
+        return SuspiciousOperation(e)
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        return SuspiciousOperation(e)
+
+    # Handle the checkout.session.completed event
+    if event['type'] == 'checkout.session.completed':
+        checkout_session = event['data']['object']
+        # Make sure is already paid and not delayed
+        if checkout_session.payment_status == "paid":
+            print("payment")
+            # _handle_successful_payment(checkout_session)
+
+    # Passed signature verification
+    return Response(status=200)
 
