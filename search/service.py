@@ -3,6 +3,7 @@ import uuid
 
 from langchain.text_splitter import NLTKTextSplitter
 
+from effortless_reach.models import TranscriptChunk
 from open_ai.api import OpenAIAPI
 from pinecone_api.pinecone_api import PineconeAPI
 from search.models import ContentChunk
@@ -50,7 +51,7 @@ def query_topics(topics,  metadata=None):
     pinecone = PineconeAPI()
     results = pinecone.search(query_vector=topics, k=10, metadata=metadata)
     result = results.matches[0]
-    chunk = ContentChunk.objects.filter(chunk_id=result.id).first()
+    chunk = TranscriptChunk.objects.filter(chunk_id=result.id).first()
     return chunk.content.title, chunk.content.link, chunk.content.description, chunk.text, chunk.content.creator.email
 
 
