@@ -21,12 +21,11 @@ from search.service import search, curated
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
 @csrf_exempt
-def search_creator_content(request):
+def search_content(request):
 
     body = json.loads(request.body)
     search_term = body['search_term']
-    creator = body['creator']
-    title, link, description, chunk, email = search(search_term, creator)
+    title, link, description, chunk, email = search(search_term)
     result = {
         'title': title,
         'link': link,

@@ -46,21 +46,18 @@ def get_embeddings(content_chunk_id):
     return content_chunk_id
 
 
-def query_topics(topics, for_author=None, metadata=None):
+def query_topics(topics,  metadata=None):
     pinecone = PineconeAPI()
-    if not metadata:
-        if for_author:
-            metadata = {"author": {"$eq": for_author}}
     results = pinecone.search(query_vector=topics, k=10, metadata=metadata)
     result = results.matches[0]
     chunk = ContentChunk.objects.filter(chunk_id=result.id).first()
     return chunk.content.title, chunk.content.link, chunk.content.description, chunk.text, chunk.content.creator.email
 
 
-def search(query, creator):
+def search(query):
     openai = OpenAIAPI()
     topic_embeddings = openai.embeddings(query, source="search")
-    return query_topics(topic_embeddings, creator)
+    return query_topics(topic_embeddings)
 
 
 def curated(query, curator):
