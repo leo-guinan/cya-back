@@ -52,7 +52,7 @@ def query_topics(topics,  metadata=None):
     results = pinecone.search(query_vector=topics, k=10, metadata=metadata)
     result = results.matches[0]
     chunk = TranscriptChunk.objects.filter(chunk_id=result.id).first()
-    return chunk.content.title, chunk.content.link, chunk.content.description, chunk.text, chunk.content.creator.email
+    return chunk.transcript.episode.title, chunk.transcript.episode.link, chunk.transcript.episode.description, chunk.text
 
 
 def search(query):
