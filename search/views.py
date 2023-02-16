@@ -25,13 +25,12 @@ def search_content(request):
 
     body = json.loads(request.body)
     search_term = body['search_term']
-    title, link, description, chunk, email = search(search_term)
+    title, link, description, chunk = search(search_term)
     result = {
         'title': title,
         'link': link,
         'description': description,
         'chunk': chunk,
-        'author': email
     }
     return Response(result)
 
@@ -48,13 +47,12 @@ def search_curated_content(request):
     if not curator:
         return Response({'error': 'Curator not found'})
     search_term = body['search_term']
-    title, link, description, chunk, email = curated(search_term, curator)
+    title, link, description, chunk = curated(search_term, curator)
     result = {
         'title': title,
         'link': link,
         'description': description,
         'chunk': chunk,
-        'author': email
     }
     return Response(result)
 
