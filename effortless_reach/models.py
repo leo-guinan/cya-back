@@ -21,6 +21,7 @@ class PodcastEpisode(models.Model):
     title = models.CharField(max_length=512)
     link = models.CharField(max_length=512)
     download_link = models.CharField(max_length=512, null=True)
+    transformed_link = models.CharField(max_length=512, null=True)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     published_at = models.DateTimeField()
