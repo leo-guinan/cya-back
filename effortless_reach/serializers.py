@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from effortless_reach.models import PodcastEpisode, Podcast, Transcript
+from effortless_reach.models import PodcastEpisode, Podcast, Transcript, Summary, KeyPoints
+
 
 class TranscriptSerializer(serializers.ModelSerializer):
     class Meta:
@@ -8,9 +9,25 @@ class TranscriptSerializer(serializers.ModelSerializer):
         fields = [
             'text',
         ]
+
+class SummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Summary
+        fields = [
+            'text',
+        ]
+
+class KeyPointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KeyPoints
+        fields = [
+            'text',
+        ]
 class PodcastEpisodeSerializer(serializers.ModelSerializer):
     transcript_status = serializers.SerializerMethodField('get_transcript_status')
     transcript = TranscriptSerializer(many=False, read_only=True)
+    summary = SummarySerializer(many=False, read_only=True)
+    key_points = KeyPointSerializer(many=False, read_only=True)
     def get_transcript_status(self, obj):
         try:
             if not obj.transcript.exists():
@@ -33,6 +50,8 @@ class PodcastEpisodeSerializer(serializers.ModelSerializer):
             'transcript',
             'transcript_status',
             'image',
+            'summary',
+            'key_points'
         ]
 
 class PodcastSerializer(serializers.ModelSerializer):

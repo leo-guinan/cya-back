@@ -7,9 +7,11 @@ from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from client.models import ClientAccount, Client
-from effortless_reach.models import RssFeed, Podcast
-from effortless_reach.serializers import PodcastSerializer, PodcastWithEpisodeSerializer
-from effortless_reach.tasks import process_rss_feed
+from effortless_reach.models import RssFeed, Podcast, PodcastEpisode
+from effortless_reach.serializers import PodcastSerializer, PodcastWithEpisodeSerializer, KeyPointSerializer, \
+    SummarySerializer
+from effortless_reach.service import get_keypoints, summarize
+from effortless_reach.tasks import process_rss_feed, get_episode_summary, get_episode_keypoints
 
 
 # Create your views here.
@@ -52,3 +54,30 @@ def get_podcast_episodes(request):
         return Response({'error': 'client account does not own podcast'})
     serializer = PodcastWithEpisodeSerializer(podcast)
     return Response(serializer.data)
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def generate_summary(request):
+    body = json.loads(request.body)
+    episode_id = body['episode_id']
+    episode = PodcastEpisode.objects.filter(id=episode_id).first()
+    if not episode:
+        return Response({'error': 'Episode not found'})
+    get_episode_summary.delay(episode_id)
+    # summary = summarize(episode_id)
+    # summary_serializer = SummarySerializer(summary)
+    return Response({"summary": "requested"})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def generate_keypoints(request):
+    body = json.loads(request.body)
+    episode_id = body['episode_id']
+    episode = PodcastEpisode.objects.filter(id=episode_id).first()
+    if not episode:
+        return Response({'error': 'Episode not found'})
+    get_episode_keypoints.delay(episode_id)
+    return Response({"keypoints": "requested"})

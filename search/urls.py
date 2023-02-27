@@ -1,8 +1,7 @@
 from django.urls import path
 
 from search.views import search_curated_content, create_curator, browse_podcasts, \
-    curate_podcast, uncurate_podcast, curated_podcasts, search_content
-
+    curate_podcast, uncurate_podcast, curated_podcasts, search_content, browse_episodes
 urlpatterns = [
     path('search/', search_content),
     path('curated/', search_curated_content),
@@ -11,6 +10,7 @@ urlpatterns = [
     path('curated_podcasts/', curated_podcasts),
     path('curate/', curate_podcast),
     path('uncurate/', uncurate_podcast),
+    path('browse_episodes/', browse_episodes),
 
 
 ]

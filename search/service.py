@@ -19,9 +19,9 @@ def split(content):
     content_chunks = []
 
     for chunk in chunks:
-        logger.debug(f"Saving chunk with size {len(chunk)}")
+        logger.error(f"Saving chunk with size {len(chunk)}")
         if len(chunk) > 500:
-            logger.debug(f"Chunk size is too big. Splitting again")
+            logger.error(f"Chunk size is too big. Splitting again")
             sub_chunks = splitter.split_text(chunk)
             for sub_chunk in sub_chunks:
                 content_chunk = ContentChunk.objects.create(content=content, text=sub_chunk, chunk_id=uuid.uuid4())
@@ -47,7 +47,7 @@ def get_embeddings(content_chunk_id):
     return content_chunk_id
 
 
-def query_topics(topics,  metadata=None):
+def query_topics(topics, metadata=None):
     pinecone = PineconeAPI()
     results = pinecone.search(query_vector=topics, k=10, metadata=metadata)
     result = results.matches[0]
