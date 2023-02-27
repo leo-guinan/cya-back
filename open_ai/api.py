@@ -4,8 +4,9 @@ import openai
 from decouple import config
 
 from open_ai.models import OpenAICall
+import logging
 
-
+logger = logging.getLogger(__name__)
 class OpenAIAPI:
     def __init__(self):
         openai.api_key = config('OPENAI_API_KEY')
@@ -44,7 +45,11 @@ class OpenAIAPI:
         #                   parent_id=parent_id
         #                   )
         # call.save()
-        return response.choices[0].text
+        try:
+            return response.choices[0].text
+        except Exception as re:
+            logger.error(f"Error while getting text from response: {re}")
+            logger.debug("Response: %s", response)
 
     def embeddings(self,
                    text,

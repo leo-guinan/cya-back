@@ -1,6 +1,11 @@
 from datetime import datetime
 
-from effortless_reach.models import Podcast, PodcastEpisode, Transcript, TranscriptRequest, TranscriptChunk
+from decouple import config
+
+from effortless_reach.models import Podcast, PodcastEpisode, Transcript, TranscriptRequest, TranscriptChunk, Summary, \
+    KeyPoints
+from transformer.transformers import summarize_podcast_section_summaries, summarize_podcast_section_key_points, \
+    podcast_transcript_to_key_points, podcast_transcript_to_summary
 
 from whisper.whisper import Whisper
 from search.tasks import save_content_task
@@ -12,7 +17,6 @@ from open_ai.api import OpenAIAPI
 import uuid
 
 from pinecone_api.pinecone_api import PineconeAPI
-from search.models import ContentChunk
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +86,7 @@ def create_embeddings_for_podcast_episode(episode_id):
     transcript = Transcript.objects.filter(episode=podcast_episode).first()
 
     if transcript and transcript.text:
+        logger.info("Creating embeddings for podcast episode: %s", podcast_episode.title)
         chunk_ids = split(transcript)
         for chunk_id in chunk_ids:
             get_embeddings(chunk_id)
@@ -96,7 +101,7 @@ def split(transcript):
     splitter = NLTKTextSplitter(chunk_size=500)
     chunks = splitter.split_text(text)
     transcript_chunks = []
-
+    logger.error("Splitting text into chunks")
     for chunk in chunks:
         logger.debug(f"Saving chunk with size {len(chunk)}")
         if len(chunk) > 500:
@@ -117,7 +122,7 @@ def get_embeddings(transcript_chunk_id):
         openai_api = OpenAIAPI()
         parent_id = uuid.uuid4()
         transcript_chunk = TranscriptChunk.objects.filter(id=transcript_chunk_id).first()
-        embeddings = openai_api.embeddings(transcript_chunk.text, source='effortless_reach', parent_id=parent_id)
+        embeddings = openai_api.embeddings(transcript_chunk.text, source='ChooseYourAlgorithm', parent_id=parent_id)
         transcript_chunk.embeddings = embeddings
         transcript_chunk.save()
     except Exception as e:
@@ -130,9 +135,83 @@ def save_embeddings(transcript_chunk_id):
     transcript_chunk = TranscriptChunk.objects.filter(id=transcript_chunk_id).first()
     pinecone = PineconeAPI()
     metadata = {
+        'environment': config('ENVIRONMENT', default='development'),
         'podcast': transcript_chunk.transcript.episode.podcast.title,
         'episode': transcript_chunk.transcript.episode.title,
+        'content_source': 'transcript'
     }
     pinecone.upsert([(str(transcript_chunk.chunk_id), transcript_chunk.embeddings, metadata)])
     transcript_chunk.embeddings_saved = True
     transcript_chunk.save()
+
+
+def divide_chunks(l, n):
+    # looping till length l
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+def summarize(podcast_episode_id):
+    episode_summary = Summary.objects.filter(episode_id=podcast_episode_id).first()
+    if episode_summary:
+        return episode_summary
+    openai = OpenAIAPI()
+    summary_chunks = []
+    chunks = TranscriptChunk.objects.filter(transcript__episode__id=podcast_episode_id).all()
+    if not chunks:
+        logger.info("No transcript chunks found. Creating them now...")
+        create_embeddings_for_podcast_episode(podcast_episode_id)
+        chunks = TranscriptChunk.objects.filter(transcript__episode__id=podcast_episode_id).all()
+    parent_id = uuid.uuid4()
+
+    for chunk in chunks:
+        summary_prompt = podcast_transcript_to_summary(chunk)
+
+        summary = openai.complete(summary_prompt, source="ChooseYourAlgorithm", parent_id=parent_id,
+                                  stop_tokens=['The summary:'])
+        if summary:
+            summary_chunks.append(summary)
+        else:
+            logger.warning(f"Summary for chunk {chunk.id} is empty")
+
+
+
+    logger.info(summarize_podcast_section_summaries(summary_chunks))
+    intermediate_summaries = []
+    for intermediate_chunk in divide_chunks(summary_chunks, 10):
+        intermediate_summary = openai.complete(summarize_podcast_section_summaries(intermediate_chunk), source="ChooseYourAlgorithm",
+                              parent_id=parent_id, )
+        intermediate_summaries.append(intermediate_summary)
+    summary = openai.complete(summarize_podcast_section_summaries(intermediate_summaries),
+                                           source="ChooseYourAlgorithm",
+                                           parent_id=parent_id, )
+    episode_summary = Summary.objects.create(episode_id=podcast_episode_id, text=summary)
+    return episode_summary
+
+def get_keypoints(podcast_episode_id):
+    episode_keypoints = KeyPoints.objects.filter(episode_id=podcast_episode_id).first()
+    if episode_keypoints:
+        return episode_keypoints
+    openai = OpenAIAPI()
+    key_points_chunks = []
+    chunks = TranscriptChunk.objects.filter(transcript__episode__id=podcast_episode_id).all()
+    if not chunks:
+        logger.info("No chunks found. Creating embeddings for podcast episode")
+        create_embeddings_for_podcast_episode(podcast_episode_id)
+        chunks = TranscriptChunk.objects.filter(transcript__episode__id=podcast_episode_id).all()
+    parent_id = uuid.uuid4()
+    for chunk in chunks:
+        key_points_prompt = podcast_transcript_to_key_points(chunk)
+        key_points = openai.complete(key_points_prompt, source="ChooseYourAlgorithm", parent_id=parent_id,  stop_tokens=['The key points:'])
+        if key_points:
+            key_points_chunks.append(key_points)
+        else:
+            logger.warning(f"Got no key points for chunk {chunk.text}")
+    intermediate_key_points = []
+    for intermediate_chunk in divide_chunks(key_points_chunks, 10):
+        intermediate_key_point = openai.complete(summarize_podcast_section_key_points(intermediate_chunk), source="ChooseYourAlgorithm",
+                                     parent_id=parent_id, )
+        intermediate_key_points.append(intermediate_key_point)
+    key_points = openai.complete(summarize_podcast_section_key_points(intermediate_key_points), source="ChooseYourAlgorithm",
+                             parent_id=parent_id, )
+    episode_keypoints = KeyPoints.objects.create(episode_id=podcast_episode_id, text=key_points)
+    return episode_keypoints
+

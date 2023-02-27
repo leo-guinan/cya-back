@@ -62,3 +62,16 @@ class TranscriptChunk(models.Model):
     embeddings = models.JSONField(null=True, blank=True)
     embeddings_saved = models.BooleanField(default=False)
     chunk_id = models.CharField(max_length=255, unique=True)
+
+
+class Summary(models.Model):
+    text = models.TextField()
+    episode = models.OneToOneField(PodcastEpisode, related_name="summary", on_delete=models.CASCADE)
+    error = models.TextField(null=True)
+
+class KeyPoints(models.Model):
+    text = models.TextField()
+    episode = models.OneToOneField(PodcastEpisode, related_name="key_points", on_delete=models.CASCADE)
+    error = models.TextField(null=True)
+
+

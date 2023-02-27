@@ -10,8 +10,9 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from client.exception import UnknownClient
 from client.models import Client, ClientAccount, AccountConfig
-from effortless_reach.models import Podcast
-from effortless_reach.serializers import PodcastSerializer
+from effortless_reach.models import Podcast, PodcastEpisode
+from effortless_reach.serializers import PodcastSerializer, PodcastEpisodeSerializer, SummarySerializer, \
+    KeyPointSerializer
 from search.models import Curator
 from search.service import search, curated
 
@@ -152,3 +153,19 @@ def uncurate_podcast(request):
     if podcast.curators.filter(id=curator_id).exists():
         podcast.curators.remove(curator)
     return Response({"status": "success"})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def browse_episodes(request):
+    body = json.loads(request.body)
+    podcast_id = body['podcast_id']
+    podcast = Podcast.objects.filter(id=podcast_id).first()
+    if not podcast:
+        return Response({'error': 'Podcast not found'})
+    results = []
+    for episode in podcast.episodes.all():
+        serializer = PodcastEpisodeSerializer(episode)
+        results.append(serializer.data)
+    return Response({"episodes": results})
+

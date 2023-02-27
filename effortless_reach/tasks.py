@@ -4,28 +4,19 @@ from datetime import datetime
 from os.path import splitext
 
 import requests
+from decouple import config
 from pydub import AudioSegment
 
 from backend.celery import app
 from effortless_reach.models import RssFeed, Podcast, PodcastEpisode, Transcript, TranscriptRequest
 from effortless_reach.service import process_channel, process_entry, transcribe_episode, \
-    create_embeddings_for_podcast_episode, save_embeddings, get_embeddings, split
+    create_embeddings_for_podcast_episode, save_embeddings, get_embeddings, split, summarize, get_keypoints
 from rss.service import parse_feed
 from s3.s3_client import S3Client
 
 logger = logging.getLogger(__name__)
 
 
-def wav_to_flac(wav_path, flac_path):
-    song = AudioSegment.from_wav(wav_path)
-    song.export(flac_path, format="flac")
-    return flac_path
-
-
-def mp3_to_flac(mp3_path, flac_path):
-    song = AudioSegment.from_mp3(mp3_path)
-    song.export(flac_path, format="flac")
-    return flac_path
 
 @app.task(name="effortless_reach.process_rss_feed")
 def process_rss_feed(feed_id):
@@ -53,7 +44,7 @@ def transcribe_podcast(podcast_episode_id):
 
 @app.task(name="effortless_reach.transcribe_all_podcasts")
 def transcribe_all_podcasts():
-    transcription_requests = TranscriptRequest.objects.filter(status=TranscriptRequest.RequestStatus.PENDING).all()
+    transcription_requests = TranscriptRequest.objects.filter(status=TranscriptRequest.RequestStatus.PENDING, podcast_episode__transformed_link__isnull=False).all()
     for request in transcription_requests:
         transcribe_podcast.apply_async([request.podcast_episode.id,], queue='bot' )
         request.status = TranscriptRequest.RequestStatus.PROCESSING
@@ -78,6 +69,8 @@ def get_image_for_podcasts():
 def convert_file(episode_id):
 
     episode = PodcastEpisode.objects.get(id=episode_id)
+    if episode.transformed_link:
+        return
     url = episode.download_link
     file_name = url.split("/")[-1]
     file_name = file_name.split("?")[0]
@@ -89,16 +82,14 @@ def convert_file(episode_id):
     logger.info("Converting podcast to flac")
     converted_filename = "%s.flac" % splitext(file_name)[0]
     try:
-        if episode.download_link.endswith('.mp3'):
-            mp3_to_flac(file_name, converted_filename)
-        elif episode.download_link.endswith('.wav'):
-            wav_to_flac(file_name, converted_filename)
-        else:
-            raise Exception("Unsupported file format")
-        episode.transformed_link = converted_filename
-        episode.save()
+
+        files = [('files', open(file_name, 'rb'))]
+        response = requests.post(config('CONVERT_URL'), files=files)
+        open(converted_filename, 'wb').write(response.content)
         s3 = S3Client()
         s3.upload_file(converted_filename, 'effortless-reach', f'flac/{episode.id}/{converted_filename}')
+        episode.transformed_link = converted_filename
+        episode.save()
     except Exception as e:
         logger.error(e)
     finally:
@@ -117,3 +108,10 @@ def convert_needed_files():
         convert_file.delay(episode.id)
 
 
+@app.task(name="effortless_reach_get_episode_summary")
+def get_episode_summary(episode_id):
+    summarize(episode_id)
+
+@app.task(name="effortless_reach_get_episode_keypoints")
+def get_episode_keypoints(episode_id):
+    get_keypoints(episode_id)

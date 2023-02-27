@@ -92,6 +92,11 @@ app.conf.beat_schedule = {
         'task': 'effortless_reach.transcribe_all_podcasts',
         'schedule': crontab(hour='*', minute=0),
         'options': {'queue': 'default'}
+    },
+    'daily_convert_files': {
+        'task': 'effortless_reach.convert_needed_files',
+        'schedule': crontab(hour=0, minute=0),
+        'options': {'queue': 'default'}
     }
 
 }
