@@ -45,11 +45,6 @@ app.conf.beat_schedule = {
     #     'task': 'run_analysis_on_accounts_errored',
     #     'schedule': crontab(hour='*', minute=0),
     # },
-    'message_beta_users': {
-        'task': 'send_dms_to_beta_users',
-        'schedule': crontab(hour='*', minute=0),
-        'options': {'queue': 'default'}
-    },
     'analyze_accounts': {
         'task': 'analyze_accounts_that_need_it',
         'schedule': crontab(hour='*'),
@@ -71,11 +66,6 @@ app.conf.beat_schedule = {
     'update_accounts_missing_data': {
         'task': 'populate_account_data',
         'schedule': crontab(minute='*/15'),
-        'options': {'queue': 'default'}
-    },
-    'notify_unfollow_analysis_complete': {
-        'task': 'notify_accounts_analysis_finished',
-        'schedule': crontab(minute='*/5'),
         'options': {'queue': 'default'}
     },
     'weekly_update_followers': {
