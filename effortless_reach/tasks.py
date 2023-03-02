@@ -8,7 +8,7 @@ from decouple import config
 from pydub import AudioSegment
 
 from backend.celery import app
-from effortless_reach.models import RssFeed, Podcast, PodcastEpisode, Transcript, TranscriptRequest
+from effortless_reach.models import RssFeed, Podcast, PodcastEpisode, Transcript, TranscriptRequest, TranscriptChunk
 from effortless_reach.service import process_channel, process_entry, transcribe_episode, \
     create_embeddings_for_podcast_episode, save_embeddings, get_embeddings, split, summarize, get_keypoints
 from rss.service import parse_feed
@@ -115,3 +115,13 @@ def get_episode_summary(episode_id):
 @app.task(name="effortless_reach_get_episode_keypoints")
 def get_episode_keypoints(episode_id):
     get_keypoints(episode_id)
+
+@app.task(name="effortless_reach.save_embeddings")
+def save_embeddings_task(episode_id):
+    save_embeddings(episode_id)
+
+@app.task(name="effortless_reach.save_needed_embeddings")
+def save_needed_embeddings():
+    chunks = TranscriptChunk.objects.filter(embeddings_saved=False).all()
+    for chunk in chunks:
+        save_embeddings_task.delay(chunk.id)
