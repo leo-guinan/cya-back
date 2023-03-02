@@ -140,7 +140,7 @@ def save_embeddings(transcript_chunk_id):
         'episode': transcript_chunk.transcript.episode.title,
         'content_source': 'transcript'
     }
-    pinecone.upsert([(str(transcript_chunk.chunk_id), transcript_chunk.embeddings, metadata)])
+    pinecone.upsert([(str(transcript_chunk.chunk_id), transcript_chunk.embeddings, metadata)], 'podcast_embeddings')
     transcript_chunk.embeddings_saved = True
     transcript_chunk.save()
 

@@ -8,8 +8,8 @@ class PineconeAPI:
         self.index = pinecone.Index(index_name=self.index_name)
 
 
-    def upsert(self, vectors):
-        self.index.upsert(vectors=vectors)
+    def upsert(self, vectors, namespace=None):
+        self.index.upsert(vectors=vectors, namespace=namespace)
 
     def search(self, query_vector, k=10, metadata=None):
         if not metadata:
