@@ -1,5 +1,8 @@
 from django.db import models
 
+from search.models import Curator
+
+
 # Create your models here.
 class RssFeed(models.Model):
     url = models.CharField(max_length=512)
@@ -75,3 +78,20 @@ class KeyPoints(models.Model):
     error = models.TextField(null=True)
 
 
+class PodcastNotes(models.Model):
+    text = models.TextField()
+    episode = models.ForeignKey(Podcast, related_name="notes", on_delete=models.CASCADE)
+    curator = models.ForeignKey(Curator, related_name="podcast_notes", on_delete=models.CASCADE)
+    error = models.TextField(null=True)
+
+class PodcastEpisodeNotes(models.Model):
+    text = models.TextField()
+    episode = models.ForeignKey(PodcastEpisode, related_name="notes", on_delete=models.CASCADE)
+    curator = models.ForeignKey(Curator, related_name="podcast_episode_notes", on_delete=models.CASCADE)
+    error = models.TextField(null=True)
+
+
+class FavoriteCurators(models.Model):
+    curator = models.ForeignKey(Curator, related_name="favorite_curators", on_delete=models.CASCADE)
+    favorite_curator = models.ForeignKey(Curator, related_name="curators", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)

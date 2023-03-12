@@ -76,7 +76,9 @@ INSTALLED_APPS = [
     'podcast_toolkit',
     'search',
     'effortless_reach',
-    'payments'
+    'payments',
+    'leoai',
+
 ]
 SITE_ID = 2
 

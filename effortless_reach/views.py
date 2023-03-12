@@ -12,6 +12,7 @@ from effortless_reach.serializers import PodcastSerializer, PodcastWithEpisodeSe
     SummarySerializer
 from effortless_reach.service import get_keypoints, summarize
 from effortless_reach.tasks import process_rss_feed, get_episode_summary, get_episode_keypoints
+from search.models import Curator
 
 
 # Create your views here.
@@ -81,3 +82,29 @@ def generate_keypoints(request):
         return Response({'error': 'Episode not found'})
     get_episode_keypoints.delay(episode_id)
     return Response({"keypoints": "requested"})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def save_notes(request):
+    body = json.loads(request.body)
+    episode_id = body['episode_id']
+    text = body['text']
+    curator_id = body['curator_id']
+    note_id = body.get('note_id', None)
+    episode = PodcastEpisode.objects.filter(id=episode_id).first()
+    if not episode:
+        return Response({'error': 'Episode not found'})
+    if note_id:
+        note = episode.notes.filter(id=note_id).first()
+        if not note:
+            return Response({'error': 'Note not found'})
+        note.text = text
+        note.save()
+        return Response({"note_id": note.id})
+    curator = Curator.objects.filter(id=curator_id).first()
+    if not curator:
+        return Response({'error': 'Curator not found'})
+    notes = episode.notes.create(text=text, curator=curator)
+    return Response({"note_id": notes.id})
