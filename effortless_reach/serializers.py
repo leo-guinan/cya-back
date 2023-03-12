@@ -1,12 +1,14 @@
 from rest_framework import serializers
 
-from effortless_reach.models import PodcastEpisode, Podcast, Transcript, Summary, KeyPoints
+from effortless_reach.models import PodcastEpisode, Podcast, Transcript, Summary, KeyPoints, PodcastNotes, \
+    PodcastEpisodeNotes
 
 
 class TranscriptSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transcript
         fields = [
+            'id',
             'text',
         ]
 
@@ -14,6 +16,7 @@ class SummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Summary
         fields = [
+            'id',
             'text',
         ]
 
@@ -23,11 +26,25 @@ class KeyPointSerializer(serializers.ModelSerializer):
         fields = [
             'text',
         ]
+
+class PodcastNotesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PodcastNotes
+        fields = [
+            'text',
+        ]
+class PodcastEpisodeNotesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PodcastEpisodeNotes
+        fields = [
+            'text',
+        ]
 class PodcastEpisodeSerializer(serializers.ModelSerializer):
     transcript_status = serializers.SerializerMethodField('get_transcript_status')
     transcript = TranscriptSerializer(many=False, read_only=True)
     summary = SummarySerializer(many=False, read_only=True)
     key_points = KeyPointSerializer(many=False, read_only=True)
+    notes = PodcastEpisodeNotesSerializer(many=True, read_only=True)
     def get_transcript_status(self, obj):
         try:
             if not obj.transcript.exists():
@@ -51,11 +68,12 @@ class PodcastEpisodeSerializer(serializers.ModelSerializer):
             'transcript_status',
             'image',
             'summary',
-            'key_points'
+            'key_points',
+            'notes',
         ]
 
 class PodcastSerializer(serializers.ModelSerializer):
-
+    notes = PodcastNotesSerializer(many=True, read_only=True)
 
     class Meta:
         model = Podcast
@@ -65,6 +83,7 @@ class PodcastSerializer(serializers.ModelSerializer):
             'link',
             'description',
             'image',
+            'notes'
         ]
 
 class PodcastWithEpisodeSerializer(serializers.ModelSerializer):
