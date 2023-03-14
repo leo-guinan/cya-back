@@ -7,9 +7,10 @@ from langchain.llms import OpenAI
 
 class Agent:
     def __init__(self):
-        llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
-        tools = Tools()
-        self.agent = initialize_agent(tools.tools, llm, agent="zero-shot-react-description", verbose=True)
+        self.llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
 
-    def run(self, query):
-        return self.agent.run(query)
+
+    def run(self, query, memory=None):
+        tools = Tools(memory)
+        agent = initialize_agent(tools.tools, self.llm, agent="zero-shot-react-description", verbose=True)
+        return agent.run(query)
