@@ -67,7 +67,7 @@ def add_to_collection(request):
     item.save()
     tools = Tools()
     text = item.recommendation + "\n\n" + item.description + "\n\n" + item.link
-    tools.add_item_to_collection(collection.name,[text], [item.uuid], [{
+    tools.add_item_to_collection(collection.name,[text], [str(item.uuid)], [{
         'name': item.name,
         'link': item.link,
     }])
