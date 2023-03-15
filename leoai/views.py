@@ -2,6 +2,7 @@ import json
 import uuid
 
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from langchain.memory import ConversationBufferMemory
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
 from rest_framework.renderers import JSONRenderer
@@ -47,6 +48,7 @@ def search(request):
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
+@csrf_exempt
 def add_to_collection(request):
     body = json.loads(request.body)
     collection = body['collection']
