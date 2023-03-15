@@ -107,4 +107,4 @@ class Tools:
         ]
 
     def add_item_to_collection(self, collection_name, texts, ids, metadatas):
-        self.databases[collection_name].add_texts(texts, ids, metadatas)
+        self.databases[collection_name].add_texts(texts=texts, ids=ids, metadatas=metadatas)
