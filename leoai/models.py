@@ -16,3 +16,23 @@ class Request(models.Model):
     email = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.message
+
+
+class Collection(models.Model):
+    name = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.name
+
+class Item(models.Model):
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    name = models.TextField()
+    link = models.TextField()
+    description = models.TextField()
+    recommendation = models.TextField()
+    uuid = models.TextField()
+    def __str__(self):
+        return self.name
