@@ -38,7 +38,7 @@ class Tools:
     databases = {}
     chains = {}
 
-    def __init__(self, memory):
+    def __init__(self, memory=None):
         embeddings = OpenAIEmbeddings(openai_api_key=config('OPENAI_API_KEY'))
         llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
 
@@ -51,7 +51,14 @@ class Tools:
             embedding_function=embeddings,
             client_settings=settings)
         self.databases["hhgttf"] = hhgttf_db
+
+        podcast_recs_db = Chroma(
+            collection_name="podcast_recs",
+            embedding_function=embeddings,
+            client_settings=settings)
+        self.databases["podcast_recs"] = podcast_recs_db
         hhgttf = VectorDBQA.from_chain_type(llm=llm, chain_type="stuff", vectorstore=hhgttf_db)
+        podcasts = VectorDBQA.from_chain_type(llm=llm, chain_type="stuff", vectorstore=podcast_recs_db)
         template = """
             You will be given the chat history. If there's an email in the history, respond with the following JSON:
             
@@ -84,6 +91,11 @@ class Tools:
                 func=hhgttf.run,
                 description="useful for when you need to answer questions about future. Input should be a fully formed question."
             ),
+            Tool(
+              name="Podcast Recommendations",
+                func=podcasts.run,
+                description="useful for when you need to answer questions about podcasts. Input should be a fully formed question."
+            ),
             ask,
             Tool(name="Request Contact", func=chat.run, description="useful for when you need to get contact info from the user.", return_direct=True),
 
@@ -93,3 +105,6 @@ class Tools:
             #     description="useful for when you need to answer questions about ruff (a python linter). Input should be a fully formed question."
             # ),
         ]
+
+    def add_item_to_collection(self, collection_name, texts, ids, metadatas):
+        self.databases[collection_name].add_texts(texts, ids, metadatas)
