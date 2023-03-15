@@ -76,7 +76,7 @@ class Tools:
             template=template
         )
         if memory is None:
-            memory = ConversationBufferWindowMemory(window_size=5)
+            memory = ConversationBufferWindowMemory()
         print(memory.load_memory_variables({}))
         chat =  LLMChain(
                 llm=llm,
