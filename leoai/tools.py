@@ -43,7 +43,7 @@ class Tools:
         llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
 
         settings = Settings(chroma_api_impl="rest",
-                            chroma_server_host="34.205.81.226",
+                            chroma_server_host=config('CHROMA_SERVER_HOST'),
                             chroma_server_http_port=8000)
 
         hhgttf_db = Chroma(
@@ -57,8 +57,14 @@ class Tools:
             embedding_function=embeddings,
             client_settings=settings)
         self.databases["podcast_recs"] = podcast_recs_db
+        leo_facts_db = Chroma(
+            collection_name="leo_facts",
+            embedding_function=embeddings,
+            client_settings=settings)
+        self.databases["leo_facts"] = leo_facts_db
         hhgttf = VectorDBQA.from_chain_type(llm=llm, chain_type="stuff", vectorstore=hhgttf_db)
         podcasts = VectorDBQA.from_chain_type(llm=llm, chain_type="stuff", vectorstore=podcast_recs_db)
+        leo_facts = VectorDBQA.from_chain_type(llm=llm, chain_type="stuff", vectorstore=leo_facts_db)
         template = """
             You will be given the chat history. If there's an email in the history, respond with the following JSON:
             
@@ -94,10 +100,11 @@ class Tools:
             Tool(
               name="Podcast Recommendations",
                 func=podcasts.run,
-                description="useful for when you need to answer questions about podcasts. Input should be a fully formed question."
+                description="useful for when you need to answer questions about Leo's favorite podcasts. Input should be a fully formed question."
             ),
             ask,
-            Tool(name="Request Contact", func=chat.run, description="useful for when you need to get contact info from the user.", return_direct=True),
+            Tool(name="Request Contact", func=chat.run, description="useful for when you need to get contact info from the user. Input should be the string 'I need to respond to the user'", return_direct=True),
+            Tool(name="Leo Facts", func=leo_facts.run, description="useful for when you need to answer questions about Leo. Input should be a fully formed question.")
 
             # Tool(
             #     name = "Ruff QA System",
