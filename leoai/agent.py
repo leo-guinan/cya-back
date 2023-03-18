@@ -13,4 +13,5 @@ class Agent:
     def run(self, query, memory=None):
         tools = Tools(memory)
         agent = initialize_agent(tools.tools, self.llm, agent="zero-shot-react-description", verbose=True)
+        # agent = initialize_agent(tools.tools, self.llm, agent="chat-zero-shot-react-description", verbose=True)
         return agent.run(query)

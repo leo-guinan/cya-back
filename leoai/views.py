@@ -10,7 +10,8 @@ from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from leoai.agent import Agent
-from leoai.models import Message, Request, Collection, Item
+from leoai.models import Message, Request, Collection, Item, Facts, FactItem
+from leoai.serializers import CollectionSerializer, FactsSerializer
 from leoai.tools import Tools
 
 
@@ -71,4 +72,57 @@ def add_to_collection(request):
         'name': item.name,
         'link': item.link,
     }])
-    return Response({'response': "Added to collection."})
+    return Response({'status': "success"})
+
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def add_fact(request):
+    body = json.loads(request.body)
+    facts = body['facts']
+    facts = Facts.objects.filter(name=facts).first()
+    if not facts:
+        facts = Facts()
+        facts.name = body['facts']
+        facts.save()
+    item = FactItem()
+    item.fact = facts
+    item.question = body['question']
+    item.answer = body['answer']
+    item.uuid = uuid.uuid4()
+    item.save()
+    tools = Tools()
+    text = item.question + "\n\n" + item.answer
+    tools.add_item_to_collection(facts.name,[text], [str(item.uuid)], [{
+        'question': item.question,
+        'answer': item.answer,
+    }])
+    return Response({'status': "success"})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def get_collection(request):
+    body = json.loads(request.body)
+    collection = body['collection']
+    collection = Collection.objects.filter(name=collection).first()
+    if not collection:
+        return Response({'response': "Collection not found."})
+    collectionSerializer = CollectionSerializer(collection)
+    response = collectionSerializer.data
+    return Response({'response': response})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def get_facts(request):
+    body = json.loads(request.body)
+    facts = body['facts']
+    facts = Facts.objects.filter(name=facts).first()
+    if not facts:
+        return Response({'response': "Facts not found."})
+    factSerializer = FactsSerializer(facts)
+    response = factSerializer.data
+    return Response({'response': response})

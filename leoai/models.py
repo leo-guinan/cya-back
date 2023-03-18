@@ -19,14 +19,15 @@ class Request(models.Model):
 
 
 class Collection(models.Model):
-    name = models.TextField()
+    name = models.TextField(unique=True)
+    description = models.TextField(default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return self.name
 
 class Item(models.Model):
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='items')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     name = models.TextField()
@@ -36,3 +37,19 @@ class Item(models.Model):
     uuid = models.TextField()
     def __str__(self):
         return self.name
+
+class Facts(models.Model):
+    name = models.TextField()
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.name
+
+class FactItem(models.Model):
+    question = models.TextField()
+    answer = models.TextField()
+    fact = models.ForeignKey(Facts, on_delete=models.CASCADE, related_name='items')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uuid = models.TextField()
