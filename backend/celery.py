@@ -22,13 +22,6 @@ app.conf.broker_url = BASE_REDIS_URL
 app.conf.beat_scheduler = 'django_celery_beat.schedulers.DatabaseScheduler'
 
 CELERY_TASK_ROUTES = {
- 'unfollow.tasks.*': {'queue': 'default'},
- 'client.tasks.*': {'queue': 'default'},
- 'crawler.tasks.*': {'queue': 'default'},
- 'feather.tasks.*': {'queue': 'default'},
- 'twitter.tasks.*': {'queue': 'default'},
- 'watchtweet.tasks.*': {'queue': 'default'},
- 'friendcontent.tasks.*': {'queue': 'bot'},
 }
 
 @app.task(bind=True)

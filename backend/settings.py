@@ -28,15 +28,12 @@ SECRET_KEY = os.environ.get('SECRET_KEY', default='django-insecure-g%%6#-0b%*0qz
 DEBUG = 'RENDER' not in os.environ
 
 ALLOWED_HOSTS = [
-    '82e6-2603-6010-b000-ba40-00-1000.ngrok.io',
     'localhost',
 ]
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
     ALLOWED_HOSTS.append('api.feathercrm.io')
-    ALLOWED_HOSTS.append('app.whoshouldiunfollow.com')
-    ALLOWED_HOSTS.append('tools.whoshouldiunfollow.com')
     ALLOWED_HOSTS.append('automations.buildinpublicuniversity.com')
 
 
@@ -53,32 +50,13 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'dj_rest_auth',
     'django.contrib.sites',
-    'unfollow',
-    'watchtweet',
     "corsheaders",
     "rest_framework_api_key",
     'django_celery_beat',
     'django_celery_results',
-    'client',
-    'feather',
-    'twitter',
     'mail',
-    'crawler',
-    'friendcontent',
-    "appadmin",
-    'gardens',
-    'bookmarks',
-    'webhooks',
-    'followed',
-    'open_ai',
-    'enhancer',
     'marketing',
-    'podcast_toolkit',
-    'search',
-    'effortless_reach',
-    'payments',
     'leoai',
-
 ]
 SITE_ID = 2
 
@@ -121,7 +99,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         # Feel free to alter this value to suit your needs.
-        default='postgresql://postgres:@localhost:5432/postgres',
+        default='postgresql://postgres:@localhost:5432/cya-back',
         conn_max_age=600
     )
 }
