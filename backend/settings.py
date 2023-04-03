@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     'mail',
     'marketing',
     'leoai',
+    'search',
+    'users',
 ]
 SITE_ID = 2
 
