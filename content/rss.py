@@ -10,7 +10,7 @@ def parse_feed(url):
 def get_link_for_entry(entry):
     for link in entry.links:
         if link['type'] == 'audio/mpeg':
-            title = "".join([c for c in entry['title'] if re.match(r"\w", c)])
+            title = entry.title
             url = link['href']
             return title,url
     return None
