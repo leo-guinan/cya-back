@@ -12,7 +12,7 @@ class Link(models.Model):
         return self.url
 
 class Fulltext(models.Model):
-    url = models.ForeignKey(Link, related_name="fulltexts", on_delete=models.CASCADE)
+    url = models.OneToOneField(Link, related_name="fulltext", on_delete=models.CASCADE)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -26,6 +26,7 @@ class Section(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     embeddings_saved = models.BooleanField(default=False)
+    snippet = models.TextField(null=True, blank=True)
     def __str__(self):
         return self.text
 

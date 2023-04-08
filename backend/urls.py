@@ -24,4 +24,5 @@ urlpatterns = [
     path('api/leo/', include('leoai.urls')),
     path('api/search/', include('search.urls')),
     path('api/user/', include('users.urls')),
+    path('api/spark/', include('spark.urls')),
 ]

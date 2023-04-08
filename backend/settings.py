@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'leoai',
     'search',
     'users',
+    'spark'
 ]
 SITE_ID = 2
 
