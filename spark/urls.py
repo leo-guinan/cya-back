@@ -1,8 +1,7 @@
 from django.urls import path
 
-from spark.views import search, add
+from spark.views import search
 
 urlpatterns = [
     path('search/', search),
-    path('add/', add),
 ]
