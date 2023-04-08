@@ -10,6 +10,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from content.snippets import create_snippet
 from embeddings.documents import save_document
+from embeddings.vectorstore import Vectorstore
 from search.models import Link
 from spark.manage import add_rss_feed
 
@@ -22,15 +23,10 @@ def search(request):
     body = json.loads(request.body)
     query = body['query']
 
-    settings = Settings(chroma_api_impl="rest",
-                        chroma_server_host=config('CHROMA_SERVER_HOST'),
-                        chroma_server_http_port=8000)
+    vectorstore = Vectorstore()
 
-    spark = Chroma(
-        collection_name="spark",
-        client_settings=settings)
 
-    results = spark.similarity_search(query, 3)
+    results = vectorstore.similarity_search(query, "spark", k=10)
     search_results = []
     for result in results:
         section_id = result.metadata['section']

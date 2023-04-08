@@ -31,3 +31,6 @@ class Vectorstore:
 
     def add_to_collection(self, collection, texts, ids, metadatas):
         self.collections[collection].add_texts(texts=texts, ids=ids, metadatas=metadatas)
+
+    def similarity_search(self, query, collection, k=10):
+        return self.collections[collection].similarity_search(query, k=k)
