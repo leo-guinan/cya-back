@@ -6,6 +6,7 @@ from langchain.vectorstores import Chroma
 
 
 class Vectorstore:
+    known_collections = ["spark", "hhgttf", "podcast_recs", "leo_facts"]
     collections = {}
 
     def __init__(self):
@@ -14,13 +15,11 @@ class Vectorstore:
                                  chroma_server_host=config('CHROMA_SERVER_HOST'),
                                  chroma_server_http_port=8000)
         client = chromadb.Client(settings=self.settings)
-        collections = client.list_collections()
-        for collection in collections:
-            if collection.name not in self.collections:
-                self.collections[collection.name] = Chroma(
-                    embedding_function=self.embeddings,
-                    collection_name=collection.name,
-                    client_settings=self.settings)
+        for collection in self.known_collections:
+            self.collections[collection] = Chroma(
+                embedding_function=self.embeddings,
+                collection_name=collection,
+                client_settings=self.settings)
 
     def create_collection(self, name):
         collection = Chroma(
