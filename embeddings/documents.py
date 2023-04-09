@@ -10,6 +10,8 @@ def save_document(document, collection="searchables"):
     ids = []
     metadatas = []
     for section in document.sections.all():
+        if section.embeddings_saved or len(section.text.trim()) == 0:
+            continue
         documents_to_save.append(section.text)
         ids.append(section.embedding_id)
         metadatas.append({

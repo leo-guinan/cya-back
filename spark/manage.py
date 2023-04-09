@@ -31,9 +31,6 @@ def add_rss_feed(url, title):
             child_link.save()
             link.children.add(child_link)
 
-    for child_link in link.children.all():
-        logger.info("processing podcast episode")
-        process_podcast(child_link)
 
     link.processed = True
     link.save()
