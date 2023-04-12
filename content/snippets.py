@@ -8,24 +8,20 @@ def create_snippet(section_id):
     if section.snippet:
         return section.snippet
     sections = Section.objects.filter(fulltext=section.fulltext).order_by("id").all()
-    # make snippet from 2 sections before and 2 sections after
-    # if there are less than 5 sections, just use all of them
-    # if there are less than 2 sections, just use the one section
-    if len(sections) < 5:
+    if len(sections) < 10:
         snippet = " ".join([section.text for section in sections])
     else:
-        #get index of section id in sections
         index = 0
         for i, s in enumerate(sections):
             if s.id == section.id:
                 index = i
                 break
-        if index < 2:
-            snippet = " ".join([section.text for section in sections[:5]])
-        elif index > len(sections) - 3:
-            snippet = " ".join([section.text for section in sections[-5:]])
+        if index < 5:
+            snippet = " ".join([section.text for section in sections[:10]])
+        elif index > len(sections) - 6:
+            snippet = " ".join([section.text for section in sections[-10:]])
         else:
-            snippet = " ".join([section.text for section in sections[index - 2:index + 3]])
+            snippet = " ".join([section.text for section in sections[index - 5:index + 6]])
     section.snippet = snippet
     section.save()
     return snippet
