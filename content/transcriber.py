@@ -35,13 +35,15 @@ class Transcriber:
 
         response = requests.post(url, data=payload, files=files, headers=headers)
         try:
-            prediction = response.json()['prediction']
+            parsed = response.json()
+            logger.info(parsed)
+            prediction = parsed['prediction']
             chunks = []
             for item in prediction:
                 chunks.append(item['transcription'])
             return chunks
         except Exception as e:
-            print(e)
+            logger.error(e)
             return []
 
 
