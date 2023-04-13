@@ -19,6 +19,9 @@ def save_document(document, collection="searchables"):
             "section": section.id,
             "link": document.url.id,
         })
+    if len(documents_to_save) == 0:
+        logger.error("no documents to save")
+        return
     vectorstore.add_to_collection(collection, documents_to_save, ids, metadatas)
     for section in document.sections.all():
         section.embeddings_saved = True
