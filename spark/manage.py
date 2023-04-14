@@ -47,6 +47,7 @@ def process_podcast(link):
     fulltext.save()
     file_name = url.split("/")[-1]
     file_name = file_name.split("?")[0]
+    logger.info(f"downloading audio {file_name}")
     try:
         r = requests.get(url)
         with open(file_name, "wb") as f:
@@ -68,6 +69,4 @@ def process_podcast(link):
         link.save()
     except Exception as e:
         logger.error(e)
-    finally:
-        os.remove(file_name)
 
