@@ -10,7 +10,7 @@ services:
     env: python
     region: ohio
     buildCommand: "./build.sh"
-    startCommand: "gunicorn backend.wsgi:application"
+    startCommand: "gunicorn backend.wsgi:application --timeout 60"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
