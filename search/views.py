@@ -11,7 +11,10 @@ from langchain.llms.openai import OpenAI
 from langchain.agents import initialize_agent, Tool
 from langchain.utilities import BingSearchAPIWrapper
 
+from content.snippets import create_snippet
+from embeddings.vectorstore import Vectorstore
 from search.add import add_recommended_link
+from search.models import Link
 from users.models import User
 
 
@@ -23,9 +26,31 @@ def search(request):
     body = json.loads(request.body)
     query = body['query']
 
+    vectorstore = Vectorstore()
 
+    private_results = vectorstore.similarity_search(query, "spark", k=10)
     search = BingSearchAPIWrapper(bing_subscription_key=config('BING_SUBSCRIPTION_KEY'), bing_search_url=config('BING_SEARCH_URL'))
-    results = search.results(query, 5)
+    public_results = search.results(query, 5)
+    results = []
+    for result in private_results:
+        print(result)
+        section_id = result.metadata['section']
+        # fulltext_id = result['metadata']['fulltext']
+        link_id = result.metadata['link']
+        link = Link.objects.filter(id=link_id).first()
+        print(link)
+        snippet = create_snippet(section_id)
+        results.append({
+            "title": link.title,
+            "link": link.url,
+            "snippet": snippet
+        })
+    for result in public_results:
+        results.append({
+            "title": result['name'],
+            "link": result['link'],
+            "snippet": result['snippet']
+        })
 
     return Response({'response': results})
 
