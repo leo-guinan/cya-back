@@ -39,7 +39,6 @@ class Transcriber:
         response = requests.post(url, data=payload, files=files, headers=headers)
         try:
             parsed = response.json()
-            logger.info(parsed)
             prediction = parsed['prediction']
             chunks = []
             for item in prediction:

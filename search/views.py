@@ -33,12 +33,12 @@ def search(request):
     public_results = search.results(query, 5)
     results = []
     for result in private_results:
-        print(result)
         section_id = result.metadata['section']
         # fulltext_id = result['metadata']['fulltext']
         link_id = result.metadata['link']
         link = Link.objects.filter(id=link_id).first()
-        print(link)
+        if link is None:
+            continue
         snippet = create_snippet(section_id)
         results.append({
             "title": link.title,
@@ -47,7 +47,7 @@ def search(request):
         })
     for result in public_results:
         results.append({
-            "title": result['name'],
+            "title": result['title'],
             "link": result['link'],
             "snippet": result['snippet']
         })
