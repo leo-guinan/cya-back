@@ -23,8 +23,8 @@ def search(request):
     search_engine = body['search_engine']
     use_base = body['use_base']
     vectorstore = Vectorstore()
-
-    private_results = vectorstore.similarity_search(query, search_engine, k=10)
+    number_of_results = SearchableLink.objects.filter(search_engine__slug=search_engine).count()
+    private_results = vectorstore.similarity_search(query, search_engine, k=number_of_results if number_of_results < 10 else 10)
     results = []
 
     if use_base:
@@ -39,17 +39,24 @@ def search(request):
             })
 
     for result in private_results:
-        section_id = result.metadata['section']
+
+        section_id = result.metadata.get('section')
         # fulltext_id = result['metadata']['fulltext']
         link_id = result.metadata['link']
+        searchable_link_id = result.metadata['searchable_link']
         link = Link.objects.filter(id=link_id).first()
+        searchable_link = SearchableLink.objects.filter(id=searchable_link_id).first()
         if link is None:
             continue
-        snippet = create_snippet(section_id)
+        if section_id:
+            snippet = create_snippet(section_id)
+        else:
+            snippet = None
         results.append({
-            "title": link.title,
+            "title": searchable_link.title if searchable_link.title else link.title,
             "link": link.url,
-            "snippet": snippet
+            "snippet": snippet,
+            "description": searchable_link.description if searchable_link.description else None,
         })
 
     return Response({'response': results})
