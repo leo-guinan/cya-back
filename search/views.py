@@ -10,7 +10,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 from content.snippets import create_snippet
 from embeddings.vectorstore import Vectorstore
 from search.add import add_searchable_link
-from search.models import Link, SearchEngine, SearchableLink
+from search.models import Link, SearchEngine, SearchableLink, Query
 
 
 # Create your views here.
@@ -22,6 +22,13 @@ def search(request):
     query = body['query']
     search_engine = body['search_engine']
     use_base = body['use_base']
+    engine = SearchEngine.objects.filter(slug=search_engine).first()
+    if not engine:
+        return Response({'response': 'Search engine not found'}, status=404)
+    saved_query = Query()
+    saved_query.query = query
+    saved_query.search_engine = engine
+    saved_query.save()
     vectorstore = Vectorstore()
     number_of_results = SearchableLink.objects.filter(search_engine__slug=search_engine).count()
     private_results = vectorstore.similarity_search(query, search_engine, k=number_of_results if number_of_results < 10 else 10)

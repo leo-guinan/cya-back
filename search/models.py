@@ -60,3 +60,12 @@ class SearchableLink(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return self.url
+
+
+class Query(models.Model):
+    query = models.TextField()
+    search_engine = models.ForeignKey(SearchEngine, related_name='queries', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.query
