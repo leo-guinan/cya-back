@@ -1,12 +1,15 @@
 import logging
+import os
 import uuid
 from datetime import datetime
 
 import requests
-import os
+
 from content.audio import transcribe_audio
 from content.rss import parse_feed, get_link_for_entry
-from search.models import Link, Recommendation, Fulltext, Section
+from embeddings.vectorstore import Vectorstore
+from search.models import Link, Recommendation, Fulltext, Section, SearchEngine, SearchableLink
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,11 +30,41 @@ def add_recommended_link(url, title, user, recommendation_text, affiliate_link):
     recommendation.save()
 
 
+def add_searchable_link(search_engine, title, url, description, image):
+    link = Link.objects.filter(url=url).first()
+    if not link:
+        link = Link()
+        link.url = url
+        link.title = title
+        link.save()
+    engine = SearchEngine.objects.filter(slug=search_engine).first()
+    vectorstore = Vectorstore()
+    if not engine:
+        engine = SearchEngine()
+        engine.slug = search_engine
+        vectorstore.create_collection(search_engine)
+        engine.save()
+    searchable_link = SearchableLink.objects.filter(url=link, search_engine=engine).first()
+    if not searchable_link:
+        searchable_link = SearchableLink()
+        searchable_link.url = link
+        searchable_link.search_engine = engine
+        searchable_link.description = description
+        searchable_link.image = image
+        searchable_link.uuid = uuid.uuid4()
+        searchable_link.title = title
+        searchable_link.save()
+
+        vectorstore.add_to_collection(search_engine, [f"{title}\n{description}"], [str(searchable_link.uuid)],
+                                      [{"link": link.id, "searchable_link": searchable_link.id}])
+
+
+
 def process_youtube(url):
-    #download video
-    #extract audio
-    #transcribe
-    #add to db
+    # download video
+    # extract audio
+    # transcribe
+    # add to db
     pass
 
 
@@ -71,7 +104,6 @@ def process_podcast(link):
         os.remove(file_name)
 
 
-
 def process_article(url):
     pass
 
@@ -84,7 +116,7 @@ def process_rss_feed(link):
     entries = parsed_feed.entries
     for entry in entries:
         title, child = get_link_for_entry(entry)
-        if(child):
+        if (child):
             child_link = Link()
             child_link.url = child
             child_link.title = title

@@ -39,3 +39,24 @@ class Recommendation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return self.text
+
+
+class SearchEngine(models.Model):
+    slug = models.TextField(unique=True)
+    url = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.slug
+
+class SearchableLink(models.Model):
+    url = models.ForeignKey(Link, related_name='searchable_links', on_delete=models.CASCADE)
+    search_engine = models.ForeignKey(SearchEngine, related_name='searchable_links', on_delete=models.CASCADE)
+    title = models.TextField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    uuid = models.TextField(null=True, blank=True)
+    image = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.url
