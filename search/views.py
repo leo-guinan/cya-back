@@ -1,21 +1,16 @@
 import json
 
 from decouple import config
-from django.shortcuts import render
+from langchain.utilities import BingSearchAPIWrapper
 from rest_framework.decorators import permission_classes, api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
-from langchain.utilities import GoogleSerperAPIWrapper
-from langchain.llms.openai import OpenAI
-from langchain.agents import initialize_agent, Tool
-from langchain.utilities import BingSearchAPIWrapper
 
 from content.snippets import create_snippet
 from embeddings.vectorstore import Vectorstore
-from search.add import add_recommended_link
-from search.models import Link
-from users.models import User
+from search.add import add_searchable_link
+from search.models import Link, SearchEngine, SearchableLink
 
 
 # Create your views here.
@@ -25,13 +20,24 @@ from users.models import User
 def search(request):
     body = json.loads(request.body)
     query = body['query']
-
+    search_engine = body['search_engine']
+    use_base = body['use_base']
     vectorstore = Vectorstore()
 
-    private_results = vectorstore.similarity_search(query, "spark", k=10)
-    search = BingSearchAPIWrapper(bing_subscription_key=config('BING_SUBSCRIPTION_KEY'), bing_search_url=config('BING_SEARCH_URL'))
-    public_results = search.results(query, 5)
+    private_results = vectorstore.similarity_search(query, search_engine, k=10)
     results = []
+
+    if use_base:
+        search = BingSearchAPIWrapper(bing_subscription_key=config('BING_SUBSCRIPTION_KEY'),
+                                      bing_search_url=config('BING_SEARCH_URL'))
+        public_results = search.results(query, 5)
+        for result in public_results:
+            results.append({
+                "title": result['title'],
+                "link": result['link'],
+                "snippet": result['snippet']
+            })
+
     for result in private_results:
         section_id = result.metadata['section']
         # fulltext_id = result['metadata']['fulltext']
@@ -45,14 +51,9 @@ def search(request):
             "link": link.url,
             "snippet": snippet
         })
-    for result in public_results:
-        results.append({
-            "title": result['title'],
-            "link": result['link'],
-            "snippet": result['snippet']
-        })
 
     return Response({'response': results})
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -61,10 +62,39 @@ def add(request):
     body = json.loads(request.body)
     url = body['url']
     title = body['title']
-    user_id = body['user_id']
-    user = User.objects.filter(id=user_id).first()
-    if user is None:
-        return Response({'status': 'failure'})
-    recommendation = body['recommendation']
-    add_recommended_link(url, title, user, recommendation, None)
+    description = body['description']
+    image = body['image']
+    search_engine = body['search_engine']
+    add_searchable_link(search_engine, title, url, description, image)
     return Response({'response': 'success'})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def create_search_engine(request):
+    body = json.loads(request.body)
+    search_engine = body['search_engine']
+    vectorstore = Vectorstore()
+    vectorstore.create_collection(search_engine)
+    return Response({'response': 'success'})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def list_links(request):
+    body = json.loads(request.body)
+    search_engine = body['search_engine']
+    engine = SearchEngine.objects.filter(slug=search_engine).first()
+    searchable_links = SearchableLink.objects.filter(search_engine=engine).all()
+    links = []
+    for link in searchable_links:
+        links.append({
+            'id': link.id,
+            'title': link.title,
+            'url': link.url.url,
+            'description': link.description,
+            'image': link.image
+        })
+
+    return Response({'response': links})
