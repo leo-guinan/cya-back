@@ -112,3 +112,20 @@ def list_links(request):
         })
 
     return Response({'response': links})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def get_queries(request):
+    body = json.loads(request.body)
+    search_engine = body['search_engine']
+    engine = SearchEngine.objects.filter(slug=search_engine).first()
+    queries = Query.objects.filter(search_engine=engine).all()
+    queries_list = []
+    for query in queries:
+        queries_list.append({
+            'id': query.id,
+            'query': query.query,
+            'created_at': query.created_at
+        })
+    return Response({'response': queries_list})
