@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import List
 
 from decouple import config
@@ -18,6 +19,7 @@ from embeddings.vectorstore import Vectorstore
 from search.add import add_searchable_link
 from search.models import Link, SearchEngine, SearchableLink, Query
 
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 @api_view(('POST',))
@@ -188,12 +190,11 @@ def chat(request):
     )
     chat_history = PassedInChatHistory()
     print(history)
-    for message in history:
-        print(message['message'])
-        if message['speaker'] == 'human':
-            chat_history.add_user_message(message)
+    for item in history:
+        if item['speaker'] == 'human':
+            chat_history.add_user_message(item)
         else:
-            chat_history.add_ai_message(message)
+            chat_history.add_ai_message(item)
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, chat_memory=chat_history)
 
     llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model_name='gpt-4')
@@ -202,4 +203,7 @@ def chat(request):
     chain = ConversationalRetrievalChain.from_llm(llm, vectorstore.get_collection(search_engine).as_retriever(),
                                                   memory=memory)
     response = chain.run(question=message)
+    comparison = vectorstore.similarity_search(message, search_engine, 1)
+    logger.info(comparison)
+    logger.info(response)
     return Response({'response': response})
