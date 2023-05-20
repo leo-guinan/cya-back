@@ -197,7 +197,7 @@ def chat(request):
             chat_history.add_ai_message(item)
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, chat_memory=chat_history)
 
-    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model_name='gpt-4')
+    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0)
     # chain = load_qa_with_sources_chain(llm, chain_type="stuff",
     #                                    retriever=vectorstore.get_collection(search_engine).as_retriever())
     chain = ConversationalRetrievalChain.from_llm(llm, vectorstore.get_collection(search_engine).as_retriever(),
