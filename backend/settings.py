@@ -15,6 +15,7 @@ from pathlib import Path
 
 import dj_database_url
 from decouple import config
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,7 +36,6 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
     ALLOWED_HOSTS.append('api.chooseyouralgorithm.com')
     ALLOWED_HOSTS.append('automations.buildinpublicuniversity.com')
-
 
 # Application definition
 
@@ -169,7 +169,7 @@ EMAIL_USE_TLS = True
 
 STATIC_URL = '/static/'
 # Following settings only make sense on production and may break development environments.
-if not DEBUG:    # Tell Django to copy statics to the `staticfiles` directory
+if not DEBUG:  # Tell Django to copy statics to the `staticfiles` directory
     # in your application directory on Render.
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     # Turn on WhiteNoise storage backend that takes care of compressing static files
@@ -193,126 +193,48 @@ LOGGING = {
         },
     },
     'loggers': {
-    # root logger
+        # root logger
         '': {
             'level': 'WARNING',
-            'handlers': ['console',],
+            'handlers': ['console', ],
         },
         'backend': {
             'level': LOGLEVEL,
-            'handlers': ['console',],
+            'handlers': ['console', ],
             # required to avoid double logging with root logger
             'propagate': False,
         },
         'bookmarks': {
             'level': LOGLEVEL,
-            'handlers': ['console',],
+            'handlers': ['console', ],
             # required to avoid double logging with root logger
             'propagate': False,
         },
-        'client': {
-            'level': LOGLEVEL,
-            'handlers': ['console',],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'crawler': {
+        'content': {
             'level': LOGLEVEL,
             'handlers': ['console', ],
             # required to avoid double logging with root logger
             'propagate': False,
         },
-        'enhancer': {
+        'embeddings': {
             'level': LOGLEVEL,
             'handlers': ['console', ],
             # required to avoid double logging with root logger
             'propagate': False,
         },
-        'feather': {
+        'leoai': {
             'level': LOGLEVEL,
             'handlers': ['console', ],
             # required to avoid double logging with root logger
             'propagate': False,
         },
-        'followed': {
+        'search': {
             'level': LOGLEVEL,
             'handlers': ['console', ],
             # required to avoid double logging with root logger
             'propagate': False,
         },
-        'friendcontent': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'gardens': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'mail': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'marketing': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'open_ai': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'podcast_toolkit': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'rss': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'transformer': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'twitter': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'twitter_api': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'unfollow': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'watchtweet': {
-            'level': LOGLEVEL,
-            'handlers': ['console', ],
-            # required to avoid double logging with root logger
-            'propagate': False,
-        },
-        'webhooks': {
+        'spark': {
             'level': LOGLEVEL,
             'handlers': ['console', ],
             # required to avoid double logging with root logger
