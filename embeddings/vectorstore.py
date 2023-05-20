@@ -34,3 +34,10 @@ class Vectorstore:
             collection_name=collection,
             client_settings=self.settings)
         return chroma_collection.similarity_search(query, k=k)
+
+    def get_collection(self, name):
+        return Chroma(
+            embedding_function=self.embeddings,
+            collection_name=name,
+            client_settings=self.settings)
+
