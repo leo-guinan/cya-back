@@ -1,6 +1,12 @@
 import json
+from typing import List
 
 from decouple import config
+from langchain import PromptTemplate
+from langchain.chains import ConversationalRetrievalChain
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage, BaseChatMessageHistory, BaseMessage
 from langchain.utilities import BingSearchAPIWrapper
 from rest_framework.decorators import permission_classes, api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer
@@ -31,7 +37,8 @@ def search(request):
     saved_query.save()
     vectorstore = Vectorstore()
     number_of_results = SearchableLink.objects.filter(search_engine__slug=search_engine).count()
-    private_results = vectorstore.similarity_search(query, search_engine, k=number_of_results if number_of_results < 10 else 10)
+    private_results = vectorstore.similarity_search(query, search_engine,
+                                                    k=number_of_results if number_of_results < 10 else 10)
     results = []
 
     if use_base:
@@ -93,6 +100,7 @@ def create_search_engine(request):
     vectorstore.create_collection(search_engine)
     return Response({'response': 'success'})
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
@@ -113,6 +121,7 @@ def list_links(request):
 
     return Response({'response': links})
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
@@ -129,3 +138,68 @@ def get_queries(request):
             'created_at': query.created_at
         })
     return Response({'response': queries_list})
+
+
+class PassedInChatHistory(BaseChatMessageHistory):
+    _messages = []
+
+    @property
+    def messages(self) -> List[BaseMessage]:
+        return self._messages
+
+    def add_user_message(self, message) -> None:
+        if type(message) == dict:
+            message = message['message']
+        self._messages.append(HumanMessage(content=message))
+
+    def add_ai_message(self, message) -> None:
+        if type(message) == dict:
+            message = message['message']
+        self._messages.append(HumanMessage(content=message))
+
+    def clear(self) -> None:
+        self._messages = []
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def chat(request):
+    body = json.loads(request.body)
+    search_engine = body['search_engine']
+    history = body['history']
+    message = body['message']
+    vectorstore = Vectorstore()
+    template = """Assistant is a large language model trained by OpenAI.
+
+    Assistant is designed to be able to assist with a wide range of tasks, from answering simple questions to providing in-depth explanations and discussions on a wide range of topics. As a language model, Assistant is able to generate human-like text based on the input it receives, allowing it to engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at hand.
+
+    Assistant is constantly learning and improving, and its capabilities are constantly evolving. It is able to process and understand large amounts of text, and can use this knowledge to provide accurate and informative responses to a wide range of questions. Additionally, Assistant is able to generate its own text based on the input it receives, allowing it to engage in discussions and provide explanations and descriptions on a wide range of topics.
+
+    Overall, Assistant is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
+
+    {history}
+    Human: {human_input}
+    Assistant:"""
+
+    prompt = PromptTemplate(
+        input_variables=["history", "human_input"],
+        template=template
+    )
+    chat_history = PassedInChatHistory()
+    print(history)
+    for message in history:
+        print(message['message'])
+        if message['speaker'] == 'human':
+            chat_history.add_user_message(message)
+        else:
+            chat_history.add_ai_message(message)
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, chat_memory=chat_history)
+
+    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model_name='gpt-4')
+    # chain = load_qa_with_sources_chain(llm, chain_type="stuff",
+    #                                    retriever=vectorstore.get_collection(search_engine).as_retriever())
+    chain = ConversationalRetrievalChain.from_llm(llm, vectorstore.get_collection(search_engine).as_retriever(),
+                                                  memory=memory)
+    response = chain.run(question=message)
+    return Response({'response': response})
