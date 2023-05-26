@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from typing import List
 
 from decouple import config
@@ -38,10 +39,75 @@ def search(request):
     saved_query.search_engine = engine
     saved_query.save()
     vectorstore = Vectorstore()
-    number_of_results = SearchableLink.objects.filter(search_engine__slug=search_engine).count()
-    private_results = vectorstore.similarity_search(query, search_engine,
-                                                    k=number_of_results if number_of_results < 10 else 10)
     results = []
+
+    if search_engine == "global":
+        number_of_results = SearchEngine.objects.count()
+        search_engines_to_search = vectorstore.similarity_search(query, "global", k=number_of_results if number_of_results < 3 else 3)
+
+        for se in search_engines_to_search:
+            slug = se.metadata['search_engine']
+            number_of_search_results = SearchEngine.objects.count()
+
+            private_results = vectorstore.similarity_search(query, slug,
+                                                            k=number_of_search_results if number_of_search_results < 4 else 4)
+            for result in private_results:
+                if result.metadata.get('search_engine'):
+                    continue
+                section_id = result.metadata.get('section')
+                # fulltext_id = result['metadata']['fulltext']
+
+                link_id = result.metadata['link']
+                searchable_link = SearchableLink.objects.filter(id=link_id).first()
+                link = Link.objects.filter(id=link_id).first()
+                if link is None:
+                    continue
+                if section_id:
+                    snippet = create_snippet(section_id)
+                else:
+                    snippet = None
+                if searchable_link and searchable_link.title:
+                    title = searchable_link.title
+                elif link and link.title:
+                    title = link.title
+                else:
+                    title = "Missing Title"
+
+                if searchable_link and searchable_link.description:
+                    description = searchable_link.description
+                else:
+                    description = None
+                results.append({
+                    "title": title,
+                    "link": link.url,
+                    "snippet": snippet,
+                    "description": description
+                })
+
+    else:
+        number_of_results = SearchableLink.objects.filter(search_engine__slug=search_engine).count()
+        private_results = vectorstore.similarity_search(query, search_engine,
+                                                        k=number_of_results if number_of_results < 10 else 10)
+        for result in private_results:
+
+            section_id = result.metadata.get('section')
+            # fulltext_id = result['metadata']['fulltext']
+            link_id = result.metadata['link']
+            searchable_link_id = result.metadata['searchable_link']
+            link = Link.objects.filter(id=link_id).first()
+            searchable_link = SearchableLink.objects.filter(id=searchable_link_id).first()
+            if link is None:
+                continue
+            if section_id:
+                snippet = create_snippet(section_id)
+            else:
+                snippet = None
+            results.append({
+                "title": searchable_link.title if searchable_link.title else link.title,
+                "link": link.url,
+                "snippet": snippet,
+                "description": searchable_link.description if searchable_link.description else None,
+            })
 
     if use_base:
         search = BingSearchAPIWrapper(bing_subscription_key=config('BING_SUBSCRIPTION_KEY'),
@@ -54,26 +120,7 @@ def search(request):
                 "snippet": result['snippet']
             })
 
-    for result in private_results:
 
-        section_id = result.metadata.get('section')
-        # fulltext_id = result['metadata']['fulltext']
-        link_id = result.metadata['link']
-        searchable_link_id = result.metadata['searchable_link']
-        link = Link.objects.filter(id=link_id).first()
-        searchable_link = SearchableLink.objects.filter(id=searchable_link_id).first()
-        if link is None:
-            continue
-        if section_id:
-            snippet = create_snippet(section_id)
-        else:
-            snippet = None
-        results.append({
-            "title": searchable_link.title if searchable_link.title else link.title,
-            "link": link.url,
-            "snippet": snippet,
-            "description": searchable_link.description if searchable_link.description else None,
-        })
 
     return Response({'response': results})
 
@@ -98,8 +145,23 @@ def add(request):
 def create_search_engine(request):
     body = json.loads(request.body)
     search_engine = body['search_engine']
+    title = body['title']
+    description = body['description']
     vectorstore = Vectorstore()
-    vectorstore.create_collection(search_engine)
+    engine = SearchEngine.objects.filter(slug=search_engine).first()
+    if not engine:
+        engine = SearchEngine()
+        engine.slug = search_engine
+        engine.title = title
+        engine.description = description
+        engine.uuid = str(uuid.uuid4())
+        engine.save()
+    else:
+        engine.title = title
+        engine.description = description
+        engine.save()
+    vectorstore.create_collection(search_engine, title, description, engine.uuid)
+
     return Response({'response': 'success'})
 
 
@@ -189,7 +251,6 @@ def chat(request):
         template=template
     )
     chat_history = PassedInChatHistory()
-    print(history)
     for item in history:
         if item['speaker'] == 'human':
             chat_history.add_user_message(item)

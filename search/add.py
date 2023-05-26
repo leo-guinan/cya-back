@@ -42,8 +42,9 @@ def add_searchable_link(search_engine, title, url, description, image):
     if not engine:
         engine = SearchEngine()
         engine.slug = search_engine
-        vectorstore.create_collection(search_engine)
+        engine.uuid = str(uuid.uuid4())
         engine.save()
+        vectorstore.create_collection(search_engine, title, description, engine.uuid)
     searchable_link = SearchableLink.objects.filter(url=link, search_engine=engine).first()
     if not searchable_link:
         searchable_link = SearchableLink()
