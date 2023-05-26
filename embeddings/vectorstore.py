@@ -14,11 +14,17 @@ class Vectorstore:
                                  chroma_server_http_port=8000)
         client = chromadb.Client(settings=self.settings)
 
-    def create_collection(self, name):
+    def create_collection(self, name, title, description, uuid):
+        global_collection = Chroma(
+            embedding_function=self.embeddings,
+            collection_name="global",
+            client_settings=self.settings)
         collection = Chroma(
             embedding_function=self.embeddings,
             collection_name=name,
             client_settings=self.settings)
+        global_collection.add_texts([f'{name} | {title} | This is useful for searching {description}'], ids=[uuid],
+                                    metadatas=[{"search_engine": name, "uuid": uuid}])
 
     def add_to_collection(self, collection, texts, ids, metadatas):
         chroma_collection = Chroma(
@@ -40,4 +46,3 @@ class Vectorstore:
             embedding_function=self.embeddings,
             collection_name=name,
             client_settings=self.settings)
-

@@ -1,4 +1,6 @@
+import uuid as uuid
 from django.db import models
+import uuid
 
 # Create your models here.
 class Link(models.Model):
@@ -44,6 +46,9 @@ class Recommendation(models.Model):
 class SearchEngine(models.Model):
     slug = models.TextField(unique=True)
     url = models.TextField()
+    title = models.TextField( null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    uuid = models.TextField(null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
@@ -54,7 +59,7 @@ class SearchableLink(models.Model):
     search_engine = models.ForeignKey(SearchEngine, related_name='searchable_links', on_delete=models.CASCADE)
     title = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    uuid = models.TextField(null=True, blank=True)
+    uuid = models.TextField(null=True, blank=True, unique=True)
     image = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
