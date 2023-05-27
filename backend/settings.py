@@ -59,7 +59,9 @@ INSTALLED_APPS = [
     'leoai',
     'search',
     'users',
-    'spark'
+    'spark',
+    'chat',
+    'decisions',
 ]
 SITE_ID = 2
 
@@ -210,7 +212,19 @@ LOGGING = {
             # required to avoid double logging with root logger
             'propagate': False,
         },
+        'chat': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
         'content': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'decisions': {
             'level': LOGLEVEL,
             'handlers': ['console', ],
             # required to avoid double logging with root logger
