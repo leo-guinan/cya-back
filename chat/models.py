@@ -11,7 +11,8 @@ class ClientApp(models.Model):
     default_slug = models.TextField(default="global")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    client = models.ForeignKey('client.Client', related_name='apps', on_delete=models.CASCADE, null=True, blank=True)
+    metasearch_engine = models.OneToOneField('decisions.MetaSearchEngine', related_name='app', on_delete=models.CASCADE, null=True, blank=True)
     def __str__(self):
         return self.name
 
@@ -19,7 +20,7 @@ class Source(models.Model):
     app = models.ForeignKey(ClientApp, related_name='sources', on_delete=models.CASCADE)
     url = models.TextField()
     title = models.TextField()
-    search_engine = models.ForeignKey('search.SearchEngine', related_name='sources', on_delete=models.CASCADE)
+    metasearch_engine = models.ForeignKey('decisions.MetaSearchEngine', related_name='sources', on_delete=models.CASCADE, null=True, blank=True)
 
 class Use(models.Model):
     messages = models.ManyToManyField('Message', related_name='uses')
