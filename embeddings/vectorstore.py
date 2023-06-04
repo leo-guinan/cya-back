@@ -31,7 +31,6 @@ class Vectorstore:
             embedding_function=self.embeddings,
             collection_name=collection,
             client_settings=self.settings)
-        print(metadatas)
         chroma_collection.add_texts(texts=texts, ids=ids, metadatas=metadatas)
 
     def similarity_search(self, query, collection, k=10):

@@ -62,6 +62,8 @@ INSTALLED_APPS = [
     'spark',
     'chat',
     'decisions',
+    'client',
+    'crawler'
 ]
 SITE_ID = 2
 
@@ -218,10 +220,21 @@ LOGGING = {
             # required to avoid double logging with root logger
             'propagate': False,
         },
+        'client': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
         'content': {
             'level': LOGLEVEL,
             'handlers': ['console', ],
             # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'crawler': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
             'propagate': False,
         },
         'decisions': {

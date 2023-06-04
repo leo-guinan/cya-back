@@ -1,13 +1,13 @@
 from typing import List
 
 from content.snippets import create_snippet
-from decisions.models import SearchEngineSearchEngine, SearchableLink
+from decisions.models import MetaSearchEngine, SearchableLink
 from embeddings.vectorstore import Vectorstore
 
 
 def pick_search_engines_to_use(slug, query):
     vectorstore = Vectorstore()
-    search_engine_search_engine = SearchEngineSearchEngine.objects.get(slug=slug)
+    search_engine_search_engine = MetaSearchEngine.objects.get(slug=slug)
     number_of_results = search_engine_search_engine.search_engines.count()
     search_engines_to_search = vectorstore.similarity_search(query, slug,
                                                              k=number_of_results if number_of_results < 3 else 3)
