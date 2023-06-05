@@ -38,7 +38,20 @@ def respond_to_message(history, message, slug):
     # slug is for metasearch engine. First, have to find the best search engine to search.
     metasearch_engine = MetaSearchEngine.objects.get(slug=slug)
     print(slug)
-    search_slug = metasearch_engine.search_engines.first().slug
+    search_engine = metasearch_engine.search_engines.first()
+    search_slug = None
+    if search_engine:
+        print("Search engine found for parent.")
+        search_slug = search_engine.slug
+    else:
+        for child in metasearch_engine.children.all():
+            search_engine = child.search_engines.first()
+            if search_engine:
+                print("Search engine found for child.")
+                search_slug = search_engine.slug
+                break
+    if search_slug is None:
+        search_slug = "default"
     print(search_slug)
     chat_history = PassedInChatHistory()
     for item in history:
