@@ -27,4 +27,5 @@ urlpatterns = [
     path('api/user/', include('users.urls')),
     path('api/spark/', include('spark.urls')),
     path('api/client/', include('client.urls')),
+    path('api/talkhomey/', include('talkhomey.urls')),
 ]

@@ -36,6 +36,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
     ALLOWED_HOSTS.append('api.chooseyouralgorithm.com')
     ALLOWED_HOSTS.append('automations.buildinpublicuniversity.com')
+    ALLOWED_HOSTS.append('n8n-e50h.onrender.com')
 
 # Application definition
 
@@ -63,7 +64,8 @@ INSTALLED_APPS = [
     'chat',
     'decisions',
     'client',
-    'crawler'
+    'crawler',
+    "talkhomey"
 ]
 SITE_ID = 2
 
