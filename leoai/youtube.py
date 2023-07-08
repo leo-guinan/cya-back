@@ -3,7 +3,6 @@ import logging
 from pytube import YouTube, Playlist
 
 from content.audio import transcribe_audio
-from content.converter import Converter
 
 logger = logging.getLogger(__name__)
 def download(link):
@@ -21,7 +20,6 @@ def process_video(video_url):
     # ... do something with the url
     #download video
     audio = download(video_url)
-    converter = Converter()
 
     return transcribe_audio(audio)
 
