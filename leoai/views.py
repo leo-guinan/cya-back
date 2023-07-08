@@ -11,8 +11,10 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from leoai.agent import Agent
 from leoai.models import Message, Request, Collection, Item, Facts, FactItem
+from leoai.notion import Notion
 from leoai.serializers import CollectionSerializer, FactsSerializer
 from leoai.tools import Tools
+from leoai.youtube import process_video
 
 
 # Create your views here.
@@ -126,3 +128,19 @@ def get_facts(request):
     factSerializer = FactsSerializer(facts)
     response = factSerializer.data
     return Response({'response': response})
+
+def process_youtube_to_notion(video_url, page):
+    chunks = process_video(video_url)
+    notion = Notion()
+    notion.add_chunks_to_page(page, chunks)
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def youtube_to_notion(request):
+    body = json.loads(request.body)
+    video_url = body['video_url']
+    page = body['page']
+    process_youtube_to_notion(video_url, page)
+    return Response({'status': "success"})
+

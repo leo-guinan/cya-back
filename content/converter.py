@@ -5,7 +5,7 @@ from decouple import config
 
 
 class Converter:
-    def __init__(self, path):
+    def __init__(self):
         self.base_url = config('CONVERT_BASE_URL')
         self.flac_path=self.base_url + 'convert/audio/to/flac'
         self.extract_audio_path=self.base_url + 'convert/video/extract/audio'
