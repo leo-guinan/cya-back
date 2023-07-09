@@ -1,7 +1,6 @@
 import json
 import uuid
 
-from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from langchain.memory import ConversationBufferMemory
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
@@ -11,10 +10,9 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from leoai.agent import Agent
 from leoai.models import Message, Request, Collection, Item, Facts, FactItem
-from leoai.notion import Notion
 from leoai.serializers import CollectionSerializer, FactsSerializer
+from leoai.tasks import transcribe_youtube_video
 from leoai.tools import Tools
-from leoai.youtube import process_video
 
 
 # Create your views here.
@@ -48,6 +46,7 @@ def search(request):
         print(e)
         return Response({'response': response})
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
@@ -70,12 +69,11 @@ def add_to_collection(request):
     item.save()
     tools = Tools()
     text = item.recommendation + "\n\n" + item.description + "\n\n" + item.link
-    tools.add_item_to_collection(collection.name,[text], [str(item.uuid)], [{
+    tools.add_item_to_collection(collection.name, [text], [str(item.uuid)], [{
         'name': item.name,
         'link': item.link,
     }])
     return Response({'status': "success"})
-
 
 
 @api_view(('POST',))
@@ -97,11 +95,12 @@ def add_fact(request):
     item.save()
     tools = Tools()
     text = item.question + "\n\n" + item.answer
-    tools.add_item_to_collection(facts.name,[text], [str(item.uuid)], [{
+    tools.add_item_to_collection(facts.name, [text], [str(item.uuid)], [{
         'question': item.question,
         'answer': item.answer,
     }])
     return Response({'status': "success"})
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -116,6 +115,7 @@ def get_collection(request):
     response = collectionSerializer.data
     return Response({'response': response})
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes([HasAPIKey])
@@ -129,10 +129,6 @@ def get_facts(request):
     response = factSerializer.data
     return Response({'response': response})
 
-def process_youtube_to_notion(video_url, page):
-    chunks = process_video(video_url)
-    notion = Notion()
-    notion.add_chunks_to_page(page, chunks)
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -141,6 +137,5 @@ def youtube_to_notion(request):
     body = json.loads(request.body)
     video_url = body['video_url']
     page = body['page']
-    process_youtube_to_notion(video_url, page)
+    transcribe_youtube_video.delay(video_url, page)
     return Response({'status': "success"})
-
