@@ -7,4 +7,4 @@ from leoai.youtube import process_video
 def transcribe_youtube_video(video_url, page):
     chunks = process_video(video_url)
     notion = Notion()
-    notion.add_chunks_to_page(page, chunks)
+    notion.add_chunks_to_page_property(page, chunks)
