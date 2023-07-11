@@ -139,3 +139,20 @@ def youtube_to_notion(request):
     page = body['page']
     transcribe_youtube_video.delay(video_url, page)
     return Response({'status': "success"})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def thread_webhook(request):
+    pass
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def blog_webhook(request):
+    body = json.loads(request.body)
+    output = body['output']
+    final_output = output['output']
+
+
