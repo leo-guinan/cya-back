@@ -65,7 +65,8 @@ INSTALLED_APPS = [
     'decisions',
     'client',
     'crawler',
-    "talkhomey"
+    "talkhomey",
+    'coach'
 ]
 SITE_ID = 2
 
