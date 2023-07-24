@@ -32,8 +32,8 @@ def chat(request):
 
     if session_id == user.initial_session_id:
 
-        last_message = message_history.messages[-1]
-        print(last_message)
+        last_message = message_history.messages[-1] if message_history.messages else ""
+
         questions = InitialQuestion.objects.all()
         for question in questions:
             if question.question == last_message.content:
