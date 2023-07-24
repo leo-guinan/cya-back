@@ -32,9 +32,13 @@ def chat(request):
 
     if session_id == user.initial_session_id:
 
-        last_message = message_history.messages[-1] if message_history.messages else {"content": ""}
+        last_message = message_history.messages[-1] if message_history.messages else None
 
         questions = InitialQuestion.objects.all()
+        if last_message is None:
+            initial_question = questions.first()
+            message_history.add_ai_message(initial_question.question)
+            return Response({'message': initial_question.question, 'session_id': session_id})
         for question in questions:
             if question.question == last_message.content:
                 # save user answer
