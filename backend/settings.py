@@ -37,6 +37,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append('api.chooseyouralgorithm.com')
     ALLOWED_HOSTS.append('automations.buildinpublicuniversity.com')
     ALLOWED_HOSTS.append('n8n-e50h.onrender.com')
+    ALLOWED_HOSTS.append('app.buildinpublic.coach')
 
 # Application definition
 
