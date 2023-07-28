@@ -53,6 +53,16 @@ services:
         fromDatabase:
           name: cyadb
           property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          name: celery-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: celery-redis
+          type: redis
+          property: port
       - key: PYTHON_VERSION
         value: 3.8.12
   - type: redis
