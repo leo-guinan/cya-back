@@ -39,40 +39,41 @@ def respond_to_chat_message(message, user_id, session_id):
             connection_string=config('MONGODB_CONNECTION_STRING'), session_id=session_id
         )
 
-        if session_id == user.initial_session_id:
 
-            last_message = message_history.messages[-1] if message_history.messages else None
 
-            questions = InitialQuestion.objects.all()
-            if last_message is None:
-                initial_question = questions.first()
-                message_history.add_ai_message(initial_question.question)
+        last_message = message_history.messages[-1] if message_history.messages else None
+
+        print(last_message)
+        questions = InitialQuestion.objects.all()
+        if last_message is None:
+            initial_question = questions.first()
+            message_history.add_ai_message(initial_question.question)
+            # need to send message to websocket
+            async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": initial_question.question })
+            return
+            # return Response({'message': initial_question.question, 'session_id': session_id})
+        for question in questions:
+            if question.question == last_message.content:
+                # save user answer
+                user_answer = UserAnswer(answer=message, question=question, user=user)
+                user_answer.save()
+                message_history.add_user_message(message)
+                # find next question
+                next_question = InitialQuestion.objects.filter(index=question.index + 1).first()
+                if next_question is None:
+                    continue
+                message_history.add_ai_message(next_question.question)
                 # need to send message to websocket
-                async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": initial_question.question })
-
-                # return Response({'message': initial_question.question, 'session_id': session_id})
-            for question in questions:
-                if question.question == last_message.content:
-                    # save user answer
-                    user_answer = UserAnswer(answer=message, question=question, user=user)
-                    user_answer.save()
-                    message_history.add_user_message(message)
-                    # find next question
-                    next_question = InitialQuestion.objects.filter(index=question.index + 1).first()
-                    if next_question is None:
-                        continue
-                    message_history.add_ai_message(next_question.question)
-                    # need to send message to websocket
-                    async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": next_question.question})
-
-                    # return Response({'message': next_question.question, 'session_id': session_id})
+                async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": next_question.question})
+                return
+                # return Response({'message': next_question.question, 'session_id': session_id})
         answers = UserAnswer.objects.filter(user=user).all()
         if answers is None:
             initial_question = InitialQuestion.objects.first()
             message_history.add_ai_message(initial_question.question)
             # need to send message to websocket
             async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": initial_question.question })
-
+            return
             # return Response({'message': initial_question.question, 'session_id': session_id})
         memory = ConversationBufferMemory(memory_key="history", chat_memory=message_history)
 
@@ -260,3 +261,7 @@ def respond_to_chat_message(message, user_id, session_id):
 
 
 
+@app.task(name="chatbot.tasks.save_client_info")
+def save_client_info(session_id, message):
+
+    pass
