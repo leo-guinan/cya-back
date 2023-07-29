@@ -42,3 +42,14 @@ class ChatError(models.Model):
     def __str__(self):
         return self.error
 
+class ChatPrompt(models.Model):
+    prompt = models.TextField()
+    name = models.CharField(max_length=255, unique=True)
+    def __str__(self):
+        return self.prompt
+
+class ChatPromptParameter(models.Model):
+    prompt = models.ForeignKey(ChatPrompt, on_delete=models.CASCADE, related_name='parameters')
+    name = models.CharField(max_length=255)
+    def __str__(self):
+        return self.name

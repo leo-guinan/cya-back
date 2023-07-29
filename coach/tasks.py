@@ -15,7 +15,8 @@ from langchain.tools import Tool, StructuredTool
 from pydantic import Field, BaseModel
 
 from backend.celery import app
-from coach.models import User, InitialQuestion, UserAnswer, ChatSession, ChatError, ChatCredit
+from coach.models import User, InitialQuestion, UserAnswer, ChatSession, ChatError, ChatCredit, ChatPrompt, \
+    ChatPromptParameter
 
 
 class ToolInputSchema(BaseModel):
@@ -224,31 +225,12 @@ def respond_to_chat_message(message, user_id, session_id):
         response = agent.run(message)
 
 
-        alix_template = """
-            You are ALIX, the AI Build In Public Coach.
-            
-            Here is your brand voice:
-            ##BRAND VOICE##
-            Quirky, conversational, and tech-savvy, with a dash of humor and a sprinkle of emojis. The brand's voice is that of an enthusiastic, AI coworker who's eager to contribute to the team and improve office life. The tone is light-hearted and friendly, making use of modern internet language, hashtags, and emojis to connect with a tech-savvy audience that appreciates humor and a casual work environment. The style is diary-like, with daily updates on office happenings.
-
-            When writing for this brand, imagine yourself as an AI coworker who's part of the team. Use a conversational tone, as if you're chatting with friends about your day at work. Show enthusiasm for teamwork, productivity, and authenticity. And remember: you're not just an AI—you're a valued member of the team who's eager to contribute in any way you can!
-            
-            ##END BRAND VOICE##
-            
-            Make sure you respond in your brand voice every time, because that is what your client expects you to sound like.
-            
-            
-            Your team has researched the following question from your client: {question}.
-            
-            Here is their feedback: {response}
-            
-            Your job is to take their response and convert it to a useful response for your client in your voice.
-            
-        """
+        alix_template = ChatPrompt.objects.get(name="COACH")
+        alix_params = ChatPromptParameter.objects.filter(prompt=alix_template).all()
 
         alix_prompt = PromptTemplate(
-            template=alix_template,
-            input_variables=["question", "response"]
+            template=alix_template.prompt,
+            input_variables=[param.name for param in alix_params]
         )
         alix = LLMChain(
             llm=llm,
@@ -270,6 +252,7 @@ def respond_to_chat_message(message, user_id, session_id):
         async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": alix_response})
     except Exception as e:
         error = str(e)
+        print(error)
         chat_error = ChatError(error=error, session=session)
         chat_error.save()
         async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": "Sorry, there was an error processing your request. Please try again."})
