@@ -1,7 +1,9 @@
 import json
+import logging
 import os
 import uuid
 
+import requests
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from decouple import config
@@ -10,13 +12,21 @@ from langchain.agents import AgentType
 from langchain.agents import initialize_agent
 from langchain.agents import load_tools
 from langchain.chat_models import ChatOpenAI
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory, MongoDBChatMessageHistory
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, HumanMessagePromptTemplate
+from langchain.schema import SystemMessage
 from langchain.tools import Tool, StructuredTool
+from langchain.vectorstores import Chroma
 from pydantic import Field, BaseModel
 
 from backend.celery import app
 from coach.models import User, InitialQuestion, UserAnswer, ChatSession, ChatError, ChatCredit, ChatPrompt, \
     ChatPromptParameter
+from content.crawler import Crawler
+from content.scraper import Scraper
+
+logger = logging.getLogger(__name__)
 
 
 class ToolInputSchema(BaseModel):
@@ -39,41 +49,44 @@ def respond_to_chat_message(message, user_id, session_id):
             connection_string=config('MONGODB_CONNECTION_STRING'), session_id=session_id
         )
 
-
-
         last_message = message_history.messages[-1] if message_history.messages else None
 
         print(last_message)
         questions = InitialQuestion.objects.all()
-        if last_message is None:
-            initial_question = questions.first()
-            message_history.add_ai_message(initial_question.question)
-            # need to send message to websocket
-            async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": initial_question.question })
-            return
-            # return Response({'message': initial_question.question, 'session_id': session_id})
-        for question in questions:
-            if question.question == last_message.content:
-                # save user answer
-                user_answer = UserAnswer(answer=message, question=question, user=user)
-                user_answer.save()
-                message_history.add_user_message(message)
-                # find next question
-                next_question = InitialQuestion.objects.filter(index=question.index + 1).first()
-                if next_question is None:
-                    continue
-                message_history.add_ai_message(next_question.question)
-                # need to send message to websocket
-                async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": next_question.question})
-                return
-                # return Response({'message': next_question.question, 'session_id': session_id})
         answers = UserAnswer.objects.filter(user=user).all()
-        if answers is None:
-            initial_question = InitialQuestion.objects.first()
-            message_history.add_ai_message(initial_question.question)
-            # need to send message to websocket
-            async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": initial_question.question })
-            return
+        if len(answers) != len(questions):
+            if last_message is None:
+                initial_question = questions.first()
+                message_history.add_ai_message(initial_question.question)
+                # need to send message to websocket
+                async_to_sync(channel_layer.group_send)(session_id,
+                                                        {"type": "chat.message", "message": initial_question.question})
+                return
+                # return Response({'message': initial_question.question, 'session_id': session_id})
+            for question in questions:
+                if question.question == last_message.content:
+                    # save user answer
+                    user_answer = UserAnswer(answer=message, question=question, user=user)
+                    user_answer.save()
+                    message_history.add_user_message(message)
+                    # find next question
+                    next_question = InitialQuestion.objects.filter(index=question.index + 1).first()
+                    if next_question is None:
+                        continue
+                    message_history.add_ai_message(next_question.question)
+                    # need to send message to websocket
+                    async_to_sync(channel_layer.group_send)(session_id,
+                                                            {"type": "chat.message", "message": next_question.question})
+                    return
+                    # return Response({'message': next_question.question, 'session_id': session_id})
+            answers = UserAnswer.objects.filter(user=user).all()
+            if answers is None:
+                initial_question = InitialQuestion.objects.first()
+                message_history.add_ai_message(initial_question.question)
+                # need to send message to websocket
+                async_to_sync(channel_layer.group_send)(session_id,
+                                                        {"type": "chat.message", "message": initial_question.question})
+                return
             # return Response({'message': initial_question.question, 'session_id': session_id})
         memory = ConversationBufferMemory(memory_key="history", chat_memory=message_history)
 
@@ -81,6 +94,8 @@ def respond_to_chat_message(message, user_id, session_id):
         partials = {}
         for answer in answers:
             partials[answer.question.prompt_variable] = answer.answer
+
+        print(partials)
 
         # System prompt for chatbot
         system_prompt_template = """
@@ -135,7 +150,7 @@ def respond_to_chat_message(message, user_id, session_id):
         background_tool = Tool.from_function(
             func=conversation.run,
             name="ClientBackground",
-            description="useful for when you need to get information about the client or what they are working on"
+            description="useful for when you are missing information about the client or what they are working on"
             # coroutine= ... <- you can specify an async method if desired as well
         )
 
@@ -225,24 +240,56 @@ def respond_to_chat_message(message, user_id, session_id):
 
         response = agent.run(message)
 
+        # You are Alix, the Build In Public Coach.
+        #
+        #
+        #
+        #
+        #  {human_input}.
+        #
+        # Here is the feedback from your team: {response}
+        #
+        # Your job is to take their response and convert it to a useful response for your client in your voice.
+        #
+        # You are in a real time chat, so keep your responses short and feel free to ask small, clarifying questions.  You don't want to overwhelm the client with
+        #
+        #
+        #
+        #
+        # your response
 
-        alix_template = ChatPrompt.objects.get(name="COACH")
-        alix_params = ChatPromptParameter.objects.filter(prompt=alix_template).all()
+        prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content=f"""
+            You are Alix, the Build In Public Coach. You are friendly, informal, and tech-savvy.
+            
+            You believe that building in public is a great way to empower people to build their own businesses.
+            
+            You are supportive, encouraging, and helpful.
+            
+            Your team has researched the following question from your client: {message}
+            Here is the feedback from your team: {response}
+            
+            Your job is to take their response and convert it to a useful response for your client in your voice.
+            """),
+            # The persistent system prompt
+            MessagesPlaceholder(variable_name="chat_history"),  # Where the memory will be stored.
+            HumanMessagePromptTemplate.from_template("{human_input}"),  # Where the human input will injectd
+        ])
 
-        alix_prompt = PromptTemplate(
-            template=alix_template.prompt,
-            input_variables=[param.name for param in alix_params]
-        )
-        alix = LLMChain(
+        alix_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True,
+                                               chat_memory=message_history)
+
+        chat_llm_chain = LLMChain(
             llm=llm,
+            prompt=prompt,
             verbose=True,
-            prompt=alix_prompt,
-
+            memory=alix_memory,
         )
 
-        alix_response = alix.run(
-            question=message,
-            response=response
+        # alix_memory = ConversationBufferMemory(memory_key="history", chat_memory=message_history, input_key="human_input")
+
+        alix_response = chat_llm_chain.predict(
+            human_input=message,
         )
 
         # record chat credit used
@@ -256,12 +303,35 @@ def respond_to_chat_message(message, user_id, session_id):
         print(error)
         chat_error = ChatError(error=error, session=session)
         chat_error.save()
-        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": "Sorry, there was an error processing your request. Please try again."})
+        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message",
+                                                             "message": "Sorry, there was an error processing your request. Please try again."})
 
 
+@app.task(name="coach.tasks.crawl_and_scrape")
+def crawl_and_scrape(url):
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+    db = Chroma("test", embeddings)
+    scraper = Scraper(db)
+    crawler = Crawler(scraper)
+    crawler.crawl(url)
 
 
-@app.task(name="chatbot.tasks.save_client_info")
-def save_client_info(session_id, message):
+@app.task(name="coach.tasks.add_user_email")
+def add_user_email(email, preferred_name):
+    try:
+        # send request with bearer token authentication
+        headers = {
+            "Authorization": f"Bearer {config('LOOPS_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        data = {
+                "email": email,
+                "firstName": preferred_name,
+                "userGroup": "Users",
+                "source": "User Signup"
+            }
+        requests.post("https://app.loops.so/api/v1/contacts/create", headers=headers, data=json.dumps(data))
 
-    pass
+    except Exception as e:
+        logger.error(e)
+
