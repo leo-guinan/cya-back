@@ -42,7 +42,7 @@ aiohttp = "^3.8.1"
 replicate = "^0.4.0"
 boto3 = "^1.26.62"
 pydub = "^0.25.1"
-chromadb = "^0.4.5"
+chromadb = "^0.3.24"
 pytube = {git = "https://github.com/leo-guinan/pytube.git"}
 tiktoken = "^0.3.3"
 uuid = "^1.30"
