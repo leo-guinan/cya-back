@@ -36,7 +36,7 @@ services:
           type: redis
           property: port
       - key: PYTHON_VERSION
-        value: 3.10.12
+        value: 3.11.4
   - type: worker
     name: queue
     region: ohio
@@ -64,7 +64,7 @@ services:
           type: redis
           property: port
       - key: PYTHON_VERSION
-        value: 3.10.12
+        value: 3.11.4
   - type: redis
     name: celery-redis
     region: ohio
