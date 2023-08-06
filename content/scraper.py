@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from urllib.request import Request, urlopen
 
@@ -33,6 +34,7 @@ class Scraper:
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
             documents = text_splitter.split_documents(data)
             self.client.add_documents(documents)
+            os.remove(file_name)
         except Exception as e:
             self.logger.error(f"Error scraping {url}: {e}")
 

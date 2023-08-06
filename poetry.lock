@@ -1022,6 +1022,20 @@ pydantic = ">=1,<2"
 requests = ">=2,<3"
 
 [[package]]
+name = "lark"
+version = "1.1.7"
+description = "a modern parsing library"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+atomic_cache = ["atomicwrites"]
+interegular = ["interegular (>=0.3.1,<0.4.0)"]
+nearley = ["js2py"]
+regex = ["regex"]
+
+[[package]]
 name = "loguru"
 version = "0.7.0"
 description = "Python logging made (stupidly) simple"
@@ -2239,7 +2253,7 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.11"
-content-hash = "c71df52e50f42b8f241144e0eb0b20bc8d0e0d42321f4571523774bea3b78c81"
+content-hash = "0fc659df217366be9f48b284d3d5e0cbac948752c8b07c0a3ff1e5d80113a1a9"
 
 [metadata.files]
 aiohttp = [
@@ -3108,6 +3122,10 @@ langchain = [
 langsmith = [
     {file = "langsmith-0.0.19-py3-none-any.whl", hash = "sha256:ae240030fd0b98e9467fbf19ac6d58a0a4ffcc1db8462625141dae6178e62c68"},
     {file = "langsmith-0.0.19.tar.gz", hash = "sha256:e91a2cd101456e2f8d6015c9ea371d6556eb6072a1b20d4793479855163ae28f"},
+]
+lark = [
+    {file = "lark-1.1.7-py3-none-any.whl", hash = "sha256:9e5dc5bbf93fa1840083707285262514a0ef8a6613874af7ea1cec60468d6e92"},
+    {file = "lark-1.1.7.tar.gz", hash = "sha256:be7437bf1f37ab08b355f29ff2571d77d777113d0a8c4352b0c513dced6c5a1e"},
 ]
 loguru = [
     {file = "loguru-0.7.0-py3-none-any.whl", hash = "sha256:b93aa30099fa6860d4727f1b81f8718e965bb96253fa190fab2077aaad6d15d3"},
