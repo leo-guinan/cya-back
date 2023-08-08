@@ -41,7 +41,7 @@ class BackgroundTool:
         )
 
     def get_relevant_docs(self, message, user_id):
-        return self.retriever.get_relevant_documents(message, {"user_id": user_id})
+        return self.retriever.get_relevant_documents(message, metadata={"user_id": user_id})
 
     def answer_question(self, docs, question):
         document_prompt = PromptTemplate(
