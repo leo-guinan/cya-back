@@ -40,8 +40,8 @@ class BackgroundTool:
             llm, vectordb, document_content_description, metadata_field_info, verbose=True
         )
 
-    def get_relevant_docs(self, message):
-        return self.retriever.get_relevant_documents(message)
+    def get_relevant_docs(self, message, user_id):
+        return self.retriever.get_relevant_documents(message, {"user_id": user_id})
 
     def answer_question(self, docs, question):
         document_prompt = PromptTemplate(

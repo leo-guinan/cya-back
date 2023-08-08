@@ -51,7 +51,7 @@ def respond_to_chat_message(message, user_id, session_id):
         whats_needed_tool = WhatsNeededTool()
         background_tool = BackgroundTool()
 
-        docs = background_tool.get_relevant_docs(message)
+        docs = background_tool.get_relevant_docs(message, user_id)
 
         # determine what's needed to answer the query
         raw_ans = whats_needed_tool.process_question(message)
