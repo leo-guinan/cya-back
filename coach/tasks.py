@@ -52,7 +52,7 @@ def respond_to_chat_message(message, user_id, session_id):
         background_tool = BackgroundTool()
 
         docs = background_tool.get_relevant_docs(message, user_id)
-
+        print(json.dumps(docs))
         # determine what's needed to answer the query
         raw_ans = whats_needed_tool.process_question(message)
         print(raw_ans)
@@ -153,10 +153,10 @@ def respond_to_chat_message(message, user_id, session_id):
             [f"""[{source.metadata['title']}]({source.metadata['url']})""" for source in document['source_documents']])
 
         composite_response = f"""
-        {alix_response}
-        
-        Sources:
-        {source_markdown}
+{alix_response}
+
+Sources:
+{source_markdown}
         """
 
         print(composite_response)

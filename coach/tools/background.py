@@ -41,7 +41,7 @@ class BackgroundTool:
         )
 
     def get_relevant_docs(self, message, user_id):
-        return self.retriever.get_relevant_documents(message, metadata={"user_id": user_id})
+        return self.retriever.get_relevant_documents(message)
 
     def answer_question(self, docs, question):
         document_prompt = PromptTemplate(
@@ -56,7 +56,7 @@ class BackgroundTool:
         Please answer the following question:
         {query}
         
-        If you don't have the information you need, just respond with "I don't know"
+        If you don't have the information you need, just respond with "Unknown"
         """
         prompt = PromptTemplate(
             template=stuff_prompt_override, input_variables=["context", "query"]
