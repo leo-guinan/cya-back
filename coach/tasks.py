@@ -7,8 +7,6 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from decouple import config
 from langchain import PromptTemplate, LLMChain
-from langchain.agents import AgentType
-from langchain.agents import initialize_agent
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory, MongoDBChatMessageHistory
@@ -20,6 +18,7 @@ from backend.celery import app
 from coach.models import User, ChatSession, ChatError, ChatCredit
 from coach.tools.background import BackgroundTool
 from coach.tools.coaching import CoachingTool
+from coach.tools.lookup import LookupTool
 from coach.tools.needed import WhatsNeededTool
 from content.crawler import Crawler
 from content.scraper import Scraper
@@ -100,6 +99,9 @@ def respond_to_chat_message(message, user_id, session_id):
         # # your response
         #
         response = "\n".join([f"Question: {answer['question']}: {answer['answer']}" for answer in answers])
+        lookup_tool = LookupTool()
+        document = lookup_tool.lookup(message)
+        print(document)
         prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=f"""
             You are Alix, the Build In Public Coach. You are friendly, informal, and tech-savvy.
@@ -112,6 +114,10 @@ def respond_to_chat_message(message, user_id, session_id):
             They've looked up the information they have on your client and came up with the following questions and answers
             from their database.
             {response}
+            
+            You looked up the question in your research library and found the following answer:
+            {document['result']}
+            
 
             Your job is to take their response and convert it to a useful response for your client in your voice.
             If you need more information, feel free to ask small, clarifying questions.  You don't want to overwhelm the client with
@@ -141,13 +147,24 @@ def respond_to_chat_message(message, user_id, session_id):
         # record chat credit used
         chat_credit = ChatCredit(user=user, session=session)
         chat_credit.save()
-        print(alix_response)
+        # print(alix_response)
 
+        source_markdown = "\n".join(
+            [f"""[{source.metadata['title']}]({source.metadata['url']})""" for source in document['source_documents']])
+
+        composite_response = f"""
+        {alix_response}
+        
+        Sources:
+        {source_markdown}
+        """
+
+        print(composite_response)
         # need to send message to websocket
-        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": alix_response})
+        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": composite_response})
     except Exception as e:
         error = str(e)
-        print(error)
+        print(f'Error: ${e}')
         chat_error = ChatError(error=error, session=session)
         chat_error.save()
         async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message",
