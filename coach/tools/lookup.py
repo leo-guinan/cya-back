@@ -18,11 +18,20 @@ class LookupTool(ToolBase):
         embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
         # db = Chroma("test", embeddings)
         index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-        vectorstore = Pinecone(index, embeddings.embed_query, "text", namespace="information_sources")
+        vectorstore = Pinecone(index,
+                               embeddings.embed_query,
+                               "text",
+                               namespace="information_sources")
         self.retriever = vectorstore.as_retriever()
         llm = OpenAI(openai_api_key=config('OPENAI_API_KEY'))
 
-        self.qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.retriever, return_source_documents=True, verbose=True)
+        self.qa = RetrievalQA.from_chain_type(
+            llm=llm,
+            chain_type="stuff",
+            retriever=self.retriever,
+            return_source_documents=True,
+            verbose=True
+        )
 
     def lookup(self, message):
         return self.qa({"query": message})

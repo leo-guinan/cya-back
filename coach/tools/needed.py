@@ -26,7 +26,7 @@ class WhatsNeededTool(ToolBase):
 
                     Here's what you are trying to help the client with: {help_needed}
 
-                    What questions do you have for the client?
+                    What are the top 3 questions you need to ask the client to help them?
                     
                     Respond in the following JSON format: 
                     {{

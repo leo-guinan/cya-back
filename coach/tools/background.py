@@ -24,9 +24,9 @@ class BackgroundTool:
         embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
         # db = Chroma("test", embeddings)
         index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-        vectordb = Pinecone(index, embeddings.embed_query, "text")
+        self.vectordb = Pinecone(index, embeddings.embed_query, "text", namespace="user_info")
 
-        metadata_field_info = [
+        self.metadata_field_info = [
             AttributeInfo(
                 name="user_id",
                 description="The id for the user this information is about",
@@ -34,16 +34,18 @@ class BackgroundTool:
             ),
 
         ]
-        document_content_description = "information about the user and the business they are working on"
-        llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
-        self.retriever = SelfQueryRetriever.from_llm(
-            llm, vectordb, document_content_description, metadata_field_info, verbose=True
+        self.document_content_description = "information about the user and the business they are working on"
+        self.llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
+
+    def _get_relevant_docs(self, retriever, message):
+        return retriever.get_relevant_documents(message)
+
+    def answer_question(self, question, user_id):
+        retriever = SelfQueryRetriever.from_llm(
+            self.llm, self.vectordb, self.document_content_description, self.metadata_field_info, verbose=True
         )
 
-    def get_relevant_docs(self, message, user_id):
-        return self.retriever.get_relevant_documents(message)
-
-    def answer_question(self, docs, question):
+        docs = self._get_relevant_docs(retriever, f"{question} for user {user_id}")
         document_prompt = PromptTemplate(
             input_variables=["page_content"], template="{page_content}"
         )

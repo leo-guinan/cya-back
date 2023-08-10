@@ -51,11 +51,9 @@ def respond_to_chat_message(message, user_id, session_id):
         whats_needed_tool = WhatsNeededTool()
         background_tool = BackgroundTool()
 
-        docs = background_tool.get_relevant_docs(message, user_id)
-        print(json.dumps(docs))
         # determine what's needed to answer the query
         raw_ans = whats_needed_tool.process_question(message)
-        print(raw_ans)
+
 
         questions = json.loads(raw_ans)['questions']
         answers = []
@@ -63,7 +61,7 @@ def respond_to_chat_message(message, user_id, session_id):
             answers.append({
 
                 "question": question['question'],
-                "answer": background_tool.answer_question(docs, question)
+                "answer": background_tool.answer_question(question, user_id)
 
             })
 
@@ -149,13 +147,14 @@ def respond_to_chat_message(message, user_id, session_id):
         chat_credit.save()
         # print(alix_response)
 
-        source_markdown = "\n".join(
+        source_markdown = "\n\n".join(
             [f"""[{source.metadata['title']}]({source.metadata['url']})""" for source in document['source_documents']])
 
         composite_response = f"""
 {alix_response}
 
 Sources:
+
 {source_markdown}
         """
 
@@ -164,7 +163,7 @@ Sources:
         async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": composite_response})
     except Exception as e:
         error = str(e)
-        print(f'Error: ${e}')
+        print(f'Error: {e}')
         chat_error = ChatError(error=error, session=session)
         chat_error.save()
         async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message",
@@ -218,7 +217,7 @@ def extract_user_info(user_id, message, session_id):
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
     # db = Chroma("test", embeddings)
     index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    vectorstore = Pinecone(index, embeddings.embed_query, "text")
+    vectorstore = Pinecone(index, embeddings.embed_query, "text", namespace="user_info")
     vectorstore.add_texts([response], metadatas=[{"user_id": user_id, "session_id": session_id}], namespace="user_info")
 
 
