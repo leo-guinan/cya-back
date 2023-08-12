@@ -51,8 +51,17 @@ def get_chat(request):
     message_history = MongoDBChatMessageHistory(
         connection_string=config('MONGODB_CONNECTION_STRING'), session_id=session_id
     )
-    messages = [{
+    try:
+        messages = [{
         'message': message.content,
         'type': message.type,
-    } for message in message_history.messages]
+        } for message in message_history.messages]
+    except Exception as e:
+        message_history = MongoDBChatMessageHistory(
+            connection_string=config('MONGODB_CONNECTION_STRING'), session_id=f"chat_{session_id}"
+        )
+        messages = [{
+        'message': message.content,
+        'type': message.type,
+        } for message in message_history.messages]
     return Response({'name': chat.name, 'session_id': chat.session_id, 'messages': messages})
