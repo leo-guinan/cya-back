@@ -1,3 +1,5 @@
+import logging
+
 import pinecone
 from decouple import config
 from langchain import OpenAI
@@ -9,6 +11,8 @@ from coach.tools.tool_class import ToolBase
 
 
 class LookupTool(ToolBase):
+
+    logger = logging.getLogger(__name__)
 
     def __init__(self):
         pinecone.init(

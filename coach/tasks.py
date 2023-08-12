@@ -17,7 +17,9 @@ from langchain.vectorstores import Pinecone
 from backend.celery import app
 from coach.models import User, ChatSession, ChatError, ChatCredit
 from coach.tools.background import BackgroundTool
+from coach.tools.chat_namer import ChatNamerTool
 from coach.tools.coaching import CoachingTool
+from coach.tools.fix_json import FixJSONTool
 from coach.tools.lookup import LookupTool
 from coach.tools.needed import WhatsNeededTool
 from content.crawler import Crawler
@@ -31,8 +33,19 @@ def respond_to_chat_message(message, user_id, session_id):
     channel_layer = get_channel_layer()
     user = User.objects.get(id=user_id)
     session = ChatSession.objects.filter(session_id=session_id).first()
+    fix_json_tool = FixJSONTool()
+
     if session is None:
-        session = ChatSession(user=user, session_id=session_id)
+        name_tool = ChatNamerTool()
+        name_json = name_tool.name_chat(message)
+        try:
+            name = json.loads(name_json)['name']
+        except Exception as e:
+            # if json fails, try to fix it with gpt 4
+            name_json = fix_json_tool.fix_json(name_json)
+            name = json.loads(name_json)['name']
+        print(f"Saving session: {session_id}")
+        session = ChatSession(user=user, session_id=session_id, name=name)
         session.save()
     try:
         extract_user_info.delay(user_id, message, session_id)
@@ -53,9 +66,13 @@ def respond_to_chat_message(message, user_id, session_id):
 
         # determine what's needed to answer the query
         raw_ans = whats_needed_tool.process_question(message)
-
-
-        questions = json.loads(raw_ans)['questions']
+        print(raw_ans)
+        try:
+            questions = json.loads(raw_ans)['questions']
+        except Exception as e:
+            # if json fails, try to fix it with gpt 4
+            raw_ans = fix_json_tool.fix_json(raw_ans)
+            questions = json.loads(raw_ans)['questions']
         answers = []
         for question in questions:
             answers.append({
@@ -125,6 +142,8 @@ def respond_to_chat_message(message, user_id, session_id):
             MessagesPlaceholder(variable_name="chat_history"),  # Where the memory will be stored.
             HumanMessagePromptTemplate.from_template("{human_input}"),  # Where the human input will injectd
         ])
+
+        print(prompt)
 
         alix_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True,
                                                chat_memory=message_history)

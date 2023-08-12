@@ -34,7 +34,10 @@ class WhatsNeededTool(ToolBase):
                     {{
                     "question": "<question>"
                     }},
-                    ...
+                    
+                    {{
+                    "question": "<question>"
+                    }}
                     ]
                     }}
                     """
