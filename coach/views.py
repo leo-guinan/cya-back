@@ -38,30 +38,45 @@ def list_chats(request):
     chats_response = [{'name': chat.name, 'session_id': chat.session_id} for chat in chats]
     return Response({'chats': chats_response})
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
 def get_chat(request):
     body = json.loads(request.body)
+    print(body)
     session_id = body['session_id']
     user_id = body['user_id']
     user = User.objects.get(id=user_id)
-    chat = ChatSession.objects.get(session_id=session_id, user=user)
+    print(session_id)
+
+    chat = ChatSession.objects.filter(session_id=session_id, user=user).first()
+    if not chat:
+        chat = ChatSession(session_id=session_id, user=user)
+        chat.save()
+        return Response({'name': chat.name, 'session_id': chat.session_id, 'messages': [
+            {
+                'message': 'What can I help you with?',
+                'type': 'ai'
+
+            }
+        ]})
     # get chat session from Mongo
     message_history = MongoDBChatMessageHistory(
         connection_string=config('MONGODB_CONNECTION_STRING'), session_id=session_id
     )
-    try:
-        messages = [{
+
+    messages = [{
         'message': message.content,
         'type': message.type,
-        } for message in message_history.messages]
-    except Exception as e:
-        message_history = MongoDBChatMessageHistory(
-            connection_string=config('MONGODB_CONNECTION_STRING'), session_id=f"chat_{session_id}"
-        )
+    } for message in message_history.messages]
+
+
+    if not messages:
         messages = [{
-        'message': message.content,
-        'type': message.type,
-        } for message in message_history.messages]
+            'message': 'What can I help you with?',
+            'type': 'ai'
+
+        }]
+
     return Response({'name': chat.name, 'session_id': chat.session_id, 'messages': messages})

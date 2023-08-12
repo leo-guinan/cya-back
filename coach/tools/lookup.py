@@ -31,7 +31,7 @@ class LookupTool(ToolBase):
 
         self.qa = RetrievalQA.from_chain_type(
             llm=llm,
-            chain_type="stuff",
+            chain_type="map_reduce",
             retriever=self.retriever,
             return_source_documents=True,
             verbose=True
