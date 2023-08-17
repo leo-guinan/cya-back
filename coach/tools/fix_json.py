@@ -19,7 +19,10 @@ class FixJSONTool(ToolBase):
         
         
         """
-        llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4")
+        llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",
+                         openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
 
         fix_json_prompt = PromptTemplate(
             template=fix_json_prompt_template,

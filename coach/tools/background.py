@@ -1,17 +1,11 @@
-import logging
-
 import pinecone
 from decouple import config
 from langchain import LLMChain, PromptTemplate, OpenAI
 from langchain.chains import StuffDocumentsChain
 from langchain.chains.query_constructor.schema import AttributeInfo
-from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.retrievers import MultiQueryRetriever, SelfQueryRetriever
-from langchain.tools import Tool
+from langchain.retrievers import SelfQueryRetriever
 from langchain.vectorstores import Pinecone
-
-from coach.tools.tool_class import ToolBase
 
 
 class BackgroundTool:
@@ -21,7 +15,10 @@ class BackgroundTool:
             api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
             environment=config("PINECONE_ENV"),  # next to api key in console
         )
-        embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+        embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
+                                      openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
         # db = Chroma("test", embeddings)
         index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
         self.vectordb = Pinecone(index, embeddings.embed_query, "text", namespace="user_info")
@@ -35,7 +32,12 @@ class BackgroundTool:
 
         ]
         self.document_content_description = "information about the user and the business they are working on"
-        self.llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
+        self.llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'),
+                          openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            }
+
+                          )
 
     def _get_relevant_docs(self, retriever, message):
         return retriever.get_relevant_documents(message)
@@ -50,16 +52,18 @@ class BackgroundTool:
             input_variables=["page_content"], template="{page_content}"
         )
         document_variable_name = "context"
-        llm = OpenAI(openai_api_key=config('OPENAI_API_KEY'))
+        llm = OpenAI(openai_api_key=config('OPENAI_API_KEY'), openai_api_base=config('OPENAI_API_BASE'), headers={
+            "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+        })
         stuff_prompt_override = """Given this text extracts:
-        -----
-        {context}
-        -----
-        Please answer the following question:
-        {query}
-        
-        If you don't have the information you need, just respond with "Unknown"
-        """
+    -----
+    {context}
+    -----
+    Please answer the following question:
+    {query}
+    
+    If you don't have the information you need, just respond with "Unknown"
+    """
         prompt = PromptTemplate(
             template=stuff_prompt_override, input_variables=["context", "query"]
         )

@@ -21,7 +21,9 @@ class ChatNamerTool(ToolBase):
 
 
                    """
-            llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'))
+            llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
 
             name_chat_prompt = PromptTemplate(
                 template=name_chat_prompt_template,

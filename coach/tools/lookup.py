@@ -19,7 +19,9 @@ class LookupTool(ToolBase):
             api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
             environment=config("PINECONE_ENV"),  # next to api key in console
         )
-        embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+        embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
         # db = Chroma("test", embeddings)
         index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
         vectorstore = Pinecone(index,
@@ -27,7 +29,9 @@ class LookupTool(ToolBase):
                                "text",
                                namespace="information_sources")
         self.retriever = vectorstore.as_retriever()
-        llm = OpenAI(openai_api_key=config('OPENAI_API_KEY'))
+        llm = OpenAI(openai_api_key=config('OPENAI_API_KEY'), openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
 
         self.qa = RetrievalQA.from_chain_type(
             llm=llm,

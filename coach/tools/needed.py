@@ -46,7 +46,10 @@ class WhatsNeededTool(ToolBase):
             template=whats_needed_prompt_template,
             input_variables=["help_needed"]
         )
-        llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4")
+        llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",
+                         openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
 
         self.chain = LLMChain(
             llm=llm,
