@@ -24,6 +24,7 @@ app.conf.beat_scheduler = 'django_celery_beat.schedulers.DatabaseScheduler'
 CELERY_TASK_ROUTES = {
 }
 
+
 @app.task(bind=True)
 def debug_task(self):
     print(f'Request: {self.request!r}')
@@ -80,6 +81,11 @@ app.conf.beat_schedule = {
         'task': 'effortless_reach.convert_needed_files',
         'schedule': crontab(hour=0, minute=0),
         'options': {'queue': 'default'}
-    }
+    },
+    'weekly_update_email': {
+        'task': 'coach.tasks.send_weekly_prompt',
+        'schedule': crontab(hour='13', minute='0', day_of_week='sun'),
+        'options': {'queue': 'default'}
+    },
 
 }

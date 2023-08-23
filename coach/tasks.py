@@ -1,5 +1,7 @@
+import datetime
 import json
 import logging
+import uuid
 
 import pinecone
 import requests
@@ -49,7 +51,9 @@ def respond_to_chat_message(message, user_id, session_id):
         session.save()
     try:
         extract_user_info.delay(user_id, message, session_id)
-        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": "Looking up chat history...", "id": -1})
+        async_to_sync(channel_layer.group_send)(session_id,
+                                                {"type": "chat.message", "message": "Looking up chat history...",
+                                                 "id": -1})
 
         # has user answered initial questions? If not, find first un-answered question and return that as response.
         message_history = MongoDBChatMessageHistory(
@@ -59,7 +63,8 @@ def respond_to_chat_message(message, user_id, session_id):
         memory = ConversationBufferMemory(memory_key="history", chat_memory=message_history)
 
         # System prompt for chatbot
-        llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4", openai_api_base=config('OPENAI_API_BASE'), headers={
+        llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",
+                         openai_api_base=config('OPENAI_API_BASE'), headers={
                 "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
             })
 
@@ -116,7 +121,8 @@ def respond_to_chat_message(message, user_id, session_id):
         # #
         # # your response
         #
-        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": "Doing research...", "id": -1})
+        async_to_sync(channel_layer.group_send)(session_id,
+                                                {"type": "chat.message", "message": "Doing research...", "id": -1})
 
         response = "\n".join([f"Question: {answer['question']}: {answer['answer']}" for answer in answers])
         lookup_tool = LookupTool()
@@ -149,7 +155,8 @@ def respond_to_chat_message(message, user_id, session_id):
         ])
 
         print(prompt)
-        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": "Thinking...", "id": -1})
+        async_to_sync(channel_layer.group_send)(session_id,
+                                                {"type": "chat.message", "message": "Thinking...", "id": -1})
 
         alix_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True,
                                                chat_memory=message_history)
@@ -185,7 +192,8 @@ Sources:
 
         print(composite_response)
         # need to send message to websocket
-        async_to_sync(channel_layer.group_send)(session_id, {"type": "chat.message", "message": composite_response, "id": -1})
+        async_to_sync(channel_layer.group_send)(session_id,
+                                                {"type": "chat.message", "message": composite_response, "id": -1})
     except Exception as e:
         error = str(e)
         print(f'Error: {e}')
@@ -201,9 +209,10 @@ def crawl_and_scrape(url):
         api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
         environment=config("PINECONE_ENV"),  # next to api key in console
     )
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'), headers={
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
-            })
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'),
+                                  headers={
+                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+                                  })
     # db = Chroma("test", embeddings)
     index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
     vectorstore = Pinecone(index, embeddings.embed_query, "text")
@@ -215,9 +224,10 @@ def crawl_and_scrape(url):
 
 @app.task(name="coach.extract_user_info")
 def extract_user_info(user_id, message, session_id):
-    llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4", openai_api_base=config('OPENAI_API_BASE'), headers={
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
-            })
+    llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",
+                     openai_api_base=config('OPENAI_API_BASE'), headers={
+            "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+        })
 
     extract_user_info_prompt_template = """
                 You are an information extraction agent. Your job is to understand everything you can about a person and the business they are trying to build.
@@ -243,9 +253,10 @@ def extract_user_info(user_id, message, session_id):
         api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
         environment=config("PINECONE_ENV"),  # next to api key in console
     )
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'), headers={
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
-            })
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'),
+                                  headers={
+                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+                                  })
     # db = Chroma("test", embeddings)
     index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
     vectorstore = Pinecone(index, embeddings.embed_query, "text", namespace="user_info")
@@ -267,6 +278,48 @@ def add_user_email(email, preferred_name):
             "source": "User Signup"
         }
         requests.post("https://app.loops.so/api/v1/contacts/create", headers=headers, data=json.dumps(data))
+
+    except Exception as e:
+        logger.error(e)
+
+
+@app.task(name="coach.tasks.send_weekly_prompt")
+def send_weekly_prompt(user_id):
+    # get user
+    user = User.objects.get(id=user_id)
+
+    # create new chat session
+    chat_session = ChatSession()
+    chat_session.user = user
+    chat_session.session_id = str(uuid.uuid4())
+    chat_session.name = "Weekly Prompt " + str(datetime.date)
+    chat_session.save()
+
+    message_history = MongoDBChatMessageHistory(
+        connection_string=config('MONGODB_CONNECTION_STRING'), session_id=chat_session.session_id
+    )
+    # seed with message
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True,
+                                      chat_memory=message_history)
+    memory.chat_memory.add_ai_message("What are you planning on doing this week?")
+
+    prompt_url = f"{config('COACHING_APP_BASE_URL')}{chat_session.session_id}/"
+
+    # send email with link to chat session
+    try:
+        # send request with bearer token authentication
+        headers = {
+            "Authorization": f"Bearer {config('LOOPS_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "transactionalId": "cllmxwam300epl10p1rwnoyjv",
+            "email": user.email,
+            "dataVariables": {
+                "prompt_url": prompt_url
+            }
+        }
+        requests.post("https://app.loops.so/api/v1/transactional", headers=headers, data=json.dumps(data))
 
     except Exception as e:
         logger.error(e)
