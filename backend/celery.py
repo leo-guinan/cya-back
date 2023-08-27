@@ -31,57 +31,6 @@ def debug_task(self):
 
 
 app.conf.beat_schedule = {
-    # 'analyze_requested': {
-    #     'task': 'run_analysis_on_accounts_requesting',
-    #     'schedule': crontab(hour='*', minute=30),
-    # },
-    # 'analyse_errored': {
-    #     'task': 'run_analysis_on_accounts_errored',
-    #     'schedule': crontab(hour='*', minute=0),
-    # },
-    'analyze_accounts': {
-        'task': 'analyze_accounts_that_need_it',
-        'schedule': crontab(hour='*'),
-        'options': {'queue': 'default'}
-
-    },
-    'unfollow_accounts': {
-        'task': 'unfollow_accounts',
-        'schedule': crontab(minute='*/15'),
-        'options': {'queue': 'default'}
-
-    },
-    'daily_user_refresh': {
-        'task': 'daily_user_refresh',
-        'schedule': crontab(hour=0),
-        'options': {'queue': 'default'}
-
-    },
-    'update_accounts_missing_data': {
-        'task': 'populate_account_data',
-        'schedule': crontab(minute='*/15'),
-        'options': {'queue': 'default'}
-    },
-    'weekly_update_followers': {
-        'task': 'refresh_all_subscriber_followers',
-        'schedule': crontab(hour=0, minute=0, day_of_week='sun'),
-        'options': {'queue': 'default'}
-    },
-    'daily_update_followers': {
-        'task': 'refresh_all_beta_subscriber_followers',
-        'schedule': crontab(hour=0, minute=0, day_of_week='*'),
-        'options': {'queue': 'default'}
-    },
-    'hourly_process_transcripts': {
-        'task': 'effortless_reach.transcribe_all_podcasts',
-        'schedule': crontab(hour='*', minute=0),
-        'options': {'queue': 'default'}
-    },
-    'daily_convert_files': {
-        'task': 'effortless_reach.convert_needed_files',
-        'schedule': crontab(hour=0, minute=0),
-        'options': {'queue': 'default'}
-    },
     'weekly_update_email': {
         'task': 'coach.tasks.send_weekly_prompt',
         'schedule': crontab(hour='16', minute='0', day_of_week='sun'),

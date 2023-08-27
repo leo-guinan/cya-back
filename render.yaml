@@ -65,6 +65,34 @@ services:
           property: port
       - key: PYTHON_VERSION
         value: 3.11.4
+  - type: worker
+    name: scheduler
+    region: ohio
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "celery -A backend beat --loglevel=info"
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: celery-redis
+          type: redis
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: servicedb
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          name: celery-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: celery-redis
+          type: redis
+          property: port
+      - key: PYTHON_VERSION
+        value: 3.11.4
   - type: redis
     name: celery-redis
     region: ohio
