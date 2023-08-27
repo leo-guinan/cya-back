@@ -84,8 +84,8 @@ app.conf.beat_schedule = {
     },
     'weekly_update_email': {
         'task': 'coach.tasks.send_weekly_prompt',
-        'schedule': crontab(hour='13', minute='0', day_of_week='sun'),
-        'options': {'queue': 'default'}
+        'schedule': crontab(hour='16', minute='0', day_of_week='sun'),
+        'options': {'queue': 'worker'}
     },
 
 }
