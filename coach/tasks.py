@@ -323,3 +323,9 @@ def send_weekly_prompt(user_id):
 
     except Exception as e:
         logger.error(e)
+
+@app.task(name="coach.tasks.send_weekly_prompts")
+def send_weekly_prompts():
+    users = User.objects.all()
+    for user in users:
+        send_weekly_prompt.delay(user.id)
