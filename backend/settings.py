@@ -39,10 +39,6 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append('automations.buildinpublicuniversity.com')
     ALLOWED_HOSTS.append('n8n-e50h.onrender.com')
     ALLOWED_HOSTS.append('app.buildinpublic.coach')
-    __import__('pysqlite3')
-    import sys
-
-    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 # Application definition
 
