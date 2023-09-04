@@ -1,7 +1,10 @@
 import json
-from channels.generic.websocket import WebsocketConsumer
+
 from asgiref.sync import async_to_sync
+from channels.generic.websocket import WebsocketConsumer
+
 from coach.tasks import respond_to_chat_message
+
 
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
