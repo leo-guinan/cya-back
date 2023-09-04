@@ -35,5 +35,9 @@ app.conf.beat_schedule = {
         'task': 'coach.tasks.send_weekly_prompts',
         'schedule': crontab(hour='17', minute='0', day_of_week='mon'),
     },
+    'daily_checkin_email': {
+        'task': 'coach.tasks.send_daily_checkins',
+        'schedule': crontab(hour='13', minute='0'),
+    }
 
 }

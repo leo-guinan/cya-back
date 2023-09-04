@@ -8,6 +8,13 @@ class User(models.Model):
     initial_session_id = models.CharField(max_length=255)
     def __str__(self):
         return self.name
+
+class UserPreferences(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    daily_checkin = models.BooleanField(default=False)
+    def __str__(self):
+        return self.name
+
 class InitialQuestion(models.Model):
     question = models.CharField(max_length=255)
     index = models.IntegerField()

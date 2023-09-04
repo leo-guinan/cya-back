@@ -154,7 +154,7 @@ def send_weekly_prompt(user_id):
     chat_session = ChatSession()
     chat_session.user = user
     chat_session.session_id = str(uuid.uuid4())
-    chat_session.name = "Weekly Prompt " + str(datetime.date)
+    chat_session.name = f"Weekly Prompt {datetime.today().strftime('%m/%d/%y')}"
     chat_session.save()
 
     message_history = MongoDBChatMessageHistory(
@@ -187,8 +187,35 @@ def send_weekly_prompt(user_id):
         logger.error(e)
 
 
+@app.task(name="coach.tasks.send_daily_checkin")
+def send_daily_checkin(user_id):
+    # get user
+    user = User.objects.get(id=user_id)
+    try:
+        # send request with bearer token authentication
+        headers = {
+            "Authorization": f"Bearer {config('LOOPS_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "transactionalId": "clm25g6wg000vmk0os6wdrsaj",
+            "email": user.email,
+        }
+        requests.post("https://app.loops.so/api/v1/transactional", headers=headers, data=json.dumps(data))
+
+    except Exception as e:
+        logger.error(e)
+
+
 @app.task(name="coach.tasks.send_weekly_prompts")
 def send_weekly_prompts():
     users = User.objects.all()
     for user in users:
         send_weekly_prompt.delay(user.id)
+
+
+@app.task(name="coach.tasks.send_daily_checkins")
+def send_daily_checkins():
+    users = User.objects.filter(preferences__daily_checkin=True).all()
+    for user in users:
+        send_daily_checkin.delay(user.id)
