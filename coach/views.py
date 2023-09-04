@@ -94,7 +94,7 @@ def start_daily_checkin(request):
     chat_session = ChatSession()
     chat_session.user = user
     chat_session.session_id = str(uuid.uuid4())
-    chat_session.name = f"Daily Checkin {str(datetime.date)}"
+    chat_session.name = f"Daily Check-in {str(datetime.today().strftime('%m/%d/%y'))}"
     chat_session.chat_type = mapped_type
     chat_session.save()
 
