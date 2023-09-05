@@ -9,7 +9,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
-from coach.models import User, ChatSession, CHAT_TYPE_MAPPING
+from coach.models import User, ChatSession, CHAT_TYPE_MAPPING, UserPreferences
 from coach.tasks import add_user_email
 
 
@@ -113,3 +113,26 @@ def start_daily_checkin(request):
 
     return Response({'session_id': chat_session.session_id})
 
+@api_view(('GET',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_preferences(request, user_id):
+    user_preferences = UserPreferences.objects.filter(user_id=user_id).first()
+    if not user_preferences:
+        user_preferences = UserPreferences()
+        user_preferences.user_id = user_id
+        user_preferences.save()
+    return Response({'preferences': {
+        'daily_checkin': user_preferences.daily_checkin,
+    }})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def set_preferences(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    user = User.objects.get(id=user_id)
+    user.preferences.daily_checkin = body['preferences']['daily_checkin']
+    user.preferences.save()
+    return Response({"status": "success"})
