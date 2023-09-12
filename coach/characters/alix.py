@@ -44,7 +44,7 @@ class Alix:
             input=message
         )
 
-    def _consult_client_records(self, query, user_id):
+    def _consult_client_records(self, query):
         return BackgroundTool(self.user_id).answer_question(query)
 
     def ask_research_assistant(self, question):
