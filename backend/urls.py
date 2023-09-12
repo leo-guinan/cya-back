@@ -29,4 +29,5 @@ urlpatterns = [
     path('api/client/', include('client.urls')),
     path('api/talkhomey/', include('talkhomey.urls')),
     path('api/coach/', include('coach.urls')),
+    path('api/experiments/', include('experiments.urls')),
 ]

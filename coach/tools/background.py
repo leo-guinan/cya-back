@@ -10,7 +10,8 @@ from langchain.vectorstores import Pinecone
 
 class BackgroundTool:
 
-    def __init__(self):
+    def __init__(self, user_id):
+        self.user_id = user_id
         pinecone.init(
             api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
             environment=config("PINECONE_ENV"),  # next to api key in console
@@ -42,12 +43,12 @@ class BackgroundTool:
     def _get_relevant_docs(self, retriever, message):
         return retriever.get_relevant_documents(message)
 
-    def answer_question(self, question, user_id):
+    def answer_question(self, question):
         retriever = SelfQueryRetriever.from_llm(
             self.llm, self.vectordb, self.document_content_description, self.metadata_field_info, verbose=True
         )
 
-        docs = self._get_relevant_docs(retriever, f"{question} for user {user_id}")
+        docs = self._get_relevant_docs(retriever, f"{question} for user {self.user_id}")
         document_prompt = PromptTemplate(
             input_variables=["page_content"], template="{page_content}"
         )
