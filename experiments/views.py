@@ -8,7 +8,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
-from experiments.models import UploadedFile
+from experiments.models import UploadedFile, ExperimentMessage
 from experiments.service import version_one, version_two, version_three, s3_upload, s3_download
 
 
@@ -28,9 +28,11 @@ def run_requests(request):
     message = body['message']
     upload_file = UploadedFile.objects.latest('created_at')
     s3_download(upload_file.key)
-    v1 = version_one(upload_file.key, message)
-    v2 = version_two(message)
-    v3 = version_three(message, upload_file.bucket, upload_file.key)
+    experiment_message = ExperimentMessage(uploaded_file=upload_file, message=message)
+    experiment_message.save()
+    v1 = version_one(upload_file.key, experiment_message)
+    v2 = version_two(experiment_message)
+    v3 = version_three(experiment_message, upload_file.bucket, upload_file.key)
 
     return Response({'version_one': v1, 'version_two': v2, 'version_three': v3})
 
@@ -40,6 +42,7 @@ def run_requests(request):
 @permission_classes((HasAPIKey,))
 def upload_file(request):
     file = request.FILES['file']
+
 
     # Save file in S3.
     response = s3_upload(file)

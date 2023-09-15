@@ -18,13 +18,14 @@ from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.vectorstores import Pinecone
 
-from experiments.models import UploadedFile
+from experiments.models import UploadedFile, ExperimentResponse
 
 
 # initialize pinecone
 
 
-def version_one(file_path, message):
+def version_one(file_path, experiment_message):
+    message = experiment_message.message
     xls = pd.ExcelFile(file_path)
     # Loop over each sheet
     for sheet in xls.sheet_names:
@@ -50,10 +51,14 @@ def version_one(file_path, message):
         response = agent.run(message)
         responses.append(response)
         os.remove(csv_file)
-    return "\n".join(responses)
+    response = "\n".join(responses)
 
+    experiment_response = ExperimentResponse(uploaded_file=experiment_message.uploaded_file, response=response, variant="version_one", message=experiment_message)
+    experiment_response.save()
+    return response
 
-def version_two(message):
+def version_two(experiment_message):
+    message = experiment_message.message
     embeddings = OpenAIEmbeddings(openai_api_key=config("SECONDARY_OPENAI_API_KEY"))
 
     index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
@@ -77,10 +82,14 @@ def version_two(message):
             | model
             | StrOutputParser()
     )
-    return chain.invoke(message)
+    response = chain.invoke(message)
+    experiment_response = ExperimentResponse(uploaded_file=experiment_message.uploaded_file, response=response, variant="version_two", message=experiment_message)
+    experiment_response.save()
+    return response
 
 
-def version_three(message, s3_bucket, s3_key):
+def version_three(experiment_message, s3_bucket, s3_key):
+    message = experiment_message.message
     embeddings = OpenAIEmbeddings(openai_api_key=config("SECONDARY_OPENAI_API_KEY"))
     index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
 
@@ -127,7 +136,10 @@ def version_three(message, s3_bucket, s3_key):
             | model
             | StrOutputParser()
     )
-    return chain.invoke(message)
+    response = chain.invoke(message)
+    experiment_response = ExperimentResponse(uploaded_file=experiment_message.uploaded_file, response=response, variant="version_three", message=experiment_message)
+    experiment_response.save()
+    return response
 
 
 def load_xlsx_to_pinecone(s3_bucket, s3_key):
