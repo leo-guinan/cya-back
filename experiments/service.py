@@ -42,7 +42,7 @@ def version_one(file_path, message):
     for csv_file in csv_files:
 
         agent = create_csv_agent(
-            OpenAI(temperature=0, openai_api_key=config("OPENAI_API_KEY")),
+            OpenAI(temperature=0, openai_api_key=config("SECONDARY_OPENAI_API_KEY")),
             csv_file,
             verbose=True,
             agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
@@ -54,7 +54,7 @@ def version_one(file_path, message):
 
 
 def version_two(message):
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+    embeddings = OpenAIEmbeddings(openai_api_key=config("SECONDARY_OPENAI_API_KEY"))
 
     index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
 
@@ -70,7 +70,7 @@ def version_two(message):
     """
     prompt = ChatPromptTemplate.from_template(template)
 
-    model = ChatOpenAI(openai_api_key=config("OPENAI_API_KEY"), model_name="gpt-4-32k")
+    model = ChatOpenAI(openai_api_key=config("SECONDARY_OPENAI_API_KEY"), model_name="gpt-4-32k")
     chain = (
             {"context": retriever, "question": RunnablePassthrough()}
             | prompt
@@ -81,7 +81,7 @@ def version_two(message):
 
 
 def version_three(message, s3_bucket, s3_key):
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+    embeddings = OpenAIEmbeddings(openai_api_key=config("SECONDARY_OPENAI_API_KEY"))
     index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
 
     vectorstore = Pinecone(index,
@@ -107,7 +107,7 @@ def version_three(message, s3_bucket, s3_key):
 
     ]
     document_content_description = "a spreadsheet containing financial data for an account"
-    llm = OpenAI(temperature=0, openai_api_key=config("OPENAI_API_KEY"))
+    llm = OpenAI(temperature=0, openai_api_key=config("SECONDARY_OPENAI_API_KEY"))
     retriever = SelfQueryRetriever.from_llm(
         llm, vectorstore, document_content_description, metadata_field_info, verbose=True
     )
@@ -120,7 +120,7 @@ def version_three(message, s3_bucket, s3_key):
         """
     prompt = ChatPromptTemplate.from_template(template)
 
-    model = ChatOpenAI(openai_api_key=config("OPENAI_API_KEY"), model_name="gpt-4-32k")
+    model = ChatOpenAI(openai_api_key=config("SECONDARY_OPENAI_API_KEY"), model_name="gpt-4-32k")
     chain = (
             {"context": retriever, "question": RunnablePassthrough()}
             | prompt
@@ -131,7 +131,7 @@ def version_three(message, s3_bucket, s3_key):
 
 
 def load_xlsx_to_pinecone(s3_bucket, s3_key):
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+    embeddings = OpenAIEmbeddings(openai_api_key=config("SECONDARY_OPENAI_API_KEY"))
 
     # download file from s3 bucket
     s3 = boto3.client('s3')
