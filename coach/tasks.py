@@ -52,6 +52,18 @@ def respond_to_chat_message(message, user_id, session_id):
         logger.info("Session found")
         logger.info(f'Chat type: {session.chat_type}')
 
+    if not session.name:
+        name_tool = ChatNamerTool()
+        name_json = name_tool.name_chat(message)
+        try:
+            name = json.loads(name_json)['name']
+        except Exception as e:
+            # if json fails, try to fix it with gpt 4
+            name_json = fix_json_tool.fix_json(name_json)
+            name = json.loads(name_json)['name']
+        session.name = name
+        session.save()
+
     chat_type = session.chat_type
     logger.info(f"Chat type: {chat_type}")
     extract_user_info.delay(user_id, message, session_id)

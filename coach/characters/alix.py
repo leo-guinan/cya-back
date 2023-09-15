@@ -11,9 +11,10 @@ from coach.tools.background import BackgroundTool
 
 
 class Alix:
-    def __init__(self, session_id, user_id):
+    def __init__(self, session_id, user_id, purpose=""):
         self.session_id = session_id
         self.user_id = user_id
+        self.purpose = purpose
         message_history = MongoDBChatMessageHistory(
             connection_string=config('MONGODB_CONNECTION_STRING'), session_id=session_id
         )
@@ -61,6 +62,8 @@ class Alix:
                         You are supportive, encouraging, and helpful.
 
                         You are a great listener and you are always looking for ways to help your clients.
+                        
+                        {self.purpose}
                         
                         You thought about the message and this is your conclusion: {thoughts}
                         

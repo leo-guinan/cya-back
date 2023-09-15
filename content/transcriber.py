@@ -16,13 +16,13 @@ class Transcriber:
         return self._use_gladia(audio_file)
 
     def _use_gladia(self, audio_file):
-        url = "https://api.gladia.io/audio/text/audio-transcription/?model=large-v2"
+        url = "https://api.gladia.io/audio/text/audio-transcription/"
 
         files = {"audio": (audio_file, open(audio_file, "rb"), "audio/mpeg")}
         payload = {
             "language_behaviour": "automatic single language",
             "toggle_noise_reduction": "false",
-            "toggle_diarization": "false",
+            "toggle_diarization": "true",
             "toggle_direct_translate": "false",
             "toggle_text_emotion_recognition": "false",
             "toggle_summarization": "false",

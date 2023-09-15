@@ -1,19 +1,18 @@
-import os
-
+import boto3
+import pinecone
 from decouple import config
+from langchain.agents import create_csv_agent
+from langchain.agents.agent_types import AgentType
+from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import UnstructuredExcelLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.llms import OpenAI
-from langchain.chat_models import ChatOpenAI
-from langchain.agents.agent_types import AgentType
-from langchain.agents import create_csv_agent
-import boto3
-from langchain.embeddings.sentence_transformer import SentenceTransformerEmbeddings
-import pinecone
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.vectorstores import Pinecone
+
+from experiments.models import UploadedFile
 
 
 # initialize pinecone
@@ -56,6 +55,7 @@ def version_two(message):
 def version_three(message):
     return "version 3"
 
+
 def load_xlsx_to_pinecone(s3_bucket, s3_key, index_name):
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
 
@@ -83,3 +83,18 @@ def load_xlsx_to_pinecone(s3_bucket, s3_key, index_name):
     # The OpenAI embedding model `text-embedding-ada-002 uses 1536 dimensions`
     Pinecone.from_documents(docs, embeddings, index_name=index_name)
 
+
+def s3_upload(file):
+    s3_client = boto3.client('s3',
+                             aws_access_key_id=config('AWS_ACCESS_KEY'),
+                             aws_secret_access_key=config('AWS_SECRET_KEY')
+                             )
+
+    try:
+        s3_client.upload_fileobj(file, config('EXPERIMENT_AWS_BUCKET_NAME'), file.name)
+        uploaded = UploadedFile(bucket=config('EXPERIMENT_AWS_BUCKET_NAME'), key=file.name)
+        uploaded.save()
+        return True
+    except Exception as e:
+        print(e)
+        return False
