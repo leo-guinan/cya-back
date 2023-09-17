@@ -5,17 +5,19 @@ import boto3
 import pandas as pd
 import pinecone
 from decouple import config
-from langchain.agents import create_csv_agent
+from langchain.agents import create_csv_agent, initialize_agent
 from langchain.agents.agent_types import AgentType
 from langchain.chains.query_constructor.schema import AttributeInfo
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import UnstructuredExcelLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.llms import OpenAI
+from langchain.memory import MongoDBChatMessageHistory, ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain.retrievers import SelfQueryRetriever
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
+from langchain.tools import Tool
 from langchain.vectorstores import Pinecone
 
 from experiments.models import UploadedFile, ExperimentResponse
@@ -25,40 +27,87 @@ from experiments.models import UploadedFile, ExperimentResponse
 
 
 def version_one(file_path, experiment_message):
-    try:
-        message = experiment_message.message
-        xls = pd.ExcelFile(file_path)
-        # Loop over each sheet
-        for sheet in xls.sheet_names:
-            # Read the sheet to pandas dataframe
-            df = pd.read_excel(xls, sheet)
+    llm = OpenAI(temperature=0, openai_api_key=config("SECONDARY_OPENAI_API_KEY"), model_name="gpt-4-32k", verbose=True)
+    message_history = MongoDBChatMessageHistory(
+        connection_string=config('MONGODB_CONNECTION_STRING'), session_id=str(uuid.uuid4())
+    )
 
-            # Write the dataframe to csv
-            csv_file_name = f"{sheet}.csv"
-            df.to_csv(csv_file_name, index=False)
-            print(f"{csv_file_name} has been created.")
 
-        # Get all the csv files in the directory
-        csv_files = [f for f in os.listdir(os.curdir) if f.endswith('.csv')]
-        responses = []
-        for csv_file in csv_files:
+    memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=message_history,return_messages=True)
+    message = experiment_message.message
+    xls = pd.ExcelFile(file_path)
+    # Loop over each sheet
+    for sheet in xls.sheet_names:
+        # Read the sheet to pandas dataframe
+        df = pd.read_excel(xls, sheet)
 
-            agent = create_csv_agent(
-                OpenAI(temperature=0, openai_api_key=config("SECONDARY_OPENAI_API_KEY")),
-                csv_file,
-                verbose=True,
-                agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            )
-            response = agent.run(message)
-            responses.append(response)
-            os.remove(csv_file)
-        response = "\n".join(responses)
+        # Write the dataframe to csv
+        csv_file_name = f"{sheet}.csv"
+        df.to_csv(csv_file_name, index=False)
+        print(f"{csv_file_name} has been created.")
 
-        experiment_response = ExperimentResponse(uploaded_file=experiment_message.uploaded_file, response=response, variant="version_one", message=experiment_message)
-        experiment_response.save()
-    except Exception as e:
-        print(e)
-        response = "There was an error processing your request."
+    # Get all the csv files in the directory
+    csv_files = [f for f in os.listdir(os.curdir) if f.endswith('.csv')]
+    responses = []
+
+    overall_prompt = """Answer the question based only on the following context:
+    
+    This is a spreadsheet containing the following worksheets:
+    
+    
+    """
+
+    individual_spreadsheet_prompt = """This is a worksheet within an excel file. 
+    Determine what this worksheet is about and the type of questions that can be answered using this worksheet.
+    """
+
+    agents = {
+
+    }
+
+
+    for csv_file in csv_files:
+
+        agent = create_csv_agent(
+            llm,
+            csv_file,
+            verbose=True,
+            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        )
+        try:
+            response = agent.run(individual_spreadsheet_prompt)
+            agents[csv_file] = {
+                "agent": agent,
+                "description": response,
+            }
+            overall_prompt += f"{csv_file}: {response}\n\n"
+        except Exception as e:
+            print(e)
+            agents[csv_file] = {
+                "agent": agent,
+                "description": str(e),
+            }
+
+    overall_prompt += "\n\nQuestion: {question}"
+    tools = [Tool(
+        name=key,
+        description=value["description"],
+        func=value["agent"].run,
+    ) for key,value in agents.items()]
+
+    agent_chain = initialize_agent(tools, llm, agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+                                   verbose=True,
+                                   memory=memory)
+
+    response = agent_chain.run(
+        input=message
+    )
+
+
+
+    experiment_response = ExperimentResponse(uploaded_file=experiment_message.uploaded_file, response=response, variant="version_one", message=experiment_message)
+    experiment_response.save()
+
     return response
 
 def version_two(experiment_message):

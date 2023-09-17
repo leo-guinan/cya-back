@@ -74,7 +74,8 @@ INSTALLED_APPS = [
     'crawler',
     "talkhomey",
     'coach',
-    'experiments'
+    'experiments',
+    'cofounder',
 ]
 SITE_ID = 2
 
