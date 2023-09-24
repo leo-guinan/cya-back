@@ -30,4 +30,5 @@ urlpatterns = [
     path('api/talkhomey/', include('talkhomey.urls')),
     path('api/coach/', include('coach.urls')),
     path('api/experiments/', include('experiments.urls')),
+    path('api/cofounder/', include('cofounder.urls')),
 ]

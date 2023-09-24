@@ -76,6 +76,8 @@ INSTALLED_APPS = [
     'coach',
     'experiments',
     'cofounder',
+    'chat_websockets',
+    'copyai'
 ]
 SITE_ID = 2
 
