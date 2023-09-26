@@ -75,6 +75,10 @@ class DefaultCofounder:
                               openai_api_base=config('OPENAI_API_BASE'), headers={
                 "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
             })
+        self.quick_llm = ChatOpenAI(temperature=0.7, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-3.5-turbo",
+                              openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
 
     def think_about_the_message(self, message):
         # tools = [
@@ -120,7 +124,7 @@ class DefaultCofounder:
             llm=self.llm,
             prompt=prompt,
             verbose=True,
-            memory=self.memory,
+            memory=self.internal_memory,
         )
 
         # alix_memory = ConversationBufferMemory(memory_key="history", chat_memory=message_history, input_key="human_input")
@@ -128,7 +132,7 @@ class DefaultCofounder:
         cofounder_response = chat_llm_chain.predict(
             human_input=message,
         )
-        print(cofounder_response)
+
         return cofounder_response
 
     def _consult_client_records(self, query):
@@ -136,6 +140,30 @@ class DefaultCofounder:
 
     def ask_research_assistant(self, question):
         pass
+
+    def greet_founder(self):
+        prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content=f"""
+                                    {self.base_system_message}
+                                   Greet your co-founder with a short greeting that fits your personality.
+                                   """),
+            # The persistent system prompt
+
+        ])
+        chat_llm_chain = LLMChain(
+            llm=self.quick_llm,
+            prompt=prompt,
+            verbose=True,
+        )
+
+        # alix_memory = ConversationBufferMemory(memory_key="history", chat_memory=message_history, input_key="human_input")
+
+        cofounder_response = chat_llm_chain.predict(
+            human_input="",
+        )
+
+
+        return cofounder_response
 
     def respond_to_message(self, message):
         thoughts = self.think_about_the_message(message)

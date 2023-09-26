@@ -9,6 +9,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
+from cofounder.cofounder.default import DefaultCofounder
 from cofounder.models import User, ChatSession, CHAT_TYPE_MAPPING, UserPreferences, FounderProfile, BusinessProfile
 
 
@@ -82,31 +83,22 @@ def get_chat(request):
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
-def start_daily_checkin(request):
+def start_chat(request):
     body = json.loads(request.body)
     user_id = body['user_id']
-    chat_type = body['chat_type']
     user = User.objects.get(id=user_id)
-    mapped_type = CHAT_TYPE_MAPPING[chat_type]
     chat_session = ChatSession()
     chat_session.user = user
     chat_session.session_id = str(uuid.uuid4())
-    chat_session.name = f"Daily Check-in {str(datetime.today().strftime('%m/%d/%y'))}"
-    chat_session.chat_type = mapped_type
+    chat_session.chat_type = CHAT_TYPE_MAPPING["default"]
     chat_session.save()
 
     message_history = MongoDBChatMessageHistory(
         connection_string=config('MONGODB_CONNECTION_STRING'), session_id=chat_session.session_id
     )
-    if(mapped_type == ChatSession.DAILY_GREAT):
-        message = "Glad to hear you are doing great! What's going well?"
-    elif(mapped_type == ChatSession.DAILY_BAD):
-        message = "Sorry to hear you are doing bad. What's going on?"
-    elif(mapped_type == ChatSession.DAILY_OK):
-        message = "Most days are only ok! That's ok. Anything you are excited for?"
-    else:
-        message = "What can I help you with?"
-    message_history.add_ai_message(message)
+    cofounder = DefaultCofounder(chat_session.session_id, user.id)
+
+    message_history.add_ai_message(cofounder.greet_founder())
 
     return Response({'session_id': chat_session.session_id})
 
@@ -142,20 +134,17 @@ def set_profile(request):
     body = json.loads(request.body)
     user_id = body['user_id']
     user = User.objects.get(id=user_id)
-    profile_id = body.get('profile_id', None)
-    if not profile_id:
+    profile = FounderProfile.objects.filter(user=user).first()
+    business_profile = BusinessProfile.objects.filter(user=user).first()
+    if not profile:
         profile = FounderProfile()
         profile.user = user
-    else:
-        profile = FounderProfile.objects.get(id=profile_id)
     profile.profile = body['founder_profile']
     profile.save()
-    business_profile_id = body.get('business_profile_id', None)
-    if not business_profile_id:
+
+    if not business_profile:
         business_profile = BusinessProfile()
         business_profile.user = user
-    else:
-        business_profile = BusinessProfile.objects.get(id=business_profile_id)
     business_profile.profile = body['business_profile']
     business_profile.name = body['business_name']
     business_profile.website = body['business_website']

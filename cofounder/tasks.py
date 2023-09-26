@@ -14,11 +14,9 @@ from langchain.memory import ConversationBufferMemory, MongoDBChatMessageHistory
 from langchain.vectorstores import Pinecone
 
 from backend.celery import app
-from cofounder.chat.bad import run_daily_bad_chat
 from cofounder.chat.default import run_default_chat
-from cofounder.chat.great import run_daily_great_chat
-from cofounder.chat.ok import run_daily_ok_chat
-from cofounder.models import User, ChatSession, CHAT_TYPE_MAPPING, Cofounder, BusinessProfile, FounderProfile
+
+from cofounder.models import User, ChatSession, Cofounder, BusinessProfile, FounderProfile
 from cofounder.tools.chat_namer import ChatNamerTool
 from cofounder.tools.fix_json import FixJSONTool
 from content.crawler import Crawler
@@ -29,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 @app.task(name="cofounder.tasks.respond_to_chat_message")
 def respond_to_cofounder_message(message, user_id, session_id):
-
     channel_layer = get_channel_layer()
     user = User.objects.get(id=user_id)
     session = ChatSession.objects.filter(session_id=session_id).first()
@@ -48,22 +45,11 @@ def respond_to_cofounder_message(message, user_id, session_id):
 
         session = ChatSession(user=user, session_id=session_id, name=name, chat_type=ChatSession.DEFAULT)
         session.save()
-    else:
-        logger.info("Session found")
-        logger.info(f'Chat type: {session.chat_type}')
 
 
-    chat_type = session.chat_type
-    logger.info(f"Chat type: {chat_type}")
-    extract_user_info.delay(user_id, message, session_id)
-    if chat_type == ChatSession.DAILY_GREAT:
-        run_daily_great_chat(session, message, user, channel_layer)
-    elif chat_type == ChatSession.DAILY_OK:
-        run_daily_ok_chat(session, message, user, channel_layer)
-    elif chat_type == ChatSession.DAILY_BAD:
-        run_daily_bad_chat(session, message, user, channel_layer)
-    else:
-        run_default_chat(session, message, user, channel_layer)
+
+
+    run_default_chat(session, message, user, channel_layer)
 
 
 @app.task(name="coach.tasks.crawl_and_scrape")
@@ -230,7 +216,6 @@ def create_cofounder(user_id):
 
     response = requests.post(url, json=payload, headers=headers)
 
-    print(response.text)
     parsed = json.loads(response.text)
     details = json.loads(parsed['output']["Generate_Co-founder_Details"])
     cofounder = Cofounder()

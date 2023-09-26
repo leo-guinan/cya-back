@@ -30,7 +30,7 @@ class ChatConsumer(WebsocketConsumer):
     def receive(self, text_data, **kwargs):
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
-        print(message)
+
         # Send message to room group
         if self.app == 'cofounder':
             respond_to_cofounder_message.delay(message, text_data_json['user_id'], self.session)
@@ -40,6 +40,5 @@ class ChatConsumer(WebsocketConsumer):
     def chat_message(self, event):
         message = event["message"]
         message_id = event["id"]
-
         # Send message to WebSocket
         self.send(text_data=json.dumps({"message": message, "id": message_id}))

@@ -253,6 +253,18 @@ LOGGING = {
             # required to avoid double logging with root logger
             'propagate': False,
         },
+        'coach': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
+        'cofounder': {
+            'level': LOGLEVEL,
+            'handlers': ['console', ],
+            # required to avoid double logging with root logger
+            'propagate': False,
+        },
         'crawler': {
             'level': LOGLEVEL,
             'handlers': ['console', ],

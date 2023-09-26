@@ -9,10 +9,6 @@ def run_default_chat(session, message, user, channel_layer):
     fix_json_tool = FixJSONTool()
 
     try:
-        async_to_sync(channel_layer.group_send)(session.session_id,
-                                                {"type": "chat.message", "message": "Thinking...",
-                                                 "id": -1})
-        print(f"Message: {message}")
 
         alix = DefaultCofounder(session.session_id, user.id)
 
