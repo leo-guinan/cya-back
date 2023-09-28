@@ -1,9 +1,13 @@
+import json
+
+from bson import ObjectId
 from decouple import config
-from langchain import LLMChain
+from langchain import LLMChain, PromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import MongoDBChatMessageHistory, ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, HumanMessagePromptTemplate
 from langchain.schema import SystemMessage
+from pymongo import MongoClient
 
 from coach.tools.background import BackgroundTool
 from cofounder.models import Cofounder, BusinessProfile, FounderProfile, User
@@ -30,6 +34,8 @@ You live in San Francisco your her husband and two young children.
 
 class DefaultCofounder:
     def __init__(self, session_id, user_id, purpose=""):
+        self.mongo_client = MongoClient(config('MONGODB_CONNECTION_STRING'))
+        self.db = self.mongo_client.cofounder
         user = User.objects.get(id=user_id)
         cofounder = Cofounder.objects.filter(user__id=user_id).first()
         business_profile = BusinessProfile.objects.filter(user__id=user_id).first()
@@ -48,6 +54,18 @@ class DefaultCofounder:
         self.business_profile = business_profile.profile
         self.founder_profile = founder_profile.profile
         self.business_website = business_profile.website
+        if not business_profile.business_id:
+            business = self.db.business.insert_one({
+                "name": self.business_name,
+                "website": self.business_website,
+                "profile": self.business_profile,
+                "knowledge": "",
+                "questions": ""
+            })
+            business_profile.business_id = business.inserted_id
+            business_profile.save()
+        self.business_id = business_profile.business_id
+        what_you_know = self.mongo_client.cofounder.business.find_one({"_id": ObjectId(self.business_id)})
         self.base_system_message = f"""
          {self.profile}
 
@@ -58,6 +76,23 @@ class DefaultCofounder:
                                    You are a cofounder of {self.business_name}.
                                    Here are the details about about the business:
                                    {self.business_profile}
+                                   
+                                    Here's what you know about the business:
+                                    ##BUSINESS_NAME##
+                                    {what_you_know['name']}
+                                    ##END_BUSINESS_NAME##
+                                    ##WEBSITE##
+                                    {what_you_know['website']}
+                                    ##END_WEBSITE##
+                                    ##PROFILE##
+                                    {what_you_know['profile']}
+                                    #END_PROFILE#
+                                    ##QUESTIONS_ABOUT_THE_BUSINESS##
+                                    {what_you_know['questions']}
+                                    ##END_QUESTIONS_ABOUT_THE_BUSINESS##
+                                    #LEARNED_KNOWLEDGE#
+                                    {what_you_know['knowledge']}
+                                    #END_LEARNED_KNOWLEDGE#
 
                                    """
         message_history = MongoDBChatMessageHistory(
@@ -81,6 +116,7 @@ class DefaultCofounder:
             })
 
     def think_about_the_message(self, message):
+        pass
         # tools = [
         #     # Tool(
         #     #     name="Intermediate Answer",
@@ -206,9 +242,106 @@ class DefaultCofounder:
         cofounder_response = chat_llm_chain.predict(
             human_input=message,
         )
-        print(cofounder_response)
 
         return cofounder_response
 
     def analyze_business_idea(self, idea):
         url = ""
+
+    def update_current_knowledge(self):
+        # reload from mongo and update the system message
+        what_you_know = self.mongo_client.cofounder.business.find_one({"_id": ObjectId(self.business_id)})
+        self.base_system_message = f"""
+                 {self.profile}
+
+                                           You are speaking to your co-founder, {self.founder_name}. {self.founder_profile}
+
+
+
+                                           You are a cofounder of {self.business_name}.
+                                           Here are the details about about the business:
+                                           {self.business_profile}
+
+                                            Here's what you know about the business:
+                                            ##BUSINESS_NAME##
+                                            {what_you_know['name']}
+                                            ##END_BUSINESS_NAME##
+                                            ##WEBSITE##
+                                            {what_you_know['website']}
+                                            ##END_WEBSITE##
+                                            ##PROFILE##
+                                            {what_you_know['profile']}
+                                            #END_PROFILE#
+                                            ##QUESTIONS_ABOUT_THE_BUSINESS##
+                                            {what_you_know['questions']}
+                                            ##END_QUESTIONS_ABOUT_THE_BUSINESS##
+                                            #LEARNED_KNOWLEDGE#
+                                            {what_you_know['knowledge']}
+                                            #END_LEARNED_KNOWLEDGE#
+
+                                           """
+
+    def learn_about_the_business(self, message):
+        self.question_the_business()
+        self.update_current_knowledge()
+        template = f"""
+        {self.base_system_message}
+        
+        
+        Here's the message from your cofounder:
+        {{message}}
+        
+        Based on the questions you have, update the knowledge you have about the business and remove the questions you answer.
+        Return the updated questions and knowledge in the following JSON format:
+        
+        {{{{
+            "knowledge": "<knowledge>",
+            "questions": "<questions>"
+        }}}}
+        
+        
+        """
+        prompt = PromptTemplate(
+            input_variables=["message"],
+            template=template
+        )
+        chat_llm_chain = LLMChain(
+            llm=self.llm,
+            prompt=prompt,
+            verbose=True,
+        )
+        reply = chat_llm_chain.predict(
+            message=message,
+        )
+        parsed = json.loads(reply, strict=False)
+        updated_knowledge = parsed['knowledge']
+        questions = parsed['questions']
+
+        self.mongo_client.cofounder.business.update_one({"_id": ObjectId(self.business_id)}, {"$set": {"knowledge": updated_knowledge, questions: questions}})
+        self.update_current_knowledge()
+
+    def question_the_business(self):
+        what_you_know = self.mongo_client.cofounder.business.find_one({"_id": ObjectId(self.business_id)})
+
+        template = f"""
+        {self.base_system_message}
+
+        {{message}}
+    
+        """
+        prompt = PromptTemplate(
+            input_variables=["message"],
+            template=template
+        )
+        chat_llm_chain = LLMChain(
+            llm=self.llm,
+            prompt=prompt,
+            verbose=True,
+        )
+        reply = chat_llm_chain.predict(
+            message="Given the current questions you have about the business and what you know, update the questions with any more questions you want to ask. Respond with the updated questions in the following JSON format: {{{{\"questions\": \"<questions>\"}}}}",
+        )
+        parsed = json.loads(reply, strict=False)
+        questions = parsed['questions']
+        self.mongo_client.cofounder.business.update_one({"_id": ObjectId(self.business_id)},
+                                                        {"$set": {"questions": questions}})

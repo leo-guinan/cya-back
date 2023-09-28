@@ -15,7 +15,7 @@ from langchain.vectorstores import Pinecone
 
 from backend.celery import app
 from cofounder.chat.default import run_default_chat
-
+from cofounder.cofounder.default import DefaultCofounder
 from cofounder.models import User, ChatSession, Cofounder, BusinessProfile, FounderProfile
 from cofounder.tools.chat_namer import ChatNamerTool
 from cofounder.tools.fix_json import FixJSONTool
@@ -46,10 +46,8 @@ def respond_to_cofounder_message(message, user_id, session_id):
         session = ChatSession(user=user, session_id=session_id, name=name, chat_type=ChatSession.DEFAULT)
         session.save()
 
-
-
-
     run_default_chat(session, message, user, channel_layer)
+    learn.delay(user_id, message, session_id)
 
 
 @app.task(name="coach.tasks.crawl_and_scrape")
@@ -225,5 +223,7 @@ def create_cofounder(user_id):
     cofounder.save()
 
 
-
-
+@app.task(name="cofounder.tasks.learn")
+def learn(user_id, message, session_id):
+    cofounder = DefaultCofounder(session_id, user_id)
+    cofounder.learn_about_the_business(message)
