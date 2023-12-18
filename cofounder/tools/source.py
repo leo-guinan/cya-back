@@ -8,7 +8,7 @@ from langchain.retrievers import SelfQueryRetriever
 from langchain.vectorstores import Pinecone
 
 
-class BackgroundTool:
+class SourceTool:
 
     def __init__(self, user_id):
         self.user_id = user_id
@@ -22,7 +22,7 @@ class BackgroundTool:
             })
         # db = Chroma("test", embeddings)
         index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-        self.vectordb = Pinecone(index, embeddings.embed_query, "text", namespace="user_info")
+        self.vectordb = Pinecone(index, embeddings.embed_query, "text", namespace="cofounder_source")
 
         self.metadata_field_info = [
             AttributeInfo(
@@ -30,9 +30,24 @@ class BackgroundTool:
                 description="The id for the user this information is about",
                 type="integer",
             ),
+            AttributeInfo(
+                name="source_url",
+                description="The url for the source of this information",
+                type="integer",
+            ),
+            AttributeInfo(
+                name="title",
+                description="The user-provided title of this source",
+                type="integer",
+            ),
+            AttributeInfo(
+                name="description",
+                description="What this source is about",
+                type="integer",
+            ),
 
         ]
-        self.document_content_description = "information about the user and the business they are working on"
+        self.document_content_description = "information about the topics the cofounder wants you to know about"
         self.llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'),
                           openai_api_base=config('OPENAI_API_BASE'), headers={
                 "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"

@@ -14,6 +14,7 @@ from langchain.memory import ConversationBufferMemory, MongoDBChatMessageHistory
 from langchain.vectorstores import Pinecone
 
 from backend.celery import app
+from cofounder.agent.remember_agent import RememberAgent
 from cofounder.chat.default import run_default_chat
 from cofounder.cofounder.default import DefaultCofounder
 from cofounder.models import User, ChatSession, Cofounder, BusinessProfile, FounderProfile
@@ -30,6 +31,7 @@ def respond_to_cofounder_message(message, user_id, session_id):
     channel_layer = get_channel_layer()
     user = User.objects.get(id=user_id)
     session = ChatSession.objects.filter(session_id=session_id).first()
+
     fix_json_tool = FixJSONTool()
     if session is None:
         logger.info("No session found, creating new session")
@@ -47,7 +49,7 @@ def respond_to_cofounder_message(message, user_id, session_id):
         session.save()
 
     run_default_chat(session, message, user, channel_layer)
-    learn.delay(user_id, message, session_id)
+    # learn.delay(user_id, message, session_id)
 
 
 @app.task(name="coach.tasks.crawl_and_scrape")
@@ -227,3 +229,23 @@ def create_cofounder(user_id):
 def learn(user_id, message, session_id):
     cofounder = DefaultCofounder(session_id, user_id)
     cofounder.learn_about_the_business(message)
+
+@app.task(name="cofounder.tasks.learn_blog")
+def learn_blog(user_id, url, title, description):
+    pinecone.init(
+        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
+        environment=config("PINECONE_ENV"),  # next to api key in console
+    )
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'),
+                                  headers={
+                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+                                  })
+    # db = Chroma("test", embeddings)
+    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    vectorstore = Pinecone(index, embeddings.embed_query, "text")
+
+    scraper = Scraper(vectorstore)
+    scraper.scrape(url)
+
+    pass
+

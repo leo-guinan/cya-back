@@ -5,7 +5,7 @@ import boto3
 import pandas as pd
 import pinecone
 from decouple import config
-from langchain.agents import create_csv_agent, initialize_agent
+from langchain.agents import initialize_agent
 from langchain.agents.agent_types import AgentType
 from langchain.chains.query_constructor.schema import AttributeInfo
 from langchain.chat_models import ChatOpenAI
@@ -66,49 +66,49 @@ def version_one(file_path, experiment_message):
     }
 
 
-    for csv_file in csv_files:
+    # for csv_file in csv_files:
+    #
+    #     agent = create_csv_agent(
+    #         llm,
+    #         csv_file,
+    #         verbose=True,
+    #         agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    #     )
+    #     try:
+    #         response = agent.run(individual_spreadsheet_prompt)
+    #         agents[csv_file] = {
+    #             "agent": agent,
+    #             "description": response,
+    #         }
+    #         overall_prompt += f"{csv_file}: {response}\n\n"
+    #     except Exception as e:
+    #         print(e)
+    #         agents[csv_file] = {
+    #             "agent": agent,
+    #             "description": str(e),
+    #         }
+    #
+    # overall_prompt += "\n\nQuestion: {question}"
+    # tools = [Tool(
+    #     name=key,
+    #     description=value["description"],
+    #     func=value["agent"].run,
+    # ) for key,value in agents.items()]
+    #
+    # agent_chain = initialize_agent(tools, llm, agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+    #                                verbose=True,
+    #                                memory=memory)
+    #
+    # response = agent_chain.run(
+    #     input=message
+    # )
+    #
+    #
+    #
+    # experiment_response = ExperimentResponse(uploaded_file=experiment_message.uploaded_file, response=response, variant="version_one", message=experiment_message)
+    # experiment_response.save()
 
-        agent = create_csv_agent(
-            llm,
-            csv_file,
-            verbose=True,
-            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        )
-        try:
-            response = agent.run(individual_spreadsheet_prompt)
-            agents[csv_file] = {
-                "agent": agent,
-                "description": response,
-            }
-            overall_prompt += f"{csv_file}: {response}\n\n"
-        except Exception as e:
-            print(e)
-            agents[csv_file] = {
-                "agent": agent,
-                "description": str(e),
-            }
-
-    overall_prompt += "\n\nQuestion: {question}"
-    tools = [Tool(
-        name=key,
-        description=value["description"],
-        func=value["agent"].run,
-    ) for key,value in agents.items()]
-
-    agent_chain = initialize_agent(tools, llm, agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
-                                   verbose=True,
-                                   memory=memory)
-
-    response = agent_chain.run(
-        input=message
-    )
-
-
-
-    experiment_response = ExperimentResponse(uploaded_file=experiment_message.uploaded_file, response=response, variant="version_one", message=experiment_message)
-    experiment_response.save()
-
-    return response
+    return ''
 
 def version_two(experiment_message):
     try:

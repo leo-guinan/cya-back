@@ -3,6 +3,8 @@ import json
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 
+from agi.tasks import respond_to_agi_message
+from cli.tasks import run_command
 from coach.tasks import respond_to_chat_message
 from cofounder.tasks import respond_to_cofounder_message
 
@@ -34,6 +36,10 @@ class ChatConsumer(WebsocketConsumer):
         # Send message to room group
         if self.app == 'cofounder':
             respond_to_cofounder_message.delay(message, text_data_json['user_id'], self.session)
+        elif self.app == 'agi':
+            respond_to_agi_message.delay(message, text_data_json['user_id'], self.session)
+        elif self.app == 'cli':
+            run_command.delay(message)
         else:
             respond_to_chat_message.delay(message, text_data_json['user_id'], self.session)
     # Receive message from room group

@@ -38,6 +38,11 @@ app.conf.beat_schedule = {
     'daily_checkin_email': {
         'task': 'coach.tasks.send_daily_checkins',
         'schedule': crontab(hour='13', minute='0'),
-    }
+    },
+    'check_inbox': {
+        'task': 'personal.tasks.look_for_new_messages',
+        'schedule': crontab(hour='*', minute='*/5'),
+    },
+
 
 }

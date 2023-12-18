@@ -70,7 +70,7 @@ services:
     region: ohio
     env: python
     buildCommand: "./build.sh"
-    startCommand: "celery -A backend beat --loglevel=info"
+    startCommand: "`celery -A backend beat --loglevel=info`"
     envVars:
       - key: REDIS_URL
         fromService:

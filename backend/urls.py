@@ -31,4 +31,7 @@ urlpatterns = [
     path('api/coach/', include('coach.urls')),
     path('api/experiments/', include('experiments.urls')),
     path('api/cofounder/', include('cofounder.urls')),
+    path('api/podcast/', include('podcast.urls')),
+    path('api/agi/', include('agi.urls')),
+    path('api/cli/', include('cli.urls')),
 ]

@@ -82,20 +82,24 @@ class ChatPromptParameter(models.Model):
 
 class Source(models.Model):
     name = models.CharField(max_length=255)
-    rss_feed = models.CharField(max_length=255, unique=True)
+    rss_feed = models.CharField(blank=True, null=True, max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
+    fulltext_id = models.CharField(max_length=255, blank=True, null=True)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sources', blank=True, null=True)
     PODCAST = "PC"
     YOUTUBE = "YT"
     BLOG = "BL"
+    TEXT = "TX"
     CONTENT_TYPE_CHOICES = [
         (PODCAST, "Podcast"),
         (YOUTUBE, "Youtube"),
         (BLOG, "blog"),
+        (TEXT, "text"),
     ]
     content_type = models.CharField(
         max_length=2,
         choices=CONTENT_TYPE_CHOICES,
-        default=BLOG,
+        default=TEXT,
     )
     def __str__(self):
         return self.name

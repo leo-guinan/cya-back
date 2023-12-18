@@ -1,16 +1,25 @@
 import json
+import uuid
+
+import pinecone
+from datetime import datetime
+from uuid import uuid4
 
 from bson import ObjectId
 from decouple import config
 from langchain import LLMChain, PromptTemplate
 from langchain.chat_models import ChatOpenAI
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import MongoDBChatMessageHistory, ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, HumanMessagePromptTemplate
 from langchain.schema import SystemMessage
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Pinecone
 from pymongo import MongoClient
 
 from coach.tools.background import BackgroundTool
-from cofounder.models import Cofounder, BusinessProfile, FounderProfile, User
+from cofounder.agent.remember_agent import RememberAgent
+from cofounder.models import Cofounder, BusinessProfile, FounderProfile, User, Source
 
 DEFAULT_PROFILE = """
 You are Jenny Chen, a seasoned marketing and business development expert 
@@ -66,6 +75,20 @@ class DefaultCofounder:
             business_profile.save()
         self.business_id = business_profile.business_id
         what_you_know = self.mongo_client.cofounder.business.find_one({"_id": ObjectId(self.business_id)})
+        if not what_you_know:
+            what_you_know = {
+                "name": self.business_name,
+                "website": self.business_website,
+                "profile": self.business_profile,
+                "knowledge": "",
+                "questions": ""
+
+            }
+            result = self.mongo_client.cofounder.business.insert_one(what_you_know)
+            self.business_id = result.inserted_id
+            business_profile.business_id = result.inserted_id
+            business_profile.save()
+        print(what_you_know)
         self.base_system_message = f"""
          {self.profile}
 
@@ -110,13 +133,26 @@ class DefaultCofounder:
                               openai_api_base=config('OPENAI_API_BASE'), headers={
                 "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
             })
-        self.quick_llm = ChatOpenAI(temperature=0.7, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-3.5-turbo",
-                              openai_api_base=config('OPENAI_API_BASE'), headers={
+        self.quick_llm = ChatOpenAI(temperature=0.7, openai_api_key=config('OPENAI_API_KEY'),
+                                    model_name="gpt-3.5-turbo",
+                                    openai_api_base=config('OPENAI_API_BASE'), headers={
                 "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
             })
+        pinecone.init(
+            api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
+            environment=config("PINECONE_ENV"),  # next to api key in console
+        )
+        embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
+                                      openai_api_base=config('OPENAI_API_BASE'), headers={
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+            })
+        # db = Chroma("test", embeddings)
+        index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
+        self.vectordb_cards = Pinecone(index, embeddings.embed_query, "text", namespace="cofounder_source_cards")
+        self.vectordb_knowledge = Pinecone(index, embeddings.embed_query, "text", namespace="cofounder_source")
+        self.memory_agent = RememberAgent(user_id)
 
     def think_about_the_message(self, message):
-        pass
         # tools = [
         #     # Tool(
         #     #     name="Intermediate Answer",
@@ -198,11 +234,13 @@ class DefaultCofounder:
             human_input="",
         )
 
-
         return cofounder_response
 
     def respond_to_message(self, message):
+        print("Thinking...")
         thoughts = self.think_about_the_message(message)
+        print("Remembering...")
+        memories = self.remember(message)
         # details = """
         # The project: myaicofounder.com
         # Tagline: an always available AI co-founder that you can trust
@@ -216,13 +254,18 @@ class DefaultCofounder:
         # * Provide the co-founder with a way to learn from the user's interactions with it.
         # * Evaluate the co-founder's performance in a number of important areas and suggest ways to improve it.
         # """
+        print("Responding...")
         prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=f"""
                             {self.base_system_message}
                            Here's what your cofounder wants to know:
                             {message}
 
-                           You thought about it and this is your conclusion: {thoughts}
+                           You thought about it and this is your conclusion: 
+                           {thoughts}
+                           
+                           Here's what you remember from what you've learned so far:
+                            {memories}
 
                            Now you need to respond to the message.
                            """),
@@ -317,11 +360,11 @@ class DefaultCofounder:
         updated_knowledge = parsed['knowledge']
         questions = parsed['questions']
 
-        self.mongo_client.cofounder.business.update_one({"_id": ObjectId(self.business_id)}, {"$set": {"knowledge": updated_knowledge, questions: questions}})
+        self.mongo_client.cofounder.business.update_one({"_id": ObjectId(self.business_id)}, {
+            "$set": {"knowledge": updated_knowledge, "questions": questions}})
         self.update_current_knowledge()
 
     def question_the_business(self):
-        what_you_know = self.mongo_client.cofounder.business.find_one({"_id": ObjectId(self.business_id)})
 
         template = f"""
         {self.base_system_message}
@@ -345,3 +388,60 @@ class DefaultCofounder:
         questions = parsed['questions']
         self.mongo_client.cofounder.business.update_one({"_id": ObjectId(self.business_id)},
                                                         {"$set": {"questions": questions}})
+
+    def learn(self, title, description, fulltext):
+        source = Source()
+        source.name = title
+        source.description = description
+        source.owner_id = self.user_id
+        fulltext_id = str(uuid.uuid4())
+        source.fulltext_id = fulltext_id
+        source.save()
+        self.db.fulltext.insert_one({"text": fulltext, "fulltext_id": fulltext_id})
+        # first, we need to vectorize the title and description for the knowledge card.
+        texts = [
+            f'''
+            {title}
+            
+            {description}
+            
+            '''
+        ]
+        ids = [
+            str(uuid4())
+        ]
+        metadatas = [
+            {
+                "title": title,
+                "description": description,
+                "userId": self.user_id,
+                'added': datetime.now().strftime("%Y-%m-%d"),
+                "fulltext_id": source.id,
+            }
+        ]
+
+        self.vectordb_cards.add_texts(texts, metadatas, ids)
+
+        # then, we need to vectorize the fulltext for the knowledge text.
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=20,
+            length_function=len,
+            is_separator_regex=False,
+        )
+        chunks = text_splitter.split_text(fulltext)
+        chunk_ids = [str(uuid4()) for _ in chunks]
+        chunk_metadatas = [
+            {
+                "title": title,
+                "description": description,
+                "userId": self.user_id,
+                'added': datetime.now().strftime("%Y-%m-%d"),
+                "fulltext_id": source.id,
+            } for _ in chunks
+        ]
+        self.vectordb_knowledge.add_texts(chunks, chunk_metadatas, chunk_ids)
+
+
+    def remember(self, message):
+        return self.memory_agent.remember(message)

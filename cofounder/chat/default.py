@@ -9,14 +9,21 @@ def run_default_chat(session, message, user, channel_layer):
     fix_json_tool = FixJSONTool()
 
     try:
+        print(f"Session: {session}")
+        print(f"Message: {message}")
 
+        print("Creating cofounder")
         alix = DefaultCofounder(session.session_id, user.id)
 
+
+        print("Responding to message")
         response = alix.respond_to_message(message)
 
+        print("Saving chat credit")
         # record chat credit used
         chat_credit = ChatCredit(user=user, session=session)
         chat_credit.save()
+
         # print(alix_response)
 
         #     source_markdown = "\n\n".join(

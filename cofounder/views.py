@@ -169,6 +169,23 @@ def get_profile(request):
         "business_profile": business_profile.profile if business_profile else "",
     })
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def teach_cofounder(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    user = User.objects.get(id=user_id)
+    # content_type = body['content_type']
+    # url = body['url']
+    title = body['title']
+    description = body['description']
+    full_text = body['full_text']
+    session_id = str(uuid.uuid4())
+    cofounder = DefaultCofounder(session_id, user_id)
+    cofounder.learn(title, description, full_text)
+    return Response({"status": "success"})
+
 
 
 def webhook():
