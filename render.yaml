@@ -5,9 +5,8 @@ databases:
     region: ohio
 
 services:
-  - type: web
+  - type: docker
     name: cyaweb
-    env: python
     region: ohio
     runtime: docker
     dockerCommand: "daphne -b 0.0.0.0 backend.asgi:application"
@@ -42,7 +41,6 @@ services:
   - type: worker
     name: queue
     region: ohio
-    env: python
     dockerCommand: "celery -A backend worker --loglevel=info --concurrency=4"
     envVars:
       - key: REDIS_URL
@@ -71,7 +69,6 @@ services:
   - type: worker
     name: scheduler
     region: ohio
-    env: python
     dockerCommand: "`celery -A backend beat --loglevel=info`"
     envVars:
       - key: REDIS_URL
