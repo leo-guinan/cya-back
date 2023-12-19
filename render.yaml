@@ -10,7 +10,6 @@ services:
     env: python
     region: ohio
     runtime: docker
-    buildCommand: "./build.sh"
     dockerCommand: "daphne -b 0.0.0.0 backend.asgi:application"
     envVars:
       - key: DATABASE_URL
@@ -44,7 +43,6 @@ services:
     name: queue
     region: ohio
     env: python
-    buildCommand: "./build.sh"
     dockerCommand: "celery -A backend worker --loglevel=info --concurrency=4"
     envVars:
       - key: REDIS_URL
@@ -74,7 +72,6 @@ services:
     name: scheduler
     region: ohio
     env: python
-    buildCommand: "./build.sh"
     dockerCommand: "`celery -A backend beat --loglevel=info`"
     envVars:
       - key: REDIS_URL
