@@ -71,7 +71,7 @@ services:
     name: scheduler
     region: ohio
     runtime: docker
-    dockerCommand: "`celery -A backend beat --loglevel=info`"
+    dockerCommand: "celery -A backend beat --loglevel=info"
     envVars:
       - key: REDIS_URL
         fromService:
