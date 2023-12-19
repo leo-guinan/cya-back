@@ -41,6 +41,7 @@ services:
   - type: worker
     name: queue
     region: ohio
+    runtime: docker
     dockerCommand: "celery -A backend worker --loglevel=info --concurrency=4"
     envVars:
       - key: REDIS_URL
@@ -69,6 +70,7 @@ services:
   - type: worker
     name: scheduler
     region: ohio
+    runtime: docker
     dockerCommand: "`celery -A backend beat --loglevel=info`"
     envVars:
       - key: REDIS_URL
