@@ -155,3 +155,5 @@ dump.rdb
 # <django-project-name>/staticfiles/
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Python,dotenv,Django
+
+agi/view.py
