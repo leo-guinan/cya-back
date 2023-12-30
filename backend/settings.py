@@ -42,6 +42,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append('n8n-e50h.onrender.com')
     ALLOWED_HOSTS.append('app.buildinpublic.coach')
     ALLOWED_HOSTS.append('app.myaicofounder.com')
+    ALLOWED_HOSTS.append('app.lifecli.com')
 
 # Application definition
 
