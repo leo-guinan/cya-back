@@ -39,7 +39,7 @@ class ChatConsumer(WebsocketConsumer):
         elif self.app == 'agi':
             respond_to_agi_message.delay(message, text_data_json['user_id'], self.session)
         elif self.app == 'cli':
-            run_command.delay(message)
+            run_command.delay(message, self.session)
         else:
             respond_to_chat_message.delay(message, text_data_json['user_id'], self.session)
     # Receive message from room group

@@ -1,38 +1,48 @@
+import json
 from datetime import datetime
 from operator import itemgetter
+from uuid import uuid4
 
 import pinecone
+import requests
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from decouple import config
+from langchain.prompts.prompt import PromptTemplate
+from langchain.schema import format_document
 from langchain_community.chat_models import ChatOpenAI
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores.pinecone import Pinecone
-from uuid import uuid4
-
 from langchain_core.messages import get_buffer_string
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from langchain.prompts.prompt import PromptTemplate
-from langchain.schema import format_document
+from langchain.utils.math import cosine_similarity
 
 from backend.celery import app
 from cli.command.classify import classify_command
-
+from cli.command.transform import schema_to_body
+from cli.models import Command
+from cli.service import get_state_for_session
 
 
 @app.task(name="cli.tasks.run_command")
-def run_command(command):
+def run_command(command, session_id):
+    current_state = get_state_for_session(session_id)
     answer = classify_command(command)
     if answer == "statement":
-        save_info.delay(command)
+        save_info.delay(command, current_state.state, session_id)
     elif answer == "question":
-        answer_question.delay(command)
+        answer_question.delay(command, current_state.state, session_id)
+    elif answer == "command":
+        perform_command.delay(command, current_state.state, session_id)
     else:
         print(f'Answer: {answer}')
 
 
+
 @app.task(name="cli.tasks.save_info")
-def save_info(message):
+def save_info(message, current_state, session_id):
     pinecone.init(
         api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
         environment=config("PINECONE_ENV"),  # next to api key in console
@@ -50,10 +60,14 @@ def save_info(message):
     ids.append(str(uuid4()))
     metadatas.append({"source": "cli", "date": datetime.now().isoformat()})
     cli_index.add_texts(texts, metadatas, ids)
+    channel_layer = get_channel_layer()
+
+    async_to_sync(channel_layer.group_send)(session_id,
+                                            {"type": "chat.message", "message": f'I know {message}', "id": "response"})
 
 
 @app.task(name="cli.tasks.answer_question")
-def answer_question(question):
+def answer_question(question, current_state, session_id):
     pinecone.init(
         api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
         environment=config("PINECONE_ENV"),  # next to api key in console
@@ -105,7 +119,8 @@ def answer_question(question):
         "context": itemgetter("standalone_question") | retriever | _combine_documents,
         "question": lambda x: x["standalone_question"],
     }
-    conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
+    conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI(api_key=config("OPENAI_API_KEY"),
+                                                                              model_name="gpt-4")
     answer = conversational_qa_chain.invoke(
         {
             "question": question,
@@ -114,8 +129,76 @@ def answer_question(question):
     )
 
     print(answer)
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(session_id,
+                                            {"type": "chat.message", "message": answer.content, "id": "state"})
 
 
+@app.task(name="cli.tasks.perform_command")
+def perform_command(command, current_state, session_id):
+    # pick best fitting command, if over a certain threshold.
+    # turn command into an embedding
+    # compare embedding to all commands
+    # if over threshold, run command
 
 
+    pinecone.init(
+        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
+        environment=config("PINECONE_ENV"),  # next to api key in console
+    )
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = Pinecone(index, embeddings, "text", namespace="cli_commands")
+    # cli_index.delete(delete_all=True)
+    # add_command("add_command", "Add a command to the knowledge base", "http://localhost:8000/api/cli/add_command",
+    #             "(command, description, url, input, output)", "Command added")
+    retriever = cli_index.as_retriever()
+    query = command
+    results = retriever.get_relevant_documents(query)
+    print(results[0])
+    print(results[0].metadata)
+    retrieved = Command.objects.get(uuid=results[0].metadata['uuid'])
+    req_url = retrieved.url if retrieved.url.endswith("/") else retrieved.url + "/"
+    print(req_url)
+    body = schema_to_body(command, retrieved.input_schema)
+    parsed_body = json.loads(body.content)
+    print(parsed_body)
+    answer = requests.post(req_url, json=parsed_body)
+    print(answer)
 
+@app.task(name="cli.tasks.add_command")
+def add_command(command, description, url, input, output):
+    print(f"adding command {command}")
+    pinecone.init(
+        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
+        environment=config("PINECONE_ENV"),  # next to api key in console
+    )
+    command_object = Command(command=command, description=description, url=url, input_schema=input, output_schema=output, uuid=str(uuid4()))
+    command_object.save()
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
+    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = Pinecone(index, embeddings, "text", namespace="cli_commands")
+    retriever = cli_index.as_retriever()
+    texts = []
+    ids = []
+    metadatas = []
+
+    texts.append(f"""
+    Command:
+    {command}
+    
+    Description:
+    {description}
+    
+    URL:
+    {url}
+    
+    Input Schema:
+    {input}
+    
+    Output Schema:
+    {output}
+    """)
+    ids.append(command_object.uuid)
+    metadatas.append({"source": "cli", "date": datetime.now().isoformat(), "uuid": command_object.uuid})
+    cli_index.add_texts(texts, metadatas, ids)

@@ -5,8 +5,8 @@ from langchain_core.prompts import ChatPromptTemplate
 
 functions = [
     {
-        "name": "classify",
-        "description": "A classification for a statement",
+        "name": "schema_to_body",
+        "description": "Transform a schema to a body",
         "parameters": {
             "type": "object",
             "properties": {
@@ -18,21 +18,20 @@ functions = [
 ]
 
 
-def classify_command(command):
+def schema_to_body(command, input_schema):
     template = """
-    You are a message classifier. 
-    Determine whether the following message is a statement, a question, or a command.
-    Respond in JSON format like this:
-    {{
-        "classification": "statement"
-    }}
+    You are a message transformer. Given a message that uses this input format:
+    {input_schema}
     
-    Here's the message: {input}
+    Transform it into a JSON object that can be passed as the body of an HTTP request.
+     
+    Respond with only the JSON object.
+
+    Here's the message: {message}
     """
     prompt = ChatPromptTemplate.from_template(template=template)
     model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
-    chain = prompt | model.bind(function_call={"name": "classify"}, functions=functions) | JsonKeyOutputFunctionsParser(
-        key_name="classification")
-    response = chain.invoke({"input": command})
+    chain = prompt | model
+    response = chain.invoke({"message": command,"input_schema": input_schema})
     print(response)
     return response
