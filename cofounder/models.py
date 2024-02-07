@@ -142,3 +142,28 @@ class Cofounder(models.Model):
     profile_image = models.CharField(max_length=255)
     def __str__(self):
         return self.name
+
+class Command(models.Model):
+    command = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    description = models.TextField()
+    url = models.URLField()
+    input_schema = models.TextField()
+    output_schema = models.TextField()
+    uuid = models.CharField(unique=True, max_length=255)
+
+class Answer(models.Model):
+    answer = models.TextField()
+    question = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uuid = models.CharField(unique=True, max_length=255)
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
+
+class Task(models.Model):
+    task = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uuid = models.CharField(unique=True, max_length=255)
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
