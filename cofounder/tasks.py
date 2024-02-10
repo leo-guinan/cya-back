@@ -4,7 +4,6 @@ import logging
 import uuid
 from operator import itemgetter
 
-import pinecone
 import requests
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -13,11 +12,12 @@ from langchain import PromptTemplate, LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory, MongoDBChatMessageHistory
-from langchain.vectorstores import Pinecone
+from langchain.vectorstores import Pinecone as PineconeLC
 from langchain_core.messages import get_buffer_string
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import format_document, ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
+from pinecone import Pinecone
 
 from backend.celery import app
 from cofounder.cofounder.default import DefaultCofounder
@@ -70,17 +70,16 @@ def respond_to_cofounder_message(message, user_id, session_id):
 
 @app.task(name="coach.tasks.crawl_and_scrape")
 def crawl_and_scrape(url):
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
+    pc = Pinecone(
+        config("PINECONE_API_KEY"),  # find at app.pinecone.io
     )
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'),
                                   headers={
                                       "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
                                   })
     # db = Chroma("test", embeddings)
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    vectorstore = Pinecone(index, embeddings.embed_query, "text")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    vectorstore = PineconeLC(index, embeddings.embed_query, "text")
 
     scraper = Scraper(vectorstore)
     crawler = Crawler(scraper)
@@ -114,17 +113,16 @@ def extract_user_info(user_id, message, session_id):
 
     response = user_info.predict(message=message)
     print(response)
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
+    pc = Pinecone(
+        config("PINECONE_API_KEY"),  # find at app.pinecone.io
     )
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'),
                                   headers={
                                       "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
                                   })
     # db = Chroma("test", embeddings)
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    vectorstore = Pinecone(index, embeddings.embed_query, "text", namespace="user_info")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    vectorstore = PineconeLC(index, embeddings.embed_query, "text", namespace="user_info")
     vectorstore.add_texts([response], metadatas=[{"user_id": user_id, "session_id": session_id}], namespace="user_info")
 
 
@@ -249,17 +247,15 @@ def learn(user_id, message, session_id):
 
 @app.task(name="cofounder.tasks.learn_blog")
 def learn_blog(user_id, url, title, description):
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
-    )
+    pc = Pinecone(
+        config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"), openai_api_base=config('OPENAI_API_BASE'),
                                   headers={
                                       "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
                                   })
     # db = Chroma("test", embeddings)
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    vectorstore = Pinecone(index, embeddings.embed_query, "text")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    vectorstore = PineconeLC(index, embeddings.embed_query, "text")
 
     scraper = Scraper(vectorstore)
     scraper.scrape(url)
@@ -269,14 +265,11 @@ def learn_blog(user_id, url, title, description):
 
 @app.task(name="cofounder.tasks.save_info")
 def save_info(message, session_id, user_id):
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
-    )
+    pc = Pinecone( config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
 
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cofounder")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cofounder")
 
     texts = []
     ids = []
@@ -305,14 +298,11 @@ def save_info(message, session_id, user_id):
 
 @app.task(name="cofounder.tasks.answer_question")
 def answer_question(question, session_id, user_id):
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
-    )
+    pc = Pinecone(config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
 
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cofounder")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cofounder")
 
     retriever = cli_index.as_retriever()
     # TODO: need to make sure we can filter by user id in metadata
@@ -386,13 +376,12 @@ def perform_command(command, session_id):
     # compare embedding to all commands
     # if over threshold, run command
 
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
+    pc = Pinecone(
+        config("PINECONE_API_KEY"),  # find at app.pinecone.io
     )
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cli_commands")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cli_commands")
     # cli_index.delete(delete_all=True)
     # add_command("add_command", "Add a command to the knowledge base", "http://localhost:8000/api/cli/add_command",
     #             "(command, description, url, input, output)", "Command added")
@@ -414,17 +403,15 @@ def perform_command(command, session_id):
 @app.task(name="cofounder.tasks.add_command")
 def add_command(command, description, url, input_schema, output):
     print(f"adding command {command}")
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
+    pc = Pinecone(
+        config("PINECONE_API_KEY")
     )
     command_object = Command(command=command, description=description, url=url, input_schema=input_schema,
                              output_schema=output, uuid=str(uuid.uuid4()))
     command_object.save()
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cli_commands")
-    retriever = cli_index.as_retriever()
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cli_commands")
     texts = []
     ids = []
     metadatas = []

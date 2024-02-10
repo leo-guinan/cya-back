@@ -96,9 +96,9 @@ def start_chat(request):
     message_history = MongoDBChatMessageHistory(
         connection_string=config('MONGODB_CONNECTION_STRING'), session_id=chat_session.session_id
     )
-    cofounder = DefaultCofounder(chat_session.session_id, user.id)
+    # cofounder = DefaultCofounder(chat_session.session_id, user.id)
 
-    message_history.add_ai_message(cofounder.greet_founder())
+    # message_history.add_ai_message(cofounder.greet_founder())
 
     return Response({'session_id': chat_session.session_id})
 
