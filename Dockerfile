@@ -33,7 +33,6 @@ RUN poetry config virtualenvs.create false \
 # Copy the Django project files to the container
 COPY . .
 
-RUN python manage.py migrate
 
 # The command to run the application
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "migrate", "&&", "python", "manage.py", "runserver", "0.0.0.0:8000"]
