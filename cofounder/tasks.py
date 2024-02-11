@@ -2,7 +2,6 @@ import datetime
 import json
 import logging
 import uuid
-from operator import itemgetter
 
 import requests
 from asgiref.sync import async_to_sync
@@ -13,10 +12,8 @@ from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory, MongoDBChatMessageHistory
 from langchain.vectorstores import Pinecone as PineconeLC
-from langchain_core.messages import get_buffer_string
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import format_document, ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough, RunnableParallel
+from llama_index import StorageContext, VectorStoreIndex
+from llama_index.vector_stores import MetadataFilters, MetadataFilter, FilterOperator, PineconeVectorStore
 from pinecone import Pinecone
 
 from backend.celery import app
@@ -265,7 +262,7 @@ def learn_blog(user_id, url, title, description):
 
 @app.task(name="cofounder.tasks.save_info")
 def save_info(message, session_id, user_id):
-    pc = Pinecone( config("PINECONE_API_KEY"))
+    pc = Pinecone(config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
 
     index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
@@ -299,66 +296,33 @@ def save_info(message, session_id, user_id):
 @app.task(name="cofounder.tasks.answer_question")
 def answer_question(question, session_id, user_id):
     pc = Pinecone(config("PINECONE_API_KEY"))
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
-
+    print(f'Looking up: {question} for user: {user_id}')
     index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = PineconeLC(index, embeddings, "text", namespace="cofounder")
 
-    retriever = cli_index.as_retriever()
-    # TODO: need to make sure we can filter by user id in metadata
-    _template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
-
-    Chat History:
-    {chat_history}
-    Follow Up Input: {question}
-    Standalone question:"""
-
-    CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
-    template = """Answer the question based only on the following context:
-    {context}
-
-    Question: {question}
-    """
-    template = """Answer the question based only on the following context:
-    {context}
-
-    Question: {question}
-    """
-    ANSWER_PROMPT = ChatPromptTemplate.from_template(template)
-    DEFAULT_DOCUMENT_PROMPT = PromptTemplate.from_template(template="{page_content}")
-
-    def _combine_documents(
-            docs, document_prompt=DEFAULT_DOCUMENT_PROMPT, document_separator="\n\n"
-    ):
-        doc_strings = [format_document(doc, document_prompt) for doc in docs]
-        return document_separator.join(doc_strings)
-
-    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
-    _inputs = RunnableParallel(
-        standalone_question=RunnablePassthrough.assign(
-            chat_history=lambda x: get_buffer_string(x["chat_history"])
-        )
-                            | CONDENSE_QUESTION_PROMPT
-                            | ChatOpenAI(temperature=0, api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
-                            | StrOutputParser(),
-    )
-    _context = {
-        "context": itemgetter("standalone_question") | retriever | _combine_documents,
-        "question": lambda x: x["standalone_question"],
-    }
-    conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI(api_key=config("OPENAI_API_KEY"),
-                                                                              model_name="gpt-4")
-    answer = conversational_qa_chain.invoke(
-        {
-            "question": question,
-            "chat_history": [],
-        }
+    vector_store = PineconeVectorStore(
+        pinecone_index=index, namespace="cofounder"
     )
 
-    print(answer)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+    index = VectorStoreIndex.from_vector_store(vector_store=vector_store, storage_context=storage_context)
+    filters = MetadataFilters(
+        filters=[
+            MetadataFilter(
+                key="userId", operator=FilterOperator.EQ, value=user_id
+            ),
+        ]
+    )
+    retriever = index.as_retriever(filters=filters, verbose=True)
+    answer = retriever.retrieve(question)
+
+    clean_answer = answer[0].text if answer and answer[0] else None
+
+    if not clean_answer:
+        clean_answer = "I don't know, sorry"
+
     answer_model = Answer()
     answer_model.session = ChatSession.objects.get(session_id=session_id)
-    answer_model.answer = answer
+    answer_model.answer = clean_answer
     answer_model.uuid = str(uuid.uuid4())
     answer_model.question = question
     answer_model.save()
@@ -366,7 +330,7 @@ def answer_question(question, session_id, user_id):
     channel_layer = get_channel_layer()
 
     async_to_sync(channel_layer.group_send)(session_id,
-                                            {"type": "chat.message", "message": answer.content, "id": "answer"})
+                                            {"type": "chat.message", "message": clean_answer, "id": "answer"})
 
 
 @app.task(name="cofounder.tasks.perform_command")

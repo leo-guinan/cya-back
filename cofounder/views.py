@@ -10,7 +10,8 @@ from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from cofounder.cofounder.default import DefaultCofounder
-from cofounder.models import User, ChatSession, CHAT_TYPE_MAPPING, UserPreferences, FounderProfile, BusinessProfile
+from cofounder.models import User, ChatSession, CHAT_TYPE_MAPPING, UserPreferences, FounderProfile, BusinessProfile, \
+    Answer, Task
 
 
 @api_view(('POST',))
@@ -190,3 +191,35 @@ def teach_cofounder(request):
 
 def webhook():
     pass
+
+def formatTask(task):
+    return {
+        "name": task.task,
+        "details": task.details,
+        "taskFor": task['for']
+    }
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def tasks(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    session_id = body['session_id']
+    session = ChatSession.objects.filter(session_id=session_id, user_id=user_id).first()
+    tasks = Task.objects.filter(session=session).all()
+
+    return Response({"tasks": map(lambda task: formatTask, tasks)})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def answers(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    session_id = body['session_id']
+    session = ChatSession.objects.filter(session_id=session_id, user_id=user_id).first()
+    answers = Answer.objects.filter(session=session).all()
+
+    mapped_answers = map(lambda answer: answer.answer, answers)
+    print(mapped_answers)
+    return Response({"answers": mapped_answers})

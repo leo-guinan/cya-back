@@ -167,3 +167,5 @@ class Task(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     uuid = models.CharField(unique=True, max_length=255)
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
+    details = models.TextField()
+    taskFor = models.TextField()
