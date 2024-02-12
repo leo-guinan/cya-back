@@ -193,10 +193,11 @@ def webhook():
     pass
 
 def formatTask(task):
+    print(f"task: {task}")
     return {
         "name": task.task,
         "details": task.details,
-        "taskFor": task['for']
+        "taskFor": task.taskFor
     }
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -207,8 +208,8 @@ def tasks(request):
     session_id = body['session_id']
     session = ChatSession.objects.filter(session_id=session_id, user_id=user_id).first()
     tasks = Task.objects.filter(session=session).all()
-
-    return Response({"tasks": map(lambda task: formatTask, tasks)})
+    mapped_tasks = list(map(lambda task: formatTask(task), tasks))
+    return Response({"tasks": mapped_tasks})
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -220,6 +221,5 @@ def answers(request):
     session = ChatSession.objects.filter(session_id=session_id, user_id=user_id).first()
     answers = Answer.objects.filter(session=session).all()
 
-    mapped_answers = map(lambda answer: answer.answer, answers)
-    print(mapped_answers)
+    mapped_answers = list(map(lambda answer: answer.answer, answers))
     return Response({"answers": mapped_answers})
