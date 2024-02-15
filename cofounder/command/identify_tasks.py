@@ -18,7 +18,7 @@ functions = [
                         "properties": {
                             "name": {"type": "string", "description": "The name of the task"},
                             "details": {"type": "string", "description": "The details of the task"},
-                            "for": {"type": "string", "description": "The person the task is for"}
+                            "taskFor": {"type": "string", "description": "The person the task is for"}
                         }
                     }
                 },
@@ -38,7 +38,7 @@ def identify_tasks(command):
             {{
                 "name": "<short name of the task>",
                 "details": "<details of the task>",
-                "for": "<who the task is for>"
+                "taskFor": "<who the task is for>"
             }}
         ]
     }}
@@ -50,5 +50,4 @@ def identify_tasks(command):
     chain = prompt | model.bind(function_call={"name": "identify_tasks"}, functions=functions) | JsonKeyOutputFunctionsParser(
         key_name="tasks")
     response = chain.invoke({"input": command})
-    print(response)
     return response

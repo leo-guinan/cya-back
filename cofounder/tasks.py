@@ -259,7 +259,13 @@ def learn_blog(user_id, url, title, description):
 
     pass
 
-
+def serialize_task(task_model):
+    return {
+        "id": task_model.id,
+        "name": task_model.task,
+        "details": task_model.details,
+        "taskFor": task_model.taskFor
+    }
 @app.task(name="cofounder.tasks.save_info")
 def save_info(message, session_id, user_id):
     pc = Pinecone(config("PINECONE_API_KEY"))
@@ -280,17 +286,21 @@ def save_info(message, session_id, user_id):
     print(session_id)
 
     tasks = identify_tasks(message)
-
+    task_models = []
     for task in tasks:
         print(task)
         task_model = Task()
         task_model.session = ChatSession.objects.get(session_id=session_id)
-        task_model.task = task
+        task_model.task = task['name']
+        task_model.taskFor = task['taskFor']
+        task_model.details = task['details']
         task_model.uuid = str(uuid.uuid4())
         task_model.save()
+        task_models.append(task_model)
+
 
     async_to_sync(channel_layer.group_send)(session_id,
-                                            {"type": "chat.message", "message": json.dumps(tasks), "id": "task"})
+                                            {"type": "chat.message", "message": json.dumps(list(map(lambda t: serialize_task(t), task_models))), "id": "task"})
 
 
 @app.task(name="cofounder.tasks.answer_question")

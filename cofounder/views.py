@@ -197,7 +197,8 @@ def formatTask(task):
     return {
         "name": task.task,
         "details": task.details,
-        "taskFor": task.taskFor
+        "taskFor": task.taskFor,
+        "id": task.id,
     }
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -207,7 +208,7 @@ def tasks(request):
     user_id = body['user_id']
     session_id = body['session_id']
     session = ChatSession.objects.filter(session_id=session_id, user_id=user_id).first()
-    tasks = Task.objects.filter(session=session).all()
+    tasks = Task.objects.filter(session=session, complete=False).all()
     mapped_tasks = list(map(lambda task: formatTask(task), tasks))
     return Response({"tasks": mapped_tasks})
 
@@ -223,3 +224,18 @@ def answers(request):
 
     mapped_answers = list(map(lambda answer: answer.answer, answers))
     return Response({"answers": mapped_answers})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def complete(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    session_id = body['session_id']
+    task_id = body['task_id']
+    session = ChatSession.objects.filter(session_id=session_id, user_id=user_id).first()
+    task = Task.objects.filter(id=task_id, session=session).first()
+    task.complete = True
+    task.save()
+    return Response({"status": "success"})

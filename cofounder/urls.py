@@ -1,7 +1,7 @@
 from django.urls import path, re_path
 
 from cofounder.views import add_user, list_chats, get_chat, get_preferences, set_preferences, \
-    get_profile, set_profile, start_chat, teach_cofounder, answers, tasks
+    get_profile, set_profile, start_chat, teach_cofounder, answers, tasks, complete
 
 urlpatterns = [
     path('add_user/', add_user),
@@ -14,5 +14,6 @@ urlpatterns = [
     path('get_profile/', get_profile),
     path('teach/', teach_cofounder),
     path('tasks/', tasks),
+    path('task/complete', complete),
     path('answers/', answers)
 ]

@@ -169,3 +169,4 @@ class Task(models.Model):
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
     details = models.TextField()
     taskFor = models.TextField()
+    complete = models.BooleanField(default=False)
