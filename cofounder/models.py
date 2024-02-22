@@ -162,6 +162,21 @@ class Answer(models.Model):
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
 
 class Task(models.Model):
+    PRIVATE = "PR"
+    PUBLIC = "PB"
+    LIMITED = "LM"
+    SCOPE_CHOICES = [
+        (PRIVATE, "Private"),
+        (PUBLIC, "Public"),
+        (LIMITED, "Limited"),
+    ]
+    scope = models.CharField(
+        max_length=2,
+        choices=SCOPE_CHOICES,
+        default=PRIVATE,
+    )
+
+
     task = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -170,3 +185,23 @@ class Task(models.Model):
     details = models.TextField()
     taskFor = models.TextField()
     complete = models.BooleanField(default=False)
+    completedAt = models.DateTimeField(null=True, blank=True)
+    parent = models.ForeignKey("self", models.DO_NOTHING, null=True, blank=True, db_column='parent',
+                               related_name="children")
+
+
+
+class Offer(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uuid = models.CharField(unique=True, max_length=255)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    needed_details = models.TextField()
+    accepted = models.BooleanField(default=False)
+    acceptedAt = models.DateTimeField(null=True, blank=True)
+    estimated_price = models.DecimalField(max_digits=
+                                          10, decimal_places=2)
+    actual_price = models.DecimalField(max_digits=10, decimal_places=2)
+    email = models.TextField()
+
+

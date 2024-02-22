@@ -32,7 +32,8 @@ ALLOWED_HOSTS = [
     'localhost',
     '0.0.0.0',
     '127.0.0.1',
-    'd408-71-176-75-4.ngrok-free.app'
+    'd408-71-176-75-4.ngrok-free.app',
+    'web'
 ]
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:

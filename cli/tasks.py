@@ -12,12 +12,13 @@ from langchain.prompts.prompt import PromptTemplate
 from langchain.schema import format_document
 from langchain_community.chat_models import ChatOpenAI
 from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.vectorstores.pinecone import Pinecone
+from langchain_community.vectorstores.pinecone import Pinecone as PineconeLC
 from langchain_core.messages import get_buffer_string
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain.utils.math import cosine_similarity
+from pinecone import Pinecone
 
 from backend.celery import app
 from cli.command.classify import classify_command
@@ -43,14 +44,11 @@ def run_command(command, session_id):
 
 @app.task(name="cli.tasks.save_info")
 def save_info(message, current_state, session_id):
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
-    )
+    pc = Pinecone(config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
 
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cli")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cli")
 
     texts = []
     ids = []
@@ -68,14 +66,12 @@ def save_info(message, current_state, session_id):
 
 @app.task(name="cli.tasks.answer_question")
 def answer_question(question, current_state, session_id):
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
-    )
+    pc = Pinecone(config("PINECONE_API_KEY"))
+
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
 
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cli")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cli")
 
     retriever = cli_index.as_retriever()
 
@@ -140,44 +136,45 @@ def perform_command(command, current_state, session_id):
     # turn command into an embedding
     # compare embedding to all commands
     # if over threshold, run command
+    channel_layer = get_channel_layer()
 
+    pc = Pinecone(config("PINECONE_API_KEY"))
 
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
-    )
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cli_commands")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cli_commands")
     # cli_index.delete(delete_all=True)
     # add_command("add_command", "Add a command to the knowledge base", "http://localhost:8000/api/cli/add_command",
     #             "(command, description, url, input, output)", "Command added")
     retriever = cli_index.as_retriever()
     query = command
     results = retriever.get_relevant_documents(query)
-    print(results[0])
-    print(results[0].metadata)
+    if len(results) == 0:
+        async_to_sync(channel_layer.group_send)(session_id,
+                                                {"type": "chat.message",
+                                                 "message": f'Command not found', "id": "state"})
+        return
     retrieved = Command.objects.get(uuid=results[0].metadata['uuid'])
     req_url = retrieved.url if retrieved.url.endswith("/") else retrieved.url + "/"
     print(req_url)
-    body = schema_to_body(command, retrieved.input_schema)
-    parsed_body = json.loads(body.content)
+    body = schema_to_body(command, retrieved.input_schema, session_id)
+    parsed_body = json.loads(body)
     print(parsed_body)
     answer = requests.post(req_url, json=parsed_body)
     print(answer)
+    # async_to_sync(channel_layer.group_send)(session_id,
+    #                                         {"type": "chat.message", "message": f'Successfully executed command: {command}', "id": "state"})
 
 @app.task(name="cli.tasks.add_command")
 def add_command(command, description, url, input, output):
     print(f"adding command {command}")
-    pinecone.init(
-        api_key=config("PINECONE_API_KEY"),  # find at app.pinecone.io
-        environment=config("PINECONE_ENV"),  # next to api key in console
-    )
+    pc = Pinecone(config("PINECONE_API_KEY"))
+
     command_object = Command(command=command, description=description, url=url, input_schema=input, output_schema=output, uuid=str(uuid4()))
     command_object.save()
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"))
-    index = pinecone.Index(config("BIPC_PINECONE_INDEX_NAME"))
-    cli_index = Pinecone(index, embeddings, "text", namespace="cli_commands")
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"))
+    cli_index = PineconeLC(index, embeddings, "text", namespace="cli_commands")
     retriever = cli_index.as_retriever()
     texts = []
     ids = []

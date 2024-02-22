@@ -11,7 +11,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from cofounder.cofounder.default import DefaultCofounder
 from cofounder.models import User, ChatSession, CHAT_TYPE_MAPPING, UserPreferences, FounderProfile, BusinessProfile, \
-    Answer, Task
+    Answer, Task, Offer
 
 
 @api_view(('POST',))
@@ -208,7 +208,7 @@ def tasks(request):
     user_id = body['user_id']
     session_id = body['session_id']
     session = ChatSession.objects.filter(session_id=session_id, user_id=user_id).first()
-    tasks = Task.objects.filter(session=session, complete=False).all()
+    tasks = Task.objects.filter(session=session, complete=False, parent=None).all()
     mapped_tasks = list(map(lambda task: formatTask(task), tasks))
     return Response({"tasks": mapped_tasks})
 
@@ -238,4 +238,51 @@ def complete(request):
     task = Task.objects.filter(id=task_id, session=session).first()
     task.complete = True
     task.save()
+    return Response({"status": "success"})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def marketplace(request):
+    body = json.loads(request.body)
+    filter = body.get('filter', '')
+    tasks = Task.objects.filter(scope=Task.PUBLIC).all()
+    mapped_tasks = list(map(lambda task: formatTask(task), tasks))
+    return Response({"tasks": mapped_tasks})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def bid(request):
+    body = json.loads(request.body)
+    task_id = body['task_id']
+    bid_amount = body['bid_amount']
+    requested_info = body['requested_info']
+    email = body['email']
+    task = Task.objects.filter(id=task_id).first()
+    offer = Offer()
+    offer.task = task
+    offer.estimated_price = bid_amount
+    offer.uuid = str(uuid.uuid4())
+    offer.needed_details = requested_info
+    offer.email = email
+    offer.save()
+    return Response({"status": "success"})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def scope(request):
+    body = json.loads(request.body)
+    task_id = body['task_id']
+    scope = body['scope']
+    session_id = body['session_id']
+    user_id = body['user_id']
+    session = ChatSession.objects.get(session_id=session_id, user_id=user_id)
+    task = Task.objects.filter(id=task_id, session=session).first()
+    task.scope = Task.PUBLIC if scope == "Public" else Task.PRIVATE
+    task.save()
+
     return Response({"status": "success"})

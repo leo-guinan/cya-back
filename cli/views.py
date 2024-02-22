@@ -24,3 +24,16 @@ def add_command(request):
 
     return Response({'message': 'Done'})
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([])
+@csrf_exempt
+def say_hi(request):
+    body = json.loads(request.body)
+    person = body["person"]
+    session_id = body["session_id"]
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(session_id,
+                                            {"type": "chat.message",
+                                             "message": f'Hi {person}!', "id": "state"})
+    return Response({'message': 'Done'})
