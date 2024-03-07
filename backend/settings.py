@@ -84,7 +84,8 @@ INSTALLED_APPS = [
     'metrics',
     'personal',
     'agi',
-    'cli'
+    'cli',
+    'task'
 ]
 SITE_ID = 2
 

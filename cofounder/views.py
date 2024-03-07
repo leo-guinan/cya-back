@@ -286,3 +286,9 @@ def scope(request):
     task.save()
 
     return Response({"status": "success"})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([])
+def mht(request):
+    return Response({"status": "success"})

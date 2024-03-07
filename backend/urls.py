@@ -34,4 +34,5 @@ urlpatterns = [
     path('api/podcast/', include('podcast.urls')),
     path('api/agi/', include('agi.urls')),
     path('api/cli/', include('cli.urls')),
+    path('api/task/', include('task.urls')),
 ]
