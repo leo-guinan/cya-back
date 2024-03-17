@@ -36,3 +36,42 @@ def add(request):
         task_models.append(task_model)
     return Response({'status': 'success'})
 
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([])
+@csrf_exempt
+def list(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+
+    # identify task if needed.
+    tasks = Task.objects.filter(user_id=user_id).all()
+    task_models = []
+    for task in tasks:
+        task_models.append({
+            "name": task.task,
+            "details": task.details,
+            "taskFor": task.taskFor,
+            "id": task.id,
+            "priority": task.priority
+        })
+    return Response({'tasks': task_models})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([])
+@csrf_exempt
+def prioritize(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    task_priorities = body['task_priorities']
+    for task_priority in task_priorities:
+        task = Task.objects.get(id=task_priority['taskId'], user_id=user_id)
+        if not task:
+            continue
+        task.priority = task_priority['priority']
+        task.save()
+
+    return Response({'status': "success"})
+

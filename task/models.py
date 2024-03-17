@@ -27,6 +27,7 @@ class Task(models.Model):
     parent = models.ForeignKey("self", models.DO_NOTHING, null=True, blank=True, db_column='parent',
                                related_name="children")
     user_id = models.TextField()
+    priority = models.IntegerField(default=0)
 
 
     class Source(models.Model):
