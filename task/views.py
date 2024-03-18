@@ -1,6 +1,7 @@
 import json
 import uuid
 
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
 from rest_framework.renderers import JSONRenderer
@@ -46,7 +47,7 @@ def list(request):
     user_id = body['user_id']
 
     # identify task if needed.
-    tasks = Task.objects.filter(user_id=user_id).all()
+    tasks = Task.objects.filter(user_id=user_id, complete=False).all()
     task_models = []
     for task in tasks:
         task_models.append({
@@ -75,3 +76,20 @@ def prioritize(request):
 
     return Response({'status': "success"})
 
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([])
+@csrf_exempt
+def complete(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    task_id = body['task_id']
+    task = Task.objects.get(id=task_id, user_id=user_id)
+    if not task:
+        return Response({'status': "error"})
+
+    task.complete = True
+    task.completedAt = timezone.now()
+    task.save()
+    return Response({'status': "success"})
