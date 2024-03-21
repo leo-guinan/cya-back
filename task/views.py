@@ -8,7 +8,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 
 from task.models import Task
-from task.service import identify_tasks
+from task.service import identify_tasks, generateTasksFromPlan
 
 
 # Create your views here.
@@ -52,10 +52,11 @@ def list(request):
     for task in tasks:
         task_models.append({
             "name": task.task,
-            "details": task.details,
+            "description": task.description,
             "taskFor": task.taskFor,
             "id": task.id,
-            "priority": task.priority
+            "priority": task.priority,
+            "uuid": task.uuid,
         })
     return Response({'tasks': task_models})
 
@@ -67,10 +68,26 @@ def prioritize(request):
     body = json.loads(request.body)
     user_id = body['user_id']
     task_priorities = body['task_priorities']
+    print(json.dumps(task_priorities, indent=4))
     for task_priority in task_priorities:
-        task = Task.objects.get(id=task_priority['taskId'], user_id=user_id)
+        print(task_priority['task'])
+        task_object = task_priority['task']
+        # uuid indicates task originated from external source
+        if 'uuid' in task_object:
+            task = Task.objects.filter(uuid=task_object['uuid'], user_id=user_id).first()
+            if not task:
+                task = Task.objects.filter(id=task_object['id'], user_id=user_id).first()
+        else:
+            task = Task.objects.filter(id=task_object['id'], user_id=user_id).first()
         if not task:
-            continue
+            task = Task()
+            task.user_id = user_id
+            task.task = task_priority['task']['name']
+            task.uuid = task_priority['task']['uuid']
+            # need to make these the same
+            task.description = task_priority['task']['description']
+
+
         task.priority = task_priority['priority']
         task.save()
 
@@ -93,3 +110,42 @@ def complete(request):
     task.completedAt = timezone.now()
     task.save()
     return Response({'status': "success"})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([])
+@csrf_exempt
+def generate(request):
+    body = json.loads(request.body)
+    plan = body['plan']
+
+    planned_tasks = generateTasksFromPlan(plan)
+
+    return Response({'tasks': planned_tasks})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([])
+@csrf_exempt
+def get(request):
+    body = json.loads(request.body)
+    user_id = body['user_id']
+    task_id = body['task_id']
+    external_uuid = body['uuid']
+
+    # identify task if needed.
+    task = Task.objects.filter(user_id=user_id, complete=False, id=task_id).first()
+    if not task.uuid:
+        task.uuid = external_uuid
+        task.save()
+    task_model = {
+            "name": task.task,
+            "description": task.description,
+            "taskFor": task.taskFor,
+            "id": task.id,
+            "priority": task.priority,
+            "uuid": task.uuid,
+        }
+    return Response({'task': task_model})

@@ -21,7 +21,7 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     uuid = models.CharField(unique=True, max_length=255)
-    details = models.TextField()
+    description = models.TextField()
     taskFor = models.TextField()
     complete = models.BooleanField(default=False)
     completedAt = models.DateTimeField(null=True, blank=True)

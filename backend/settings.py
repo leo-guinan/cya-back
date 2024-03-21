@@ -85,7 +85,8 @@ INSTALLED_APPS = [
     'personal',
     'agi',
     'cli',
-    'task'
+    'task',
+    'document'
 ]
 SITE_ID = 2
 

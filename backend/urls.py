@@ -35,4 +35,5 @@ urlpatterns = [
     path('api/agi/', include('agi.urls')),
     path('api/cli/', include('cli.urls')),
     path('api/task/', include('task.urls')),
+    path('api/document/', include('document.urls')),
 ]
