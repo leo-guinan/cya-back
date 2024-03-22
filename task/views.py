@@ -31,7 +31,6 @@ def add(request):
         task_model.task = task['name']
         task_model.taskFor = task['taskFor']
         task_model.details = task['details']
-        task_model.uuid = str(uuid.uuid4())
         task_model.user_id = user_id
         task_model.save()
         task_models.append(task_model)
