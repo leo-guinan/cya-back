@@ -29,6 +29,8 @@ class Task(models.Model):
                                related_name="children")
     user_id = models.TextField()
     priority = models.IntegerField(default=0)
+    external_model_id = models.TextField(null=True, blank=True)
+    external_object_uuid = models.TextField(null=True, blank=True)
 
 
     class Source(models.Model):

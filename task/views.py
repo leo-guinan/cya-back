@@ -32,6 +32,8 @@ def add(request):
         task_model.taskFor = task['taskFor']
         task_model.details = task['details']
         task_model.user_id = user_id
+        task_model.external_model_id = task['model_id']
+        task_model.external_object_uuid = task['item_uuid']
         task_model.save()
         task_models.append(task_model)
     return Response({'status': 'success'})
