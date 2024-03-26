@@ -22,7 +22,7 @@ def add(request):
     message = body['message']
     user_id = body['user_id']
     model_id = body['model_id']
-    item_uuid = body['uuid']
+    item_uuid = body['item_uuid']
 
     # identify task if needed.
     tasks = identify_tasks(message)
