@@ -26,6 +26,7 @@ def add(request):
 
     # identify task if needed.
     tasks = identify_tasks(message)
+    print("Identified tasks", tasks)
     task_models = []
     for task in tasks:
         print(task)
@@ -36,6 +37,7 @@ def add(request):
         task_model.user_id = user_id
         task_model.external_model_id = model_id
         task_model.external_object_uuid = item_uuid
+        task_model.uuid = str(uuid.uuid4())
         task_model.save()
         task_models.append(task_model)
     return Response({'status': 'success'})
