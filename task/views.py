@@ -21,6 +21,8 @@ def add(request):
     body = json.loads(request.body)
     message = body['message']
     user_id = body['user_id']
+    model_id = body['model_id']
+    item_uuid = body['uuid']
 
     # identify task if needed.
     tasks = identify_tasks(message)
@@ -32,8 +34,8 @@ def add(request):
         task_model.taskFor = task['taskFor']
         task_model.details = task['details']
         task_model.user_id = user_id
-        task_model.external_model_id = task['model_id']
-        task_model.external_object_uuid = task['item_uuid']
+        task_model.external_model_id = model_id
+        task_model.external_object_uuid = item_uuid
         task_model.save()
         task_models.append(task_model)
     return Response({'status': 'success'})
