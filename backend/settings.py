@@ -86,7 +86,8 @@ INSTALLED_APPS = [
     'agi',
     'cli',
     'task',
-    'document'
+    'document',
+    'deployment'
 ]
 SITE_ID = 2
 
