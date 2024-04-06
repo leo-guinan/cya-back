@@ -43,6 +43,7 @@ def look_for_podcast_episodes(query):
     episodes = response.json()
 
     found = []
+    print(f"Found {len(episodes['episodes'])} episodes")
 
     for episode in episodes['episodes']:
         # if podcast episode is already in the database, skip it.
