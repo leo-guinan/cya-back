@@ -132,7 +132,7 @@ def look_for_podcast_episodes(query):
                 metadatas.append(metadata)
                 ids.append(id)
 
-        vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace="podcast_episodes_dev")
+        vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_PODCAST_NAMESPACE'))
 
         found.append(existing_episode)
 

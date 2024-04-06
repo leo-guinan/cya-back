@@ -32,7 +32,7 @@ def search(query_id):
 
     for episode in found_episodes:
         # find relevant snippets
-        matched = vectorstore.similarity_search_with_score(query.query, k=5, namespace="podcast_episodes_dev")
+        matched = vectorstore.similarity_search_with_score(query.query, k=5, namespace=config('PINECONE_PODCAST_NAMESPACE'))
         for match in matched:
             print(match)
             snippet = PodcastEpisodeSnippet.objects.create(
