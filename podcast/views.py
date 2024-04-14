@@ -51,6 +51,9 @@ def get_query_result(request):
         return Response({'message': 'Query ID is required'}, status=400)
 
     query = PodcastQuery.objects.get(id=query_id)
+    if (not query.completed):
+        return Response({'status': 'Queued'},)
+
     snippets = query.snippets.all()
     results = []
     for snippet in snippets:
@@ -58,5 +61,5 @@ def get_query_result(request):
             'snippet': snippet.snippet,
             'score': snippet.score
         })
-    return Response({'query': query.query, 'results': results})
+    return Response({'query': query.query, 'results': results, 'status': 'Completed'})
 

@@ -38,7 +38,7 @@ class PodcastQuery(models.Model):
     podcast_episodes = models.ManyToManyField(PodcastEpisode)
     snippets = models.ManyToManyField('PodcastEpisodeSnippet')
     completed = models.BooleanField(default=False)
-
+    error = models.TextField(null=True, blank=True)
     def __str__(self):
         return self.query
 
