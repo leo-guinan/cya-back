@@ -82,7 +82,6 @@ INSTALLED_APPS = [
     'copyai',
     'podcast',
     'metrics',
-    'personal',
     'agi',
     'cli',
     'task',
