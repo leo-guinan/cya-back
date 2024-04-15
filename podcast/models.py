@@ -21,7 +21,7 @@ class PodcastEpisode(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     transcript_guid = models.CharField(max_length=255, unique=True)
     transcript = models.TextField()
-    episode_url = models.TextField()
+    episode_url = models.TextField(null=True, blank=True)
     episode_audio_url = models.TextField()
     embeddings_generated = models.BooleanField(default=False)
     description = models.TextField(null=True)

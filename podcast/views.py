@@ -55,6 +55,7 @@ def get_query_result(request):
         return Response({'status': 'Queued'},)
 
     snippets = query.snippets.all()
+    print(f"Found {len(snippets)} snippets")
     results = []
     for snippet in snippets:
         results.append({
