@@ -62,5 +62,5 @@ def get_query_result(request):
             'snippet': snippet.snippet,
             'score': snippet.score
         })
-    return Response({'query': query.query, 'results': results, 'status': 'Completed'})
+    return Response({'query': query.query, 'results': results, 'status': 'Completed', 'error': query.error})
 

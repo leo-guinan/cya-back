@@ -87,7 +87,6 @@ def look_for_podcast_episodes(query):
                 uuid=id
             )
             metadata = {
-                "episode_url": existing_episode.episode_url,
                 "transcript_id": existing_episode.transcript_guid,
                 "episode_id": existing_episode.id,
                 "episode_name": existing_episode.name,
@@ -98,13 +97,11 @@ def look_for_podcast_episodes(query):
 
             # test metadata size
             size = sys.getsizeof(json.dumps(metadata))
-            print(f"Metadata size is {size}")
 
             if size > 40960:
                 # remove the snippet, because it's too big
                 snippet.delete()
                 # need to split into smaller chunks
-                print("Splitting metadata")
                 smaller_chunks = backup_text_splitter.split_text(chunk)
                 for smaller_chunk in smaller_chunks:
                     smaller_id = str(uuid.uuid4())
@@ -114,7 +111,6 @@ def look_for_podcast_episodes(query):
                         uuid=smaller_id
                     )
                     smaller_metadata = {
-                        "episode_url": existing_episode.episode_url,
                         "transcript_id": existing_episode.transcript_guid,
                         "episode_id": existing_episode.id,
                         "episode_name": existing_episode.name,
@@ -122,8 +118,6 @@ def look_for_podcast_episodes(query):
                         "snippet_id": smaller_snippet.id,
                         "text": smaller_chunk
                     }
-                    smaller_size = sys.getsizeof(json.dumps(smaller_metadata))
-                    print(f"smaller Metadata size is {smaller_size}")
                     metadatas.append(smaller_metadata)
                     ids.append(smaller_id)
                     chunks_to_save.append(smaller_chunk)
