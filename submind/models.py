@@ -23,6 +23,7 @@ class Goal(models.Model):
     completed = models.BooleanField(default=False)
     results = models.TextField(null=True, blank=True)
     client = models.ForeignKey('SubmindClient', on_delete=models.CASCADE, related_name="goals", null=True)
+    fast = models.BooleanField(default=False)
     def is_complete(self):
         if all(question.is_complete() for question in self.questions.all()):
             self.completed = True
@@ -67,3 +68,13 @@ class SubmindClient(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=100)
 
+class SubmindTool(models.Model):
+    uuid = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    submind = models.ForeignKey(Submind, on_delete=models.CASCADE, related_name="tools")
+    url = models.TextField()
+    inputSchema = models.TextField()
+    outputSchema = models.TextField()

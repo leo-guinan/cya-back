@@ -45,6 +45,7 @@ def research(goal):
     goal.results = final_answer
     goal.completed = True
     goal.save()
+    return final_answer
 
 
 def answer_question(question):

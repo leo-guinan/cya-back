@@ -14,15 +14,26 @@ from submind.prompts.prompts import LEARNING_PROMPT
 def remember(submind: Submind, client_id: int):
     mongo_client = MongoClient(config('MONGODB_CONNECTION_STRING'))
     db = mongo_client.submind
-    existing_doc = db.documents.find_one({"uuid": submind.mindUUID, "client_id": client_id})
-    if not existing_doc:
-        db.documents.insert_one({
-            "content": "",
-            "uuid": submind.mindUUID,
-            "createdAt": datetime.now(),
-            "client_id": client_id
-        })
+    if client_id:
+
         existing_doc = db.documents.find_one({"uuid": submind.mindUUID, "client_id": client_id})
+        if not existing_doc:
+            db.documents.insert_one({
+                "content": "",
+                "uuid": submind.mindUUID,
+                "createdAt": datetime.now(),
+                "client_id": client_id
+            })
+            existing_doc = db.documents.find_one({"uuid": submind.mindUUID, "client_id": client_id})
+    else:
+        existing_doc = db.documents.find_one({"uuid": submind.mindUUID})
+        if not existing_doc:
+            db.documents.insert_one({
+                "content": "",
+                "uuid": submind.mindUUID,
+                "createdAt": datetime.now()
+            })
+            existing_doc = db.documents.find_one({"uuid": submind.mindUUID})
     return existing_doc['content']
 
 
@@ -42,14 +53,25 @@ def learn(client_id: int, learning: dict, submind: Submind):
     mongo_client = MongoClient(config('MONGODB_CONNECTION_STRING'))
     db = mongo_client.submind
     historical_uuid = str(uuid.uuid4())
-    previous_doc = db.documents.find_one({"uuid": submind.mindUUID, "client_id": client_id})
+    if client_id:
+        previous_doc = db.documents.find_one({"uuid": submind.mindUUID, "client_id": client_id})
 
-    db.document_history.insert_one({
-        "client_id": client_id,
-        "uuid": historical_uuid,
-        "content": previous_doc["content"],
-        "createdAt": previous_doc["createdAt"],
-        "documentUUID": previous_doc["uuid"]
-    })
-    db.documents.update_one({"uuid": submind.mindUUID}, {
-        "$set": {"content": new_mind, "previousVersion": historical_uuid, "updatedAt": datetime.now()}})
+        db.document_history.insert_one({
+            "client_id": client_id,
+            "uuid": historical_uuid,
+            "content": previous_doc["content"],
+            "createdAt": previous_doc["createdAt"],
+            "documentUUID": previous_doc["uuid"]
+        })
+        db.documents.update_one({"uuid": submind.mindUUID}, {
+            "$set": {"content": new_mind, "previousVersion": historical_uuid, "updatedAt": datetime.now()}})
+    else:
+        previous_doc = db.documents.find_one({"uuid": submind.mindUUID})
+        db.document_history.insert_one({
+            "uuid": historical_uuid,
+            "content": previous_doc["content"],
+            "createdAt": previous_doc["createdAt"],
+            "documentUUID": previous_doc["uuid"]
+        })
+        db.documents.update_one({"uuid": submind.mindUUID}, {
+            "$set": {"content": new_mind, "previousVersion": historical_uuid, "updatedAt": datetime.now()}})

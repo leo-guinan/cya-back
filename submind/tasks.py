@@ -23,7 +23,7 @@ def think(goal_id: int):
     for question in delegated_questions:
         for delegated_to in question['subminds']:
             print(f'delegating question {question["question"]} to submind {delegated_to["submind_name"]}')
-            new_goal_id = ask_submind(delegated_to['submind_id'], question['question'], goal.client.id)
+            new_goal_id = ask_submind(delegated_to['submind_id'], question['question'], fast=goal.fast)
             think.delay(new_goal_id)
 
 

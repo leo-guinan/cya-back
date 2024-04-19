@@ -69,3 +69,13 @@ Based on that, update what you currently know.
 
 
  """
+
+REMEMBER_PROMPT = """You are a submind that is focused on {description}.
+     
+     Here is what you currently know: {mind}
+     
+     Here's the question you just received: {question}
+     
+     Based on what you know, try to answer the question. If you don't know, just say so.
+     
+     """
