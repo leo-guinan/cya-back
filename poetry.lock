@@ -135,6 +135,30 @@ files = [
 ]
 
 [[package]]
+name = "anthropic"
+version = "0.25.6"
+description = "The official Python library for the anthropic API"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "anthropic-0.25.6-py3-none-any.whl", hash = "sha256:c4736402953c99b643ac452306ff0d33bdd2368a793d5c61fdcecd3331a0a103"},
+    {file = "anthropic-0.25.6.tar.gz", hash = "sha256:4c93ed9bd8fd5774992314b66de7e90fdefb39fbf6fd641d31d7e6046145122b"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+tokenizers = ">=0.13.0"
+typing-extensions = ">=4.7,<5"
+
+[package.extras]
+bedrock = ["boto3 (>=1.28.57)", "botocore (>=1.31.57)"]
+vertex = ["google-auth (>=2,<3)"]
+
+[[package]]
 name = "anyio"
 version = "4.3.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
@@ -2119,6 +2143,22 @@ qdrant = ["qdrant-client (>=1.3.1,<2.0.0)"]
 text-helpers = ["chardet (>=5.1.0,<6.0.0)"]
 
 [[package]]
+name = "langchain-anthropic"
+version = "0.1.11"
+description = "An integration package connecting AnthropicMessages and LangChain"
+optional = false
+python-versions = "<4.0,>=3.8.1"
+files = [
+    {file = "langchain_anthropic-0.1.11-py3-none-any.whl", hash = "sha256:21a9b72e14292f5f97d8a21ae1b3d799ff4d541fadc327deb7df62f1c96513a1"},
+    {file = "langchain_anthropic-0.1.11.tar.gz", hash = "sha256:b00e01cb22dbfd6a111f2c713f0a056770ae6fb677c9271998d0e360e25c3d12"},
+]
+
+[package.dependencies]
+anthropic = ">=0.23.0,<1"
+defusedxml = ">=0.7.1,<0.8.0"
+langchain-core = ">=0.1.43,<0.2.0"
+
+[[package]]
 name = "langchain-community"
 version = "0.0.31"
 description = "Community contributed LangChain integrations."
@@ -2146,13 +2186,13 @@ extended-testing = ["aiosqlite (>=0.19.0,<0.20.0)", "aleph-alpha-client (>=2.15.
 
 [[package]]
 name = "langchain-core"
-version = "0.1.39"
+version = "0.1.44"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_core-0.1.39-py3-none-any.whl", hash = "sha256:26b024ef49c5a712611941651bff66fb9a2fd7bc82bd815934c94f0ecf9b6f03"},
-    {file = "langchain_core-0.1.39.tar.gz", hash = "sha256:a34bd517dcd9b7e80adf131ee47554736f9532e1bba17593cd0a316a38ec2caf"},
+    {file = "langchain_core-0.1.44-py3-none-any.whl", hash = "sha256:d8772dccef95fc97bfa2dcd19412e620ebe14def1f0e218374971f6e30a46a49"},
+    {file = "langchain_core-0.1.44.tar.gz", hash = "sha256:e313975d9ae2926342e6f2ad760338d31f18b1223e9b8b4dc408daeeade46a83"},
 ]
 
 [package.dependencies]
@@ -5897,4 +5937,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "0d884f6aed170f760fe1c9db4b5a8d96ffb40a3389bd087ddbb93e6c7f4832d9"
+content-hash = "54c634230134956eace28abd7a7c400dca7aef156d9ebb050843c947bb4e3d5f"

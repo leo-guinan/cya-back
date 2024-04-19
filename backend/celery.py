@@ -32,6 +32,9 @@ def debug_task(self):
 
 app.conf.beat_schedule = {
 
-
+    'complete-goals-1-minute': {
+        'task': 'submind.tasks.complete_goals',
+        'schedule': crontab(minute='*/1'),
+    }
 
 }

@@ -40,7 +40,7 @@ functions = [
                         "properties": {
                             "name": {"type": "string", "description": "The name of the task"},
                             "details": {"type": "string", "description": "The details of the task"},
-                            "dependsOn": {"type": "array", "description": "The person the task is for",
+                            "dependsOn": {"type": "array", "description": "The tasks the task depends on",
                                           "items": {
                                               "type": "string",
                                               "description": "The name of the task the task depends on"
@@ -62,7 +62,7 @@ functions = [
                                         },
                                         "dependsOn": {
                                             "type": "array",
-                                            "description": "The person the task is for",
+                                            "description": "The tasks the subtask depends on",
                                             "items": {
                                                 "type": "string",
                                                 "description": "The name of the task the task depends on"

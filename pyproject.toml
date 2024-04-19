@@ -69,6 +69,8 @@ llama-index = "^0.9.46"
 langchain-experimental = "^0.0.56"
 langchain-openai = "^0.1.1"
 langchain-pinecone = "^0.0.3"
+anthropic = "^0.25.6"
+langchain-anthropic = "^0.1.11"
 
 [tool.poetry.dev-dependencies]
 

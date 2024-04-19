@@ -86,7 +86,9 @@ INSTALLED_APPS = [
     'cli',
     'task',
     'document',
-    'deployment'
+    'deployment',
+    'prelo',
+    'submind'
 ]
 SITE_ID = 2
 
