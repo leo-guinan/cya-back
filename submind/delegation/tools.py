@@ -20,7 +20,7 @@ AVAILABLE_TOOLS = [
 
 def determine_tools(goal: Goal):
     mind = remember(goal.submind, goal.client.id)
-    model = ChatOpenAI(model="gpt-4", openai_api_key=config("OPENAI_API_KEY"))
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(TOOLS_PROMPT)
     chain = prompt | model.bind(function_call={"name": "determine_tools_to_run"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="tools_needed")

@@ -1,5 +1,5 @@
 from decouple import config
-from langchain_core.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
+from langchain_core.output_parsers.openai_functions import JsonKeyOutputFunctionsParser, JsonOutputFunctionsParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
@@ -11,10 +11,10 @@ from submind.prompts.prompts import DELEGATION_PROMPT
 
 def delegate(goal: Goal, tool_info: str):
     mind = remember(goal.submind, goal.client.id)
-    model = ChatOpenAI(model="gpt-4", openai_api_key=config("OPENAI_API_KEY"))
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(DELEGATION_PROMPT)
     chain = prompt | model.bind(function_call={"name": "delegate_to_subminds"},
-                                functions=functions) | JsonKeyOutputFunctionsParser(key_name="delegated_questions")
+                                functions=functions) | JsonOutputFunctionsParser()
 
     prepped_subminds = []
     for submind in goal.submind.subminds.all():

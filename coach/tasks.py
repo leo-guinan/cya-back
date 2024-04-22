@@ -98,7 +98,7 @@ def crawl_and_scrape(url):
 
 @app.task(name="coach.extract_user_info")
 def extract_user_info(user_id, message, session_id):
-    llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",
+    llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4-turbo",
                      openai_api_base=config('OPENAI_API_BASE'), headers={
             "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
         })

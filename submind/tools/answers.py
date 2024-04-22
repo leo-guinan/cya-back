@@ -6,7 +6,7 @@ from submind.prompts.prompts import COMPLETE_RESEARCH_PROMPT
 
 
 def compile_answers(thoughts, submind, mind, question):
-    model = ChatOpenAI(model="gpt-4", openai_api_key=config("OPENAI_API_KEY"))
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(COMPLETE_RESEARCH_PROMPT)
     output_parser = StrOutputParser()
     chain = prompt | model | output_parser

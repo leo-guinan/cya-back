@@ -39,7 +39,7 @@ def remember(submind: Submind, client_id: int):
 
 def learn(client_id: int, learning: dict, submind: Submind):
     mind = remember(submind, client_id)
-    model = ChatOpenAI(model="gpt-4", openai_api_key=config("OPENAI_API_KEY"))
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(LEARNING_PROMPT)
     output_parser = StrOutputParser()
     chain = prompt | model | output_parser

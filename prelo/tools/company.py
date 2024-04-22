@@ -87,7 +87,7 @@ def query_records(query):
     vectorstore = PineconeVectorStore(index, embeddings, "text")
     matched = vectorstore.similarity_search_with_score(query, k=5, namespace=config('PINECONE_PRELO_NAMESPACE'))
     docs = "\n\n".join(doc[0].page_content for doc in matched)
-    model = ChatOpenAI(model="gpt-4", openai_api_key=config("OPENAI_API_KEY"))
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(TOOL_RESULT_PROMPT)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({

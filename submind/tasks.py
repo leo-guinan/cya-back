@@ -22,7 +22,14 @@ def think(goal_id: int):
 
     tool_info = run_tools(tools_to_run)
 
-    delegated_questions = delegate(goal, tool_info)
+    delegated = delegate(goal, tool_info)
+    print(delegated)
+    delegated_questions = delegated['delegated_questions']
+    if delegated['answer']:
+        goal.completed = True
+        goal.results = delegated['answer']
+        goal.save()
+        return
 
     for question in delegated_questions:
         for delegated_to in question['subminds']:

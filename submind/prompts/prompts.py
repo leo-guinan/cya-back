@@ -64,6 +64,9 @@ Based on what you know and the data, what questions do you need to answer in ord
 For each question, identify which of your subminds should answer it. You can delegate each question to multiple 
 subminds if appropriate. Also identify extra data from the results of your tools to pass along with the question.
 
+If you can fulfill the goal based on the data you pulled from your tools, just return the answer instead of delegating, removing any data that isn't relevant.
+
+
 
 """
 

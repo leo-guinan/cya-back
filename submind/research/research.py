@@ -23,7 +23,7 @@ from submind.tools.answers import compile_answers
 def research(goal):
 
     mind = remember(goal.submind, goal.client.id)
-    model = ChatOpenAI(model="gpt-4", openai_api_key=config("OPENAI_API_KEY"))
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(RESEARCH_PROMPT)
     chain = prompt | model.bind(function_call={"name": "research_questions"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="research")

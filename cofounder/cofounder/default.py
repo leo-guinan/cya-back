@@ -129,7 +129,7 @@ class DefaultCofounder:
                                                input_key="human_input", return_messages=True)
         self.internal_memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=internal_message_history,
                                                         return_messages=True)
-        self.llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",
+        self.llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4-turbo",
                               openai_api_base=config('OPENAI_API_BASE'), headers={
                 "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
             })

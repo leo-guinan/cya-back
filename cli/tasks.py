@@ -102,13 +102,13 @@ def answer_question(question, current_state, session_id):
         doc_strings = [format_document(doc, document_prompt) for doc in docs]
         return document_separator.join(doc_strings)
 
-    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
+    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4-turbo")
     _inputs = RunnableParallel(
         standalone_question=RunnablePassthrough.assign(
             chat_history=lambda x: get_buffer_string(x["chat_history"])
         )
                             | CONDENSE_QUESTION_PROMPT
-                            | ChatOpenAI(temperature=0, api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
+                            | ChatOpenAI(temperature=0, api_key=config("OPENAI_API_KEY"), model_name="gpt-4-turbo")
                             | StrOutputParser(),
     )
     _context = {
@@ -116,7 +116,7 @@ def answer_question(question, current_state, session_id):
         "question": lambda x: x["standalone_question"],
     }
     conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI(api_key=config("OPENAI_API_KEY"),
-                                                                              model_name="gpt-4")
+                                                                              model_name="gpt-4-turbo")
     answer = conversational_qa_chain.invoke(
         {
             "question": question,

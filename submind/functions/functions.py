@@ -33,12 +33,17 @@ functions = [
         "parameters": {
             "type": "object",
             "properties": {
+                "answer": {
+                    "type": "string",
+                    "description": "The answer to the question you were asked"
+                },
                 "delegated_questions": {
                     "type": "array",
                     "description": "What questions you need to answer in order to accomplish your goal",
                     "items": {
                         "type": "object",
                         "properties": {
+
                             "question": {"type": "string", "description": "The question you have"},
                             "extra_data": {
                                 "type": "string",
@@ -67,7 +72,7 @@ functions = [
             "required": ["delegated_questions"],
         },
     },
-{
+    {
         "name": "determine_tools_to_run",
         "description": "decide which tools to run and what data to get from each tool",
         "parameters": {

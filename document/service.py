@@ -13,7 +13,7 @@ def generate_document_from_prompt(prompt, uuid):
     )
     internal_memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=internal_message_history,
                                                return_messages=True)
-    llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",
+    llm = ChatOpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4-turbo",
                      )
     prompt_from_messages = ChatPromptTemplate.from_messages([
         SystemMessage(content=f"""

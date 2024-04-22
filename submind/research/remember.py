@@ -9,7 +9,7 @@ from submind.prompts.prompts import REMEMBER_PROMPT
 
 def answer_from_memory(goal: Goal):
     mind = remember(goal.submind, goal.client.id if goal.client else None)
-    model = ChatOpenAI(model="gpt-4", openai_api_key=config("OPENAI_API_KEY"))
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(REMEMBER_PROMPT)
     output_parser = StrOutputParser()
     chain = prompt | model | output_parser

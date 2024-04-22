@@ -100,7 +100,7 @@ def identify_tasks(command):
     Here's the message: {input}
     """
     prompt = ChatPromptTemplate.from_template(template=template)
-    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
+    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4-turbo")
     chain = prompt | model.bind(function_call={"name": "identify_tasks"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(
         key_name="tasks")
@@ -134,7 +134,7 @@ def generateTasksFromPlan(plan):
         Here's the message: {input}
         """
     prompt = ChatPromptTemplate.from_template(template=template)
-    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
+    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4-turbo")
     chain = prompt | model.bind(function_call={"name": "generate_tasks"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(
         key_name="tasks")

@@ -66,7 +66,7 @@ def process_page(soup: BeautifulSoup, url, parent_link, search_engine_slug_match
     # docs = text_splitter.split_documents(data)
 
 
-    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model="gpt-4")
+    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model="gpt-4-turbo")
 
     template = """
         Based on this webpage, it this a listing for a single specific property?
@@ -209,7 +209,7 @@ def save_content(link, content, search_engine_slug, metasearch_engine_slug):
 def save_property_info(link, content, search_engine_slug, metasearch_engine_slug):
     print("Saving property info")
     vectorstore = Vectorstore()
-    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model="gpt-4")
+    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model="gpt-4-turbo")
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     chat_chain = ConversationalRetrievalChain.from_llm(llm, vectorstore.get_collection("").as_retriever(),
                                                        memory=memory)

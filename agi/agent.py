@@ -43,7 +43,7 @@ class Agent:
 
         self.tool_retriever = self.vectorstore_tools.as_retriever()
         self.people_retriever = self.vectorstore_people.as_retriever()
-        self.llm = ChatOpenAI(temperature=0, api_key=config('OPENAI_API_KEY'), model_name="gpt-4", )
+        self.llm = ChatOpenAI(temperature=0, api_key=config('OPENAI_API_KEY'), model_name="gpt-4-turbo", )
 
         self.mongo_client = MongoClient(config('MONGODB_CONNECTION_STRING'))
         self.db = self.mongo_client.agi

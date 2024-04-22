@@ -34,7 +34,7 @@ class RememberAgent:
         self.vectorstore_knowledge = Pinecone(index, embeddings.embed_query, "text", namespace="cofounder_source")
 
         self.tool_retriever = self.vectorstore.as_retriever()
-        self.llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4",)
+        self.llm = OpenAI(temperature=0, openai_api_key=config('OPENAI_API_KEY'), model_name="gpt-4-turbo",)
 
         self.mongo_client = MongoClient(config('MONGODB_CONNECTION_STRING'))
         self.db = self.mongo_client.cofounder

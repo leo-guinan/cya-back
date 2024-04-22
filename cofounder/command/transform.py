@@ -30,7 +30,7 @@ def schema_to_body(command, input_schema):
     Here's the message: {message}
     """
     prompt = ChatPromptTemplate.from_template(template=template)
-    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4")
+    model = ChatOpenAI(api_key=config("OPENAI_API_KEY"), model_name="gpt-4-turbo")
     chain = prompt | model
     response = chain.invoke({"message": command,"input_schema": input_schema})
     print(response)
