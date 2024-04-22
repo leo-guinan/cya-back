@@ -2,6 +2,7 @@ from backend.celery import app
 from django.db.models import Q
 from submind.communicate.communicate import answer_submind, ask_submind
 from submind.delegation.delegation import delegate
+from submind.delegation.tools import determine_tools, run_tools
 from submind.memory.memory import remember
 from submind.models import Goal
 from submind.tools.answers import compile_answers
@@ -17,13 +18,16 @@ def think(goal_id: int):
     if len(goal.submind.subminds.all()) == 0:
         answer_submind(goal)
         return
+    tools_to_run = determine_tools(goal)
 
-    delegated_questions = delegate(goal)
+    tool_info = run_tools(tools_to_run)
+
+    delegated_questions = delegate(goal, tool_info)
 
     for question in delegated_questions:
         for delegated_to in question['subminds']:
             print(f'delegating question {question["question"]} to submind {delegated_to["submind_name"]}')
-            new_goal_id = ask_submind(delegated_to['submind_id'], question['question'], fast=goal.fast)
+            new_goal_id = ask_submind(delegated_to['submind_id'], question['question'], extra_data=question['extra_data'], fast=goal.fast)
             think.delay(new_goal_id)
 
 

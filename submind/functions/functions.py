@@ -40,6 +40,10 @@ functions = [
                         "type": "object",
                         "properties": {
                             "question": {"type": "string", "description": "The question you have"},
+                            "extra_data": {
+                                "type": "string",
+                                "description": "The extra data you have that might help answer the question"
+                            },
                             "subminds": {
                                 "type": "array",
                                 "description": "Which subminds should answer the question",
@@ -61,6 +65,31 @@ functions = [
                 },
             },
             "required": ["delegated_questions"],
+        },
+    },
+{
+        "name": "determine_tools_to_run",
+        "description": "decide which tools to run and what data to get from each tool",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "tools_needed": {
+                    "type": "array",
+                    "description": "What questions you need to answer in order to accomplish your goal",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "tool_name": {"type": "string", "description": "the name of the tool to run"},
+                            "query": {
+                                "type": "string",
+                                "description": "what data you need to get from the tool"
+                            }
+                        }
+
+                    },
+                },
+            },
+            "required": ["tools_needed"],
         },
     }
 ]
