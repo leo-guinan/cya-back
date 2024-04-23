@@ -7,7 +7,7 @@ from rest_framework.decorators import permission_classes, renderer_classes, api_
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
-from submind.models import Goal
+from submind.models import Goal, SubmindClient
 from submind.tasks import think
 
 
@@ -21,7 +21,7 @@ def ask(request):
     fast_mode = body.get("fast_mode", False)
     client_id = body["prelo_client_id"]
     submind_id = config("PRELO_SUBMIND_ID")
-
+    print(f"Client Id: {client_id}")
     goal = Goal.objects.create(content=question, submind_id=submind_id, fast=fast_mode, client_id=client_id,
                                uuid=str(uuid.uuid4()))
 
@@ -51,3 +51,16 @@ def details(request):
     body = json.loads(request.body)
     print(body)
     return Response({'message': 'Hello, World!'})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def create_client(request):
+    body = json.loads(request.body)
+    uuid_for_client = body["uuid"]
+
+    new_client = SubmindClient.objects.create(uuid=uuid_for_client, name="Prelo Client")
+
+
+    return Response({'client_id': new_client.id})

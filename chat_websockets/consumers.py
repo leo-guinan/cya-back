@@ -2,6 +2,7 @@ import json
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
+from channels.layers import get_channel_layer
 
 from agi.tasks import respond_to_agi_message
 from cli.tasks import run_command
@@ -40,6 +41,13 @@ class ChatConsumer(WebsocketConsumer):
             respond_to_agi_message.delay(message, text_data_json['user_id'], self.session)
         elif self.app == 'cli':
             run_command.delay(message, self.session)
+        elif self.app == 'prelo':
+            print("prelo websocket message")
+            print(message)
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(self.session,
+                                                    {"type": "chat.message", "message": "message received", "id": "state"})
+
         else:
             respond_to_chat_message.delay(message, text_data_json['user_id'], self.session)
     # Receive message from room group

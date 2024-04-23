@@ -1,10 +1,14 @@
-from backend.celery import app
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from decouple import config
 from django.db.models import Q
+from backend.celery import app
 from submind.communicate.communicate import answer_submind, ask_submind
 from submind.delegation.delegation import delegate
 from submind.delegation.tools import determine_tools, run_tools
 from submind.memory.memory import remember
 from submind.models import Goal
+from submind.overrides.mongodb import MongoDBChatMessageHistoryOverride
 from submind.tools.answers import compile_answers
 
 
@@ -29,12 +33,31 @@ def think(goal_id: int):
         goal.completed = True
         goal.results = delegated['answer']
         goal.save()
+        print(f"goal completed: {goal.results}")
+        # need to add the result to the chat history regardless of whether the chat is still active
+        message_history = MongoDBChatMessageHistoryOverride(
+            connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
+            session_id=f'{goal.client.uuid}_prelo',
+            database_name=config('PRELO_DATABASE_NAME'),
+            collection_name=config('PRELO_COLLECTION_NAME')
+        )
+        message_history.add_ai_message(delegated['answer'])
+
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(goal.client.uuid,
+                                                    {"type": "chat.message", "message": delegated['answer'],
+                                                     "id": goal.id})
+        except Exception as e:
+            print(e)
+            # not vital, just try to return response to chat if possible.
         return
 
     for question in delegated_questions:
         for delegated_to in question['subminds']:
             print(f'delegating question {question["question"]} to submind {delegated_to["submind_name"]}')
-            new_goal_id = ask_submind(delegated_to['submind_id'], question['question'], extra_data=question['extra_data'], fast=goal.fast)
+            new_goal_id = ask_submind(delegated_to['submind_id'], question['question'],
+                                      extra_data=question['extra_data'], fast=goal.fast)
             think.delay(new_goal_id)
 
 
@@ -60,3 +83,21 @@ def complete_goal(goal_id: int):
     result = compile_answers(results, goal.submind, mind, goal.content)
     goal.results = result
     goal.save()
+
+    # need to add the result to the chat history regardless of whether the chat is still active
+    message_history = MongoDBChatMessageHistoryOverride(
+        connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
+        session_id=f'{goal.client.uuid}_prelo',
+        database_name=config('PRELO_DATABASE_NAME'),
+        collection_name=config('PRELO_COLLECTION_NAME')
+    )
+    message_history.add_ai_message(result)
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(goal.client.uuid,
+                                                {"type": "chat.message", "message": result, "id": goal.id})
+    except Exception as e:
+        print(e)
+        # not vital, just try to return response to chat if possible.
+        pass
