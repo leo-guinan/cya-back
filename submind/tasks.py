@@ -28,8 +28,8 @@ def think(goal_id: int):
 
     delegated = delegate(goal, tool_info)
     print(delegated)
-    delegated_questions = delegated['delegated_questions']
-    if delegated['answer']:
+    delegated_questions = delegated.get('delegated_questions', [])
+    if delegated.get('answer', ''):
         goal.completed = True
         goal.results = delegated['answer']
         goal.save()
