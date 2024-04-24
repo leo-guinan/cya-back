@@ -13,7 +13,7 @@ from pinecone import Pinecone
 from podcast.models import Podcast, PodcastEpisode, PodcastEpisodeSnippet
 
 
-def look_for_podcast_episodes(query):
+def look_for_podcast_episodes(query, per_page=10, pages=1):
     """
     Look for podcast episodes
     """
@@ -35,17 +35,21 @@ def look_for_podcast_episodes(query):
     )
     podscan_host = config("PODSCAN_HOST")
     podscan_api_key = config("PODSCAN_API_KEY")
-    podscan_search = f'{podscan_host}/episodes/search?query={query}'
-    headers = {
-        "Authorization": f"Bearer {podscan_api_key}"
-    }
-    response = requests.get(podscan_search, headers=headers)
-    episodes = response.json()
+    current_page = 1
+    raw_episodes = []
+    while (current_page <= pages):
+        podscan_search = f'{podscan_host}/episodes/search?query={query}&per_page={per_page}'
+        headers = {
+            "Authorization": f"Bearer {podscan_api_key}"
+        }
+        response = requests.get(podscan_search, headers=headers)
+        episodes = response.json()
+        raw_episodes.extend(episodes['episodes'])
 
     found = []
-    print(f"Found {len(episodes['episodes'])} episodes")
+    print(f"Found {len(raw_episodes)} episodes")
 
-    for episode in episodes['episodes']:
+    for episode in raw_episodes:
         # if podcast episode is already in the database, skip it.
         if not episode['episode_guid']:
             existing_episode = PodcastEpisode.objects.filter(name=episode['episode_title'], podcast__external_id=episode['podcast']['podcast_id']).first()

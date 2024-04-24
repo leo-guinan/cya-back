@@ -33,7 +33,6 @@ def think(goal_id: int):
         goal.completed = True
         goal.results = delegated['answer']
         goal.save()
-        print(f"goal completed: {goal.results}")
         # need to add the result to the chat history regardless of whether the chat is still active
         message_history = MongoDBChatMessageHistoryOverride(
             connection_string=config('MAC_MONGODB_CONNECTION_STRING'),

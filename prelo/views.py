@@ -7,6 +7,9 @@ from rest_framework.decorators import permission_classes, renderer_classes, api_
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
+
+from prelo.aws.s3_utils import create_presigned_url
+from prelo.models import PitchDeck
 from submind.models import Goal, SubmindClient
 from submind.tasks import think
 
@@ -64,3 +67,18 @@ def create_client(request):
 
 
     return Response({'client_id': new_client.id})
+
+
+@api_view(('GET',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_upload_url(request):
+    # get filename from request parameters
+    filename = request.query_params.get('filename')
+    uuid_for_document = request.query_params.get('uuid')
+    object_name = f'pitch_decks/{filename}'
+    bucket_name = config('PRELO_AWS_BUCKET')
+    # Generate a PUT URL for uploads
+    url = create_presigned_url(bucket_name, object_name)
+    pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=filename, uuid=uuid_for_document)
+    return Response({'upload_url': url, 'pitch_deck_id': pitch_deck.id})

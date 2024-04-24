@@ -203,6 +203,7 @@ EMAIL_HOST_USER = 'apikey'  # this is exactly the value 'apikey'
 EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+DEFAULT_FILE_STORAGE = "storages.backends.s3.S3Storage"
 
 STATIC_URL = '/static/'
 # Following settings only make sense on production and may break development environments.
