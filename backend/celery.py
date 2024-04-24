@@ -35,6 +35,10 @@ app.conf.beat_schedule = {
     'complete-goals-1-minute': {
         'task': 'submind.tasks.complete_goals',
         'schedule': crontab(minute='*/1'),
-    }
+    },
+    'check-decks-1-minute': {
+        'task': 'prelo.tasks.check_for_decks',
+        'schedule': crontab(minute='*/1'),
+    },
 
 }

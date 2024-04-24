@@ -1,3 +1,6 @@
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists
 from prelo.models import PitchDeck
@@ -22,4 +25,14 @@ def process_deck(deck_id):
     # process the deck
     deck.status = PitchDeck.PROCESSING
     deck.save()
-    analyze_pitch_deck(deck)
+    report = analyze_pitch_deck(deck)
+
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(deck.uuid,
+                                                {"type": "chat.message", "message": report,})
+    except Exception as e:
+        print(e)
+        # not vital, just try to return response to chat if possible.
+    return

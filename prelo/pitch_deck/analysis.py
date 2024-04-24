@@ -275,13 +275,15 @@ def analyze_pitch_deck(pitch_deck: PitchDeck):
         print("Extra analysis complete, writing report")
         report = create_report(initial_analysis_data, extra_analysis_data)
         print("Report written")
-        update_document(pitch_deck.uuid, report)
+        report = update_document(pitch_deck.uuid, report)
         pitch_deck.status = PitchDeck.COMPLETE
         pitch_deck.save()
+        return report
     except Exception as e:
         print(f"Error analyzing pitch deck: {e}")
         pitch_deck.status = PitchDeck.ERROR
         pitch_deck.save()
+        return "Error analyzing pitch deck"
 
 
 def cleanup_local_file(path):
