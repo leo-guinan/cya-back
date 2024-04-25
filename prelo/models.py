@@ -6,12 +6,20 @@ class PitchDeck(models.Model):
     CREATED = "CR"
     UPLOADED = "UL"
     PROCESSING = "PR"
+    READY_FOR_ANALYSIS = "RA"
+    ANALYZING = "AN"
+    READY_FOR_REPORTING = "RR"
+    REPORTING = "RE"
     COMPLETE = "CP"
     ERROR = "ER"
     STATUS_CHOICES = [
         (CREATED, "Created"),
         (UPLOADED, "Uploaded"),
         (PROCESSING, "Processing"),
+        (READY_FOR_ANALYSIS, "Ready for Analysis"),
+        (ANALYZING, "Analyzing"),
+        (READY_FOR_REPORTING, "Ready for Reporting"),
+        (REPORTING, "Reporting"),
         (COMPLETE, "Complete"),
         (ERROR, "Error"),
     ]
@@ -25,6 +33,7 @@ class PitchDeck(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=255)
+    error_message = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.s3_path
 
@@ -38,3 +47,13 @@ class PitchDeckSlide(models.Model):
     uuid = models.CharField(max_length=255, unique=True)
     def __str__(self):
         return f"{self.deck.name} - {self.order}"
+
+
+class PitchDeckAnalysis(models.Model):
+    deck = models.OneToOneField(PitchDeck, on_delete=models.CASCADE, related_name="analysis")
+    compiled_slides = models.TextField()
+    initial_analysis = models.TextField(blank=True, null=True)
+    extra_analysis = models.TextField(blank=True, null=True)
+    report = models.TextField(blank=True, null=True)
+    def __str__(self):
+        return self.deck.name
