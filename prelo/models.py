@@ -27,3 +27,14 @@ class PitchDeck(models.Model):
     name = models.CharField(max_length=255)
     def __str__(self):
         return self.s3_path
+
+
+class PitchDeckSlide(models.Model):
+    deck = models.ForeignKey(PitchDeck, on_delete=models.CASCADE, related_name="slides")
+    content = models.TextField()
+    order = models.IntegerField()
+    s3_path = models.CharField(max_length=255, blank=True, null=True)
+    category = models.CharField(max_length=255, blank=True, null=True)
+    uuid = models.CharField(max_length=255, unique=True)
+    def __str__(self):
+        return f"{self.deck.name} - {self.order}"

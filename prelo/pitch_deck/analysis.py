@@ -275,7 +275,7 @@ def analyze_pitch_deck(pitch_deck: PitchDeck):
         print("Extra analysis complete, writing report")
         report = create_report(initial_analysis_data, extra_analysis_data)
         print("Report written")
-        report = update_document(pitch_deck.uuid, report)
+        update_document(pitch_deck.uuid, report)
         pitch_deck.status = PitchDeck.COMPLETE
         pitch_deck.save()
         return report
@@ -303,12 +303,12 @@ def update_document(doc_uuid, content):
     existing_doc = db.documents.find_one({"uuid": doc_uuid})
     if not existing_doc:
         print("Warning: Document not found in database, creating new document")
-        db.documents.insert_one({
+        return db.documents.insert_one({
             "content": content,
             "uuid": doc_uuid,
             "createdAt": datetime.now()
         })
 
     else:
-        db.documents.update_one({"uuid": doc_uuid}, {
+        return db.documents.update_one({"uuid": doc_uuid}, {
             "$set": {"content": content, "updatedAt": datetime.now()}})
