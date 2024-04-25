@@ -46,10 +46,12 @@ class ChatConsumer(WebsocketConsumer):
             print(message)
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(self.session,
-                                                    {"type": "chat.message", "message": "message received", "id": "state"})
+                                                    {"type": "chat.message", "message": "message received",
+                                                     "id": "state"})
 
         else:
             respond_to_chat_message.delay(message, text_data_json['user_id'], self.session)
+
     # Receive message from room group
     def chat_message(self, event):
         message = event["message"]

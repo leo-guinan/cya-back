@@ -31,7 +31,8 @@ def process_deck(deck_id):
     try:
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(deck.uuid,
-                                                {"type": "chat.message", "message": report,})
+                                                {"type": "chat.message", "message": report,
+                                                 "id": deck.id})
     except Exception as e:
         print(e)
         # not vital, just try to return response to chat if possible.
