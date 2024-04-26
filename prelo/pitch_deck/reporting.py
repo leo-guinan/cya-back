@@ -15,6 +15,8 @@ def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
     report = create_report(pitch_deck_analysis.initial_analysis, pitch_deck_analysis.extra_analysis)
     print("Report written")
     update_document(pitch_deck_analysis.deck.uuid, report)
+    pitch_deck_analysis.report = report
+    pitch_deck_analysis.save()
     pitch_deck_analysis.deck.status = PitchDeck.COMPLETE
     pitch_deck_analysis.deck.save()
     return report
