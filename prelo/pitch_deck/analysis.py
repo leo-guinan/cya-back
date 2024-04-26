@@ -1,4 +1,5 @@
 import json
+import time
 
 from decouple import config
 from langchain_core.output_parsers import StrOutputParser
@@ -42,6 +43,7 @@ def extra_analysis(data, summary):
 
 
 def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
+    start_time = time.perf_counter()
     initial_analysis_data = initial_analysis(pitch_deck_analysis.compiled_slides)
     pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
     pitch_deck_analysis.save()
@@ -52,3 +54,6 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
     print("Extra analysis complete, writing report")
     pitch_deck_analysis.deck.status = PitchDeck.READY_FOR_REPORTING
     pitch_deck_analysis.deck.save()
+    end_time = time.perf_counter()
+    pitch_deck_analysis.analysis_time = end_time - start_time
+    pitch_deck_analysis.save()

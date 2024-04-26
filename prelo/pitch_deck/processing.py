@@ -1,6 +1,7 @@
 import base64
 import os
 import tempfile
+import time
 import uuid
 
 import fitz
@@ -15,6 +16,7 @@ from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
 
 def prep_deck_for_analysis(pitch_deck: PitchDeck):
     try:
+        start_time = time.perf_counter()
         temp_file = download_file_from_s3(pitch_deck.s3_path)
 
         image_dir = tempfile.gettempdir()
@@ -67,6 +69,9 @@ def prep_deck_for_analysis(pitch_deck: PitchDeck):
         )
         pitch_deck.status = PitchDeck.READY_FOR_ANALYSIS
         pitch_deck.save()
+        end_time = time.perf_counter()
+        analysis.processing_time = end_time - start_time
+        analysis.save()
         return analysis
 
 

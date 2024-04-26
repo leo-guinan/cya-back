@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import datetime
 
 from decouple import config
@@ -12,6 +13,7 @@ from prelo.prompts.prompts import WRITE_REPORT_PROMPT
 
 
 def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
+    start_time = time.perf_counter()
     report = create_report(pitch_deck_analysis.initial_analysis, pitch_deck_analysis.extra_analysis)
     print("Report written")
     update_document(pitch_deck_analysis.deck.uuid, report)
@@ -19,6 +21,9 @@ def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
     pitch_deck_analysis.save()
     pitch_deck_analysis.deck.status = PitchDeck.COMPLETE
     pitch_deck_analysis.deck.save()
+    end_time = time.perf_counter()
+    pitch_deck_analysis.report_time = end_time - start_time
+    pitch_deck_analysis.save()
     return report
 
 

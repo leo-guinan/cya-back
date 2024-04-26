@@ -55,5 +55,8 @@ class PitchDeckAnalysis(models.Model):
     initial_analysis = models.TextField(blank=True, null=True)
     extra_analysis = models.TextField(blank=True, null=True)
     report = models.TextField(blank=True, null=True)
+    processing_time = models.FloatField(blank=True, null=True)
+    analysis_time = models.FloatField(blank=True, null=True)
+    report_time = models.FloatField(blank=True, null=True)
     def __str__(self):
         return self.deck.name
