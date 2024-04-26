@@ -7,7 +7,7 @@ from langchain_core.output_parsers.openai_functions import JsonKeyOutputFunction
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from prelo.models import PitchDeck, PitchDeckAnalysis
+from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT
 
@@ -30,6 +30,32 @@ def initial_analysis(data):
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
     response = chain.invoke({"data": data})
     print(f"After data has been analyzed: {response}")
+    company = Company()
+    company.save()
+    team = Team.objects.create(company=company)
+    for team_member in response.get('team', ''):
+        member = TeamMember()
+        member.team = team
+        member.name = team_member['name']
+        member.title = team_member['role']
+        member.background = team_member['background']
+        member.founder = team_member['founder']
+        member.save()
+    company.name = response.get('company_name', '')
+    company.industry = response.get('industry', '')
+    company.problem = response.get('problem', '')
+    company.solution = response.get('solution', '')
+    company.market = response.get('market_size', '')
+    company.traction = response.get('traction', '')
+    company.revenue = response.get('revenue', '')
+    company.funding_round = response.get('funding_round', '')
+    company.funding_amount = response.get('funding_amount', '')
+    company.why_now = response.get('why_now', '')
+    company.contact_info = response.get('contact_info', '')
+    company.location = response.get('location', '')
+    company.expertise = response.get('expertise', '')
+    company.competition = response.get('competition', '')
+    company.save()
     return response
 
 

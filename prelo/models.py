@@ -60,3 +60,39 @@ class PitchDeckAnalysis(models.Model):
     report_time = models.FloatField(blank=True, null=True)
     def __str__(self):
         return self.deck.name
+
+
+class Company(models.Model):
+    name = models.CharField(max_length=255, blank=True, null=True)
+    industry = models.CharField(max_length=255, blank=True, null=True)
+    founded = models.DateField(blank=True, null=True)
+    problem = models.TextField(blank=True, null=True)
+    solution = models.TextField(blank=True, null=True)
+    market = models.TextField(blank=True, null=True)
+    revenue = models.TextField(blank=True, null=True)
+    funding_round = models.TextField(blank=True, null=True)
+    traction = models.TextField(blank=True, null=True)
+    why_now = models.TextField(blank=True, null=True)
+    contact_info = models.TextField(blank=True, null=True)
+    funding_amount = models.TextField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    expertise = models.TextField(blank=True, null=True)
+    competition = models.TextField(blank=True, null=True)
+    def __str__(self):
+        return self.name
+
+
+class Team(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="team")
+    def __str__(self):
+        return self.name
+
+class TeamMember(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="members")
+    name = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
+    founder = models.BooleanField(default=False)
+    background = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name

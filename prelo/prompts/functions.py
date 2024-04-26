@@ -38,11 +38,32 @@ functions = [
                             "type": "string",
                             "description": "the name of the company",
                         },
-                        "founders": {
-                            "type": "string",
-                            "description": "The founders and/or team"
+                        "team": {
+                            "type": "array",
+                            "description": "The team members of the company",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "The name of the team member"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "description": "The role of the team member"
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "description": "The background of the team member"
+                                    },
+                                    "founder": {
+                                        "type": "boolean",
+                                        "description": "Whether the team member is a founder"
+                                    }
+                                }
+                            }
                         },
-                        "industy": {
+                        "industry": {
                             "type": "string",
                             "description": "The industry of the company"
                         },
@@ -61,6 +82,10 @@ functions = [
                         "traction": {
                             "type": "string",
                             "description": "the company's traction so far"
+                        },
+                        "revenue": {
+                            "type": "string",
+                            "description": "The company's revenue"
                         },
                         "why_now": {
                             "type": "string",
@@ -89,6 +114,10 @@ functions = [
                         "funding_amount": {
                             "type": "string",
                             "description": "The amount of money the company wants to raise"
+                        },
+                        "competition": {
+                            "type": "string",
+                            "description": "The company's competition"
                         },
 
                     }

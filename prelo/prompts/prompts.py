@@ -26,6 +26,7 @@ ANALYSIS_PROMPT = """
         Funding Round
         Funding Amount
         Location
+        Competition
 
 
         Here's the pitch deck data: {data}
