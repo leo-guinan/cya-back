@@ -63,6 +63,7 @@ class PitchDeckAnalysis(models.Model):
 
 
 class Company(models.Model):
+    deck = models.OneToOneField(PitchDeck, on_delete=models.CASCADE, related_name="company", null=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     industry = models.CharField(max_length=255, blank=True, null=True)
     founded = models.DateField(blank=True, null=True)
@@ -78,6 +79,7 @@ class Company(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     expertise = models.TextField(blank=True, null=True)
     competition = models.TextField(blank=True, null=True)
+    partnerships = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.name
 
@@ -96,3 +98,19 @@ class TeamMember(models.Model):
 
     def __str__(self):
         return self.name
+
+class CompanyScores(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="scores")
+    market_opportunity = models.FloatField()
+    market_reasoning = models.TextField(blank=True, null=True)
+    team = models.FloatField()
+    team_reasoning = models.TextField(blank=True, null=True)
+    founder_market_fit = models.FloatField()
+    founder_market_reasoning = models.TextField(blank=True, null=True)
+    product = models.FloatField()
+    product_reasoning = models.TextField(blank=True, null=True)
+    traction = models.FloatField()
+    traction_reasoning = models.TextField(blank=True, null=True)
+    final_score = models.FloatField()
+    def __str__(self):
+        return self.company.name

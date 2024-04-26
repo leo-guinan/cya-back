@@ -119,7 +119,104 @@ functions = [
                             "type": "string",
                             "description": "The company's competition"
                         },
+                        "partnerships": {
+                            "type": "string",
+                            "description": "The company's partnerships"
+                        },
 
+                    }
+                },
+            },
+            "required": ["results"],
+        },
+    },
+    {
+        "name": "calculate_company_score",
+        "description": "score the company on several categories to determine investment potential",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of analysis",
+                    "properties": {
+                        "market": {
+                            "type": "object",
+                            "description": "the score of the market opportunity",
+                            "properties": {
+                                "score": {
+                                    "type": "number",
+                                    "description": "The score of the market opportunity"
+                                },
+                                "reasoning": {
+                                    "type": "string",
+                                    "description": "The reasoning behind the score"
+                                }
+                            }
+                        },
+                        "team": {
+                            "type": "object",
+                            "description": "the score of the team",
+
+                            "properties": {
+                                "score": {
+                                    "type": "number",
+                                    "description": "The score of the team"
+                                },
+                                "reasoning": {
+                                    "type": "string",
+                                    "description": "The reasoning behind the score"
+                                }
+                            }
+
+                        },
+                        "founder_fit": {
+                            "type": "object",
+                            "description": "the score of the founder fit",
+                            "properties": {
+                                "score": {
+                                    "type": "number",
+                                    "description": "The score of the founder fit"
+                                },
+                                "reasoning": {
+                                    "type": "string",
+                                    "description": "The reasoning behind the score"
+                                }
+                            }
+                        },
+
+                        "traction": {
+                            "type": "object",
+                            "description": "the score of the company's traction",
+                            "properties": {
+                                "score": {
+                                    "type": "number",
+                                    "description": "The score of the company's traction"
+                                },
+                                "reasoning": {
+                                    "type": "string",
+                                    "description": "The reasoning behind the score"
+                                }
+                            }
+                        },
+                        "product": {
+                            "type": "object",
+                            "description": "the score of the company's product",
+                            "properties": {
+                                "score": {
+                                    "type": "number",
+                                    "description": "The score of the company's product"
+                                },
+                                "reasoning": {
+                                    "type": "string",
+                                    "description": "The reasoning behind the score"
+                                }
+                            }
+                        },
+                        "total_score": {
+                            "type": "number",
+                            "description": "The total score of the company"
+                        },
                     }
                 },
             },

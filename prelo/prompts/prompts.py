@@ -54,10 +54,33 @@ WRITE_REPORT_PROMPT = """
     Basic analysis from the pitch deck: {basic_analysis}
 
     Detailed analysis of risks, opportunities, and questions: {extra_analysis}
+    
+    Scored analysis of the company's investment potential: {investment_score}
 
-    Write a report that summarizes the key points of the pitch deck and provides a recommendation on whether to invest in the company or not.
+    Write a report in Markdown that starts with a decision to contact the founder, learn more, or pass.
+    
+    Then describe the problem, the solution, and the industry.
+    
+    Next, describe the team, the market size, and the traction.
+    
+    Finally, outline their ask.
 
 
 """
 
 PITCH_DECK_SLIDE_PROMPT = """You are an expert pitch deck slide analyzer. This is a slide from a company's pitch deck for investors. What information does this slide contain?"""
+
+INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 
+Given the information from the pitch deck, provide a score from 1 to 10 for each of the following categories:
+1. Market Opportunity - base this score on the size and growth of the market, the megatrends in the market, and the company moat in the market
+2. Team - base this score on the team's experience, expertise, and track record
+3. Founder/Market Fit - base this score on the founder's experience in the market, their passion for the problem, and their unique insights
+4. Product - base this score on the product's uniqueness, quality, and potential for growth
+5. Traction - base this score on the company's current traction, revenue, and partnerships
+
+After scoring each category, provide a final score for the company's investment potential.
+
+Here is the data from the pitch deck: {data}
+Here is the analysis: {analysis}
+
+"""
