@@ -24,7 +24,7 @@ def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
 
 
 def update_document(doc_uuid, content):
-    mongo_client = MongoClient(config('MONGODB_CONNECTION_STRING'))
+    mongo_client = MongoClient(config('MAC_MONGODB_CONNECTION_STRING'))
     db = mongo_client.prelo
 
     existing_doc = db.documents.find_one({"uuid": doc_uuid})
