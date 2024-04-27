@@ -80,6 +80,7 @@ class Company(models.Model):
     expertise = models.TextField(blank=True, null=True)
     competition = models.TextField(blank=True, null=True)
     partnerships = models.TextField(blank=True, null=True)
+    founder_market_fit = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.name
 
@@ -101,16 +102,17 @@ class TeamMember(models.Model):
 
 class CompanyScores(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="scores")
-    market_opportunity = models.FloatField()
+    market_opportunity = models.FloatField(default=0.0)
     market_reasoning = models.TextField(blank=True, null=True)
-    team = models.FloatField()
+    team = models.FloatField(default=0.0)
     team_reasoning = models.TextField(blank=True, null=True)
-    founder_market_fit = models.FloatField()
+    founder_market_fit = models.FloatField(default=0.0)
     founder_market_reasoning = models.TextField(blank=True, null=True)
-    product = models.FloatField()
+    product = models.FloatField(default=0.0)
     product_reasoning = models.TextField(blank=True, null=True)
-    traction = models.FloatField()
+    traction = models.FloatField(default=0.0)
     traction_reasoning = models.TextField(blank=True, null=True)
-    final_score = models.FloatField()
+    final_score = models.FloatField(default=0.0)
+    final_reasoning = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.company.name

@@ -27,6 +27,8 @@ ANALYSIS_PROMPT = """
         Funding Amount
         Location
         Competition
+        Partnerships
+        Founder/Market Fit
 
 
         Here's the pitch deck data: {data}
@@ -78,7 +80,7 @@ Given the information from the pitch deck, provide a score from 1 to 10 for each
 4. Product - base this score on the product's uniqueness, quality, and potential for growth
 5. Traction - base this score on the company's current traction, revenue, and partnerships
 
-After scoring each category, provide a final score for the company's investment potential.
+After scoring each category individually, provide a final score for the company's investment potential and recommendation based on that score.
 
 Here is the data from the pitch deck: {data}
 Here is the analysis: {analysis}

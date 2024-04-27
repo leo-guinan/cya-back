@@ -123,6 +123,10 @@ functions = [
                             "type": "string",
                             "description": "The company's partnerships"
                         },
+                        "founder_market_fit": {
+                            "type": "string",
+                            "description": "The founder's market fit"
+                        },
 
                     }
                 },
@@ -172,7 +176,7 @@ functions = [
                         },
                         "founder_fit": {
                             "type": "object",
-                            "description": "the score of the founder fit",
+                            "description": "the score of the founder/market fit",
                             "properties": {
                                 "score": {
                                     "type": "number",
@@ -213,9 +217,19 @@ functions = [
                                 }
                             }
                         },
-                        "total_score": {
-                            "type": "number",
-                            "description": "The total score of the company"
+                        "final_score": {
+                            "type": "object",
+                            "description": "the final score of the company",
+                            "properties": {
+                                "score": {
+                                    "type": "number",
+                                    "description": "The score of the company"
+                                },
+                                "reasoning": {
+                                    "type": "string",
+                                    "description": "The investment recommendation based on the score."
+                                }
+                            }
                         },
                     }
                 },

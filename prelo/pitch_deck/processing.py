@@ -28,7 +28,18 @@ def prep_deck_for_analysis(pitch_deck: PitchDeck):
 
             print(f"Analyzing image: {image_uri}")
             base64_image = encode_image(image_uri)
-            model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
+            model = ChatOpenAI(
+                model="gpt-4-turbo",
+                openai_api_key=config("OPENAI_API_KEY"),
+                model_kwargs={
+                    "extra_headers": {
+                        "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                        "Helicone-Property-UUID": pitch_deck.uuid
+
+                    }
+                },
+                openai_api_base="https://oai.hconeai.com/v1",
+            )
             message = HumanMessage([
                 {
                     "type": "image_url",

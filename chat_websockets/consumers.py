@@ -42,8 +42,6 @@ class ChatConsumer(WebsocketConsumer):
         elif self.app == 'cli':
             run_command.delay(message, self.session)
         elif self.app == 'prelo':
-            print("prelo websocket message")
-            print(message)
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(self.session,
                                                     {"type": "chat.message", "message": "message received",
@@ -58,3 +56,15 @@ class ChatConsumer(WebsocketConsumer):
         message_id = event["id"]
         # Send message to WebSocket
         self.send(text_data=json.dumps({"message": message, "id": message_id}))
+
+    def deck_status_update(self, event):
+        message = event["message"]
+        message_id = event["id"]
+        status = event["status"]
+        self.send(text_data=json.dumps({"message": message, "id": message_id, "status": status}))
+
+    def deck_score_update(self, event):
+        message = event["message"]
+        message_id = event["id"]
+        scores = event["scores"]
+        self.send(text_data=json.dumps({"message": message, "id": message_id, "scores": scores}))
