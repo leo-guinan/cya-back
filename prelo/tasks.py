@@ -1,12 +1,20 @@
+import tempfile
+import time
+import uuid
 from asgiref.sync import async_to_sync
+from celery import group, chord, signature
 from channels.layers import get_channel_layer
+from decouple import config
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 
 from backend.celery import app
-from prelo.aws.s3_utils import file_exists
-from prelo.models import PitchDeck, PitchDeckAnalysis
+from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
+from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide
 from prelo.pitch_deck.analysis import analyze_deck
-from prelo.pitch_deck.processing import prep_deck_for_analysis
+from prelo.pitch_deck.processing import prep_deck_for_analysis, pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report
+from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
 
 
 @app.task(name="prelo.tasks.check_for_decks")
@@ -97,6 +105,76 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
         # not vital, just try to return response to chat if possible.
     return
 
+@app.task(name="process_slide")
+def process_slide(slide_id):
+    slide = PitchDeckSlide.objects.get(id=slide_id)
+
+    image_uri = download_file_from_s3(slide.s3_path)
+
+    print(f"Analyzing image: {image_uri}")
+    base64_image = encode_image(image_uri)
+    model = ChatOpenAI(
+        model="gpt-4-turbo",
+        openai_api_key=config("OPENAI_API_KEY"),
+        model_kwargs={
+            "extra_headers": {
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                "Helicone-Property-UUID": slide.deck.uuid
+
+            }
+        },
+        openai_api_base="https://oai.hconeai.com/v1",
+    )
+    message = HumanMessage([
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{base64_image}",
+                "detail": "auto"
+            }
+        },
+        {
+            "type": "text",
+            "text": PITCH_DECK_SLIDE_PROMPT
+        }
+    ])
+    response = model.invoke([message])
+
+    slide.content = response.content
+    slide.save()
+
+    cleanup_local_file(image_uri)
+
+@app.task(name="processing_callback")
+def processing_callback(results, deck_id, start_time):
+    deck = PitchDeck.objects.get(id=deck_id)
+    print(f"Processing callback for deck: {deck.name}")
+    print(f'Start_time: {start_time}')
+    # print("All slides analyzed, cleaning data")
+    # cleaned_data = clean_data(raw_slides)
+    combined = "\n".join([f"Page: {slide.order}\n{slide.content}" for slide in deck.slides.all()])
+    print("Data ingested. Starting analysis")
+    analysis = PitchDeckAnalysis.objects.create(
+        deck=deck,
+        compiled_slides=combined
+    )
+
+    deck.status = PitchDeck.READY_FOR_ANALYSIS
+    deck.save()
+    end_time = time.perf_counter()
+    analysis.processing_time = end_time - start_time
+    analysis.save()
+    print(f"Analysis time: {analysis.processing_time} seconds.")
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(deck.uuid,
+                                                {"type": "deck.status.update",
+                                                 "message": "Deck processed. Beginning analysis.",
+                                                 "id": deck.id, "status": deck.status})
+    except Exception as e:
+        print(e)
+        # not vital, just try to return response to chat if possible.
+    analyze_deck_task.delay(analysis.id)
 
 
 @app.task(name="prelo.tasks.process_deck")
@@ -105,16 +183,34 @@ def process_deck(deck_id):
     # process the deck
     deck.status = PitchDeck.PROCESSING
     deck.save()
-    analysis = prep_deck_for_analysis(deck)
+    # analysis = prep_deck_for_analysis(deck)
 
-    analyze_deck_task.delay(analysis.id)
+    start_time = time.perf_counter()
+    temp_file = download_file_from_s3(deck.s3_path)
 
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(deck.uuid,
-                                                {"type": "deck.status.update", "message": "Deck processed. Beginning analysis.",
-                                                 "id": deck.id, "status": deck.status})
-    except Exception as e:
-        print(e)
-        # not vital, just try to return response to chat if possible.
-    return
+    image_dir = tempfile.gettempdir()
+    imgs = pdf_to_images(temp_file, image_dir)
+
+    raw_slides = []
+    slides_to_process = []
+    for img in imgs:
+        image_uri = img['path']
+        img_key = f"{deck_id}/{image_uri.split('/')[-1]}"
+        upload_file_to_s3(img_key, image_uri)
+        slide = PitchDeckSlide.objects.create(
+            deck=deck,
+            s3_path=img_key,
+            order=img['page'],
+            uuid=str(uuid.uuid4())
+        )
+        raw_slides.append(slide)
+        slides_to_process.append(process_slide.s(slide.id))
+
+    task_chord = chord(slides_to_process)
+    callback = signature('processing_callback', args=(), kwargs={'deck_id': deck.id, "start_time": start_time})
+
+    # Executes all tasks in the group in parallel
+    result_chord = task_chord(callback)
+
+
+
