@@ -4,6 +4,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from prelo.tools.company import query_records
+from prelo.tools.deck import answer_question_about_deck, answer_question_about_slide, answer_question_about_company, \
+    answer_question_about_founder
 from submind.functions.functions import functions
 from submind.memory.memory import remember
 from submind.models import Goal
@@ -14,6 +16,26 @@ AVAILABLE_TOOLS = [
         "name": "Prelo",
         "description": "This tool allows you to get information about startups, their founders, and their fundraising efforts",
         "function": query_records
+    },
+{
+        "name": "Pitch Deck Info",
+        "description": "This tool allows you to get information about a specific pitch deck. It requires the inquiry and the uuid of the deck to lookup.",
+        "function": answer_question_about_deck
+    },
+{
+        "name": "Pitch Deck Slide Info",
+        "description": "This tool allows you to get information about a specific slide in a pitch deck. It requires the inquiry, the uuid of the deck to lookup, and the slide numbers that you want to look up.",
+        "function": answer_question_about_slide
+    },
+{
+        "name": "Pitch Deck Company Info",
+        "description": "This tool allows you to get information about the company in a pitch deck",
+        "function": answer_question_about_company
+    },
+{
+        "name": "Pitch Deck Founder Info",
+        "description": "This tool allows you to get information about the founder(s) in a pitch deck",
+        "function": answer_question_about_founder
     }
 ]
 
@@ -40,13 +62,13 @@ def determine_tools(goal: Goal):
 
 def run_tools(tools):
     # tools are context independent ways to fetch data for subminds to process
-    compiled_results = []
+    compiled_results = ""
     for tool in tools:
         runnable_tool = next((t for t in AVAILABLE_TOOLS if t["name"] == tool['tool_name']), None)
         if runnable_tool:
-            result = runnable_tool["function"](tool['query'])
+            result = runnable_tool["function"](tool['query'], tool['data_to_send'], compiled_results)
         else:
             print(f"Tool {tool} not found in available tools")
             result = None
-        compiled_results.append(result)
-    return "\n".join(compiled_results)
+        compiled_results += f"{tool['query']}\n{result}"
+    return compiled_results

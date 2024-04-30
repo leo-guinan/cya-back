@@ -10,7 +10,7 @@ WORKDIR /usr/src/app
 
 # Install system dependencies
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libsqlite3-mod-spatialite \
+    && apt-get install -y --no-install-recommends gcc python3-dev libsqlite3-mod-spatialite \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

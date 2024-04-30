@@ -237,4 +237,42 @@ functions = [
             "required": ["results"],
         },
     },
+    {
+        "name": "lookup_pitch_deck_uuid",
+        "description": "identify the uuid in the message",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "uuid": {
+                    "type": "string",
+                    "description": "the uuid of the pitch deck to lookup",
+
+                },
+            },
+            "required": ["uuid"],
+        },
+    },
+    {
+        "name": "lookup_pitch_deck_uuid_and_slide_numbers",
+        "description": "identify the uuid in the message and the slide numbers of the requested slides",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "uuid": {
+                    "type": "string",
+                    "description": "the uuid of the pitch deck to lookup",
+
+                },
+                "slide_numbers": {
+                    "type": "array",
+                    "description": "the slide numbers requested",
+                    "items": {
+                        "type": "number"
+                    }
+                }
+            },
+            "required": ["uuid", "slide_numbers"],
+        },
+    }
+
 ]

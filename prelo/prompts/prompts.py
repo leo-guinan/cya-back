@@ -86,3 +86,31 @@ Here is the data from the pitch deck: {data}
 Here is the analysis: {analysis}
 
 """
+
+SLIDE_DECK_UUID_PROMPT = """You are a lookup mechanism for pitch decks. Given a message, extract the UUID of the pitch deck from the message so that we can pull the right one.
+
+Here's the message: {message}"""
+
+PITCH_DECK_QUESTION_PROMPT = """You are an expert at answering questions based on the analysis of a pitch deck.
+Given a request, fulfill that request based on the content and analysis of the pitch deck.
+
+Here's the basic deck info: {deck_info}
+Here's the analysis: {analysis}
+Here's the request: {request}
+
+"""
+
+
+PITCH_DECK_SLIDES_QUESTION_PROMPT = """You are an expert at answering questions based on the specific slides of a pitch deck
+Given a request, fulfill that request based on the content and analysis of the pitch deck.
+
+Here's the basic deck info: {deck_info}
+Here's the requested slides: {slides}
+Here's the request: {request}
+
+"""
+
+
+SLIDE_DECK_UUID_SLIDE_NUMBERS_PROMPT = """You are a lookup mechanism for pitch decks. Given a message, extract the UUID of the pitch deck from the message so that we can pull the right one and the slide numbers of all relevant slides
+
+Here's the message: {message}"""

@@ -56,8 +56,15 @@ class MongoDBChatMessageHistoryOverride(BaseChatMessageHistory):
         except errors.OperationFailure as error:
             logger.error(error)
 
-        if cursor:
-            items = [json.loads(document["messages"]) for document in cursor]
+        try:
+            # Attempt to get the first document from the cursor
+            document = next(cursor, None)
+        except StopIteration:
+            logger.info("No documents found for this session.")
+            document = None
+
+        if document and "messages" in document:
+            items = json.loads(document["messages"])
         else:
             items = []
 
@@ -77,7 +84,8 @@ class MongoDBChatMessageHistoryOverride(BaseChatMessageHistory):
                             "$each": [message_to_dict(message) for message in messages],
                         }
                     }
-                }
+                },
+                upsert=True,
             )
         except errors.WriteError as err:
             logger.error(err)

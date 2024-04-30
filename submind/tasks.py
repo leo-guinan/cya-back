@@ -36,9 +36,9 @@ def think(goal_id: int):
         # need to add the result to the chat history regardless of whether the chat is still active
         message_history = MongoDBChatMessageHistoryOverride(
             connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
-            session_id=f'{goal.client.uuid}_prelo',
-            database_name=config('PRELO_DATABASE_NAME'),
-            collection_name=config('PRELO_COLLECTION_NAME')
+            session_id=f'{goal.client.uuid}{goal.client.session_suffix}',
+            database_name=goal.client.database_name,
+            collection_name=goal.client.collection_name
         )
         message_history.add_ai_message(delegated['answer'])
 
@@ -56,7 +56,7 @@ def think(goal_id: int):
         for delegated_to in question['subminds']:
             print(f'delegating question {question["question"]} to submind {delegated_to["submind_name"]}')
             new_goal_id = ask_submind(delegated_to['submind_id'], question['question'],
-                                      extra_data=question['extra_data'], fast=goal.fast)
+                                      extra_data=question.get('extra_data', ""), fast=goal.fast)
             think.delay(new_goal_id)
 
 
@@ -86,9 +86,9 @@ def complete_goal(goal_id: int):
     # need to add the result to the chat history regardless of whether the chat is still active
     message_history = MongoDBChatMessageHistoryOverride(
         connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
-        session_id=f'{goal.client.uuid}_prelo',
-        database_name=config('PRELO_DATABASE_NAME'),
-        collection_name=config('PRELO_COLLECTION_NAME')
+        session_id=f'{goal.client.uuid}{goal.client.session_suffix}',
+        database_name=goal.client.database_name,
+        collection_name=goal.client.collection_name
     )
     message_history.add_ai_message(result)
 

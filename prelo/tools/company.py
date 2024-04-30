@@ -76,7 +76,7 @@ TOOL_DESCRIPTION = "This tool allows you to get information about startups, thei
 
 
 @traceable
-def query_records(query):
+def query_records(query, previous_results=None):
     pc = Pinecone(api_key=config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
                                   openai_api_base=config('OPENAI_API_BASE'),
@@ -90,8 +90,9 @@ def query_records(query):
     model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(TOOL_RESULT_PROMPT)
     chain = prompt | model | StrOutputParser()
+    combined_query = f"{previous_results}\n\n{query}" if previous_results else query
     response = chain.invoke({
-        "query": query,
+        "query": combined_query,
         "tool_description": TOOL_DESCRIPTION,
         "tool_output": docs
     })

@@ -126,3 +126,22 @@ def get_scores(request):
         }
 
     return Response({'scores': score_object})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def send_founder_chat_message(request):
+    body = json.loads(request.body)
+    conversation_uuid = body["uuid"]
+    message = body["message"]
+    client = SubmindClient.objects.filter(uuid=conversation_uuid).first()
+    if not client:
+        client = SubmindClient.objects.create(uuid=conversation_uuid, name="Score my deck client", database_name=config("SCORE_MY_DECK_DATABASE_NAME"), collection_name=config("SCORE_MY_DECK_COLLECTION_NAME"), session_suffix="_chat")
+    combined_message = f"Respond to this message: {message} about the pitch deck with UUID {conversation_uuid}"
+    goal = Goal.objects.create(content=combined_message, submind_id=config("PRELO_SUBMIND_ID"), fast=True, client=client,
+                               uuid=str(uuid.uuid4()))
+
+    think.delay(goal.id)
+
+    return Response({'request_id': goal.id})

@@ -79,7 +79,7 @@ You have some tools available in order to pull in some extra data before you do 
 
 Here are the tools you have available: {tools}
 
-Based on what you know, what tools do you need to use in order to accomplish your goal, and what data do you need to pull from each?
+Based on what you know, what tools do you need to use in order to accomplish your goal, and what data do you need to send to each, and what data do you want from each?
 
 If you need to use multiple tools, specify the order in which you will use them.
 

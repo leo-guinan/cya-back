@@ -88,6 +88,10 @@ functions = [
                             "query": {
                                 "type": "string",
                                 "description": "what data you need to get from the tool"
+                            },
+                            "data_to_send": {
+                                "type": "string",
+                                "description": "what data you need to send to the tool"
                             }
                         }
 

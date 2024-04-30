@@ -67,6 +67,9 @@ class SubmindClient(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=100)
+    database_name = models.CharField(max_length=100)
+    collection_name = models.CharField(max_length=100)
+    session_suffix = models.CharField(max_length=100)
 
 class SubmindTool(models.Model):
     uuid = models.CharField(max_length=100, unique=True)
