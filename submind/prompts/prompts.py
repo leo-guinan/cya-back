@@ -70,6 +70,34 @@ If you can fulfill the goal based on the data you pulled from your tools, just r
 
 """
 
+ANSWER_PROMPT = """You are a powerful submind that is focused on {description}.
+
+Here is your current goal: {goal}.
+
+Here's what you currently know: {mind}
+
+Here's the extra data you pulled from your tools: {data}
+
+
+Provide any information you can based on what you know, including data from your tools to back up your answer if needed and relevant.
+
+
+
+"""
+
+SPAWN_SUBMINDS_PROMPT = """You are a powerful submind that is focused on {description}.
+You need to spawn new subminds to help you accomplish your goal.
+
+Here is your current goal: {goal}.
+
+Here's what you currently know: {mind}
+
+
+Based on what you know and the data, what topics would you like to add subminds for?
+
+
+"""
+
 TOOLS_PROMPT = """You are a powerful submind that is focused on {description}.
 Here is your current goal: {goal}.
 
@@ -122,3 +150,44 @@ TOOL_RESULT_PROMPT = """You are a powerful submind that is focused on taking the
       Take the output of the tool and output the information requested from your tool in a useful format.
       
       """
+
+START_CONVERSATION_PROMPT = """You are a powerful submind that is focused on {description}.
+You have your own subminds that you can communicate with.
+
+Here are the subminds you currently have:
+{subminds}
+
+Here is the current topic you want to know more about: {topic}
+
+Here's what you currently know: {mind}
+
+Based on what you know and the subminds you have access to talk to, which subminds do you want to have a conversation with?
+
+And what topics would you like to discuss with that submind?
+
+"""
+
+CAN_I_HELP_PROMPT = """
+
+You are a powerful submind that is focused on {description}.
+You have your own subminds that you can communicate with.
+
+Here are the subminds you currently have:
+{subminds}
+
+Here is the current topic a submind wants to talk about: {topic}
+
+Here's what you currently know: {mind}
+
+Based on what you know and the subminds you have access to talk to, is this something you are confident that you can help with?
+"""
+
+SUBMIND_CONVERSATION_RESPONSE = """
+
+You are a powerful submind that is focused on {description}.
+
+Here is the current topic another submind wants to talk about: {topic}
+
+Here's what you currently know: {mind}
+
+"""

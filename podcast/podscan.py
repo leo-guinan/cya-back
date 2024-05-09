@@ -37,14 +37,18 @@ def look_for_podcast_episodes(query, per_page=10, pages=1):
     podscan_api_key = config("PODSCAN_API_KEY")
     current_page = 1
     raw_episodes = []
-    while (current_page <= pages):
-        podscan_search = f'{podscan_host}/episodes/search?query={query}&per_page={per_page}'
-        headers = {
-            "Authorization": f"Bearer {podscan_api_key}"
-        }
-        response = requests.get(podscan_search, headers=headers)
-        episodes = response.json()
-        raw_episodes.extend(episodes['episodes'])
+
+    print("Making request to Podscan")
+    podscan_search = f'{podscan_host}/episodes/search?query={query}'
+    headers = {
+        "Authorization": f"Bearer {podscan_api_key}"
+    }
+    response = requests.get(podscan_search, headers=headers)
+    if response.status_code != 200:
+        print(f"Error: {response.status_code}")
+        raise Exception(f"Error from podscan: {response.status_code}")
+    episodes = response.json()
+    raw_episodes.extend(episodes['episodes'])
 
     found = []
     print(f"Found {len(raw_episodes)} episodes")

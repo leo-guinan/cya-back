@@ -11,29 +11,24 @@ from langchain_openai import ChatOpenAI
 from podcast.models import PodcastQuery
 from podcast.tasks import search
 from submind.functions.functions import functions
+from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
-from submind.models import Submind, Goal, Question, Thought, SubmindClient
+from submind.models import Question, Thought
 from submind.prompts.prompts import ANSWER_TEMPLATE, RESEARCH_PROMPT, HUMAN_MESSAGE_TEMPLATE
-from submind.tools.answers import compile_answers
-
-
-
+from submind.tools.answers import compile_thought_answers
 
 
 def research(goal):
-
-    mind = remember(goal.submind, goal.client.id)
-    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
+    print("Attempting to research")
+    mind = remember(goal.submind)
+    model = SubmindModelFactory.get_model(goal.submind.uuid, "research")
     prompt = ChatPromptTemplate.from_template(RESEARCH_PROMPT)
     chain = prompt | model.bind(function_call={"name": "research_questions"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="research")
-    print(f"description: {goal.submind.description}, mind: {mind}, question: {goal.content}")
     response = chain.invoke({"description": goal.submind.description, "mind": mind, "question": goal.content})
-    print(response)
     thoughts = []
     for question in response['research_questions']:
-        answer = answer_question(question)
-        print(f"Question: {question}\nAnswer: {answer}")
+        answer = answer_question(question, goal.submind.uuid)
         new_question = Question.objects.create(content=question, goal_id=goal.id, uuid=str(uuid.uuid4()),
                                                submind_id=goal.submind.id)
         thought = Thought.objects.create(content=answer, submind_id=goal.submind.id, uuid=str(uuid.uuid4()),
@@ -41,28 +36,63 @@ def research(goal):
 
         thoughts.append(thought)
 
-    final_answer = compile_answers(thoughts, goal.submind, mind, goal.content)
+    final_answer = compile_thought_answers(thoughts, goal.submind, mind, goal.content)
     goal.results = final_answer
     goal.completed = True
     goal.save()
     return final_answer
 
 
-def answer_question(question):
+def answer_question(question, goal_uuid):
+    print("Attempting to answer question")
     podcast_query = PodcastQuery.objects.create(query=question)
 
     search(podcast_query.id)
 
     snippets = podcast_query.snippets.all()
 
-    return compile_snippets_into_answer(snippets, question)
+    return compile_snippets_into_answer(snippets, question, goal_uuid)
 
 
-def compile_snippets_into_answer(snippets, question):
-    model_35 = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=config("OPENAI_API_KEY"))
-    model_4 = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
+def compile_snippets_into_answer(snippets, question, goal_uuid):
+    model_35 = ChatOpenAI(
+        model="gpt-3.5-turbo",
+        openai_api_key=config("OPENAI_API_KEY"),
+        model_kwargs={
+            "extra_headers": {
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                "Helicone-Property-UUID": goal_uuid,
+                "Helicone-Property-Step": "snippets_to_answer"
+
+            }
+        },
+        openai_api_base="https://oai.hconeai.com/v1",
+    )
+    model_4 = ChatOpenAI(
+        model="gpt-4-turbo",
+        openai_api_key=config("OPENAI_API_KEY"),
+        model_kwargs={
+            "extra_headers": {
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                "Helicone-Property-UUID": goal_uuid,
+                "Helicone-Property-Step": "snippets_to_answer"
+
+            }
+        },
+        openai_api_base="https://oai.hconeai.com/v1",
+    )
     model_claude = ChatAnthropic(model_name="claude-3-haiku-20240307",
-                                 anthropic_api_key=config("ANTHROPIC_API_KEY"))
+                                 anthropic_api_key=config("ANTHROPIC_API_KEY"),
+                                 anthropic_api_url="https://anthropic.hconeai.com/",
+                                 model_kwargs={
+                                     "extra_headers": {
+                                         "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                                         "Helicone-Property-Step": "snippets_to_answer",
+                                         "Helicone-Property-UUID": goal_uuid,
+
+                                     }
+                                 }
+                                 )
     prompt = ChatPromptTemplate.from_messages([("system", ANSWER_TEMPLATE), ("human", HUMAN_MESSAGE_TEMPLATE)])
     output_parser = StrOutputParser()
     current_answer = ""
@@ -112,5 +142,3 @@ def compile_snippets_into_answer(snippets, question):
                     print(e3)
                     continue
     return current_answer
-
-

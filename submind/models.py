@@ -8,7 +8,7 @@ class Submind(models.Model):
     uuid = models.CharField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    name = models.CharField(max_length=100)
+    name = models.TextField()
     description = models.TextField()
     subminds = models.ManyToManyField('self', symmetrical=False, related_name="superminds")
     mindUUID = models.CharField(max_length=100, unique=True)
@@ -24,8 +24,12 @@ class Goal(models.Model):
     results = models.TextField(null=True, blank=True)
     client = models.ForeignKey('SubmindClient', on_delete=models.CASCADE, related_name="goals", null=True)
     fast = models.BooleanField(default=False)
+    supporting_data = models.TextField(null=True, blank=True)
+    delegated_from = models.ForeignKey('self', related_name="delegated_goals", on_delete=models.CASCADE, null=True, blank=True)
+
     def is_complete(self):
-        if all(question.is_complete() for question in self.questions.all()):
+        if all(question.is_complete() for question in self.questions.all()) and all(
+                goal.is_complete() for goal in self.delegated_goals.all()):
             self.completed = True
             self.save()
         return self.completed
@@ -71,6 +75,7 @@ class SubmindClient(models.Model):
     collection_name = models.CharField(max_length=100)
     session_suffix = models.CharField(max_length=100)
 
+
 class SubmindTool(models.Model):
     uuid = models.CharField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -81,3 +86,28 @@ class SubmindTool(models.Model):
     url = models.TextField()
     inputSchema = models.TextField()
     outputSchema = models.TextField()
+
+
+class Conversation(models.Model):
+    uuid = models.CharField(max_length=100, unique=True)
+    topic = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, related_name="blocked_by", null=True, blank=True)
+    completed = models.BooleanField(default=False)
+    initiated_by = models.ForeignKey(Submind, on_delete=models.CASCADE, related_name="initiated_conversations")
+    participants = models.ManyToManyField(Submind, related_name="conversations")
+
+
+
+class Message(models.Model):
+    uuid = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    content = models.TextField()
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(Submind, on_delete=models.CASCADE, related_name="sent_messages")
+    receiver = models.ForeignKey(Submind, on_delete=models.CASCADE, related_name="received_messages")
+    received = models.BooleanField(default=False)
+
+

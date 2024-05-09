@@ -64,7 +64,7 @@ class MongoDBChatMessageHistoryOverride(BaseChatMessageHistory):
             document = None
 
         if document and "messages" in document:
-            items = json.loads(document["messages"])
+            items = document["messages"]
         else:
             items = []
 
@@ -96,4 +96,7 @@ class MongoDBChatMessageHistoryOverride(BaseChatMessageHistory):
             self.collection.delete_many({"sessionId": self.session_id})
         except errors.WriteError as err:
             logger.error(err)
+
+    def get_session_history(self):
+        pass
 

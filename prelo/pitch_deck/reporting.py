@@ -9,7 +9,9 @@ from langchain_openai import ChatOpenAI
 from pymongo import MongoClient
 
 from prelo.models import PitchDeck, PitchDeckAnalysis
-from prelo.prompts.prompts import WRITE_REPORT_PROMPT
+from prelo.prompts.prompts import WRITE_REPORT_PROMPT, RISK_PROMPT
+from submind.memory.memory import remember
+from submind.models import Submind
 
 
 def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
@@ -27,6 +29,39 @@ def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
     pitch_deck_analysis.report_time = end_time - start_time
     pitch_deck_analysis.save()
     return report
+
+def create_risk_report(pitch_deck_analysis: PitchDeckAnalysis):
+    start_time = time.perf_counter()
+    model = ChatOpenAI(
+        model="gpt-4-turbo",
+        openai_api_key=config("OPENAI_API_KEY"),
+        model_kwargs={
+            "extra_headers": {
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid
+            }
+        },
+        openai_api_base="https://oai.hconeai.com/v1",
+    )
+    prompt = ChatPromptTemplate.from_template(RISK_PROMPT)
+    chain = prompt | model | StrOutputParser()
+    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
+    submind_document = remember(submind)
+    response = chain.invoke({
+        "mind": submind_document,
+        "deck": pitch_deck_analysis.compiled_slides,
+        "analysis": pitch_deck_analysis.extra_analysis,
+    })
+    update_document(pitch_deck_analysis.deck.uuid, response)
+    pitch_deck_analysis.report = response
+    pitch_deck_analysis.save()
+    pitch_deck_analysis.deck.status = PitchDeck.COMPLETE
+    pitch_deck_analysis.deck.save()
+    end_time = time.perf_counter()
+    pitch_deck_analysis.report_time = end_time - start_time
+    pitch_deck_analysis.save()
+    return response
+
 
 
 def combine_scores(pitch_deck_analysis: PitchDeckAnalysis):

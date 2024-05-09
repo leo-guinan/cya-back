@@ -16,6 +16,7 @@ def search(query_id):
     Look for podcast episodes
     """
     try:
+        print("Starting search...")
         pc = Pinecone(api_key=config("PINECONE_API_KEY"))
         embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
                                       openai_api_base=config('OPENAI_API_BASE'),
@@ -28,7 +29,6 @@ def search(query_id):
         query = PodcastQuery.objects.get(id=query_id)
 
         found_episodes = look_for_podcast_episodes(query.query)
-        print(f"Found {len(found_episodes)} episodes")
         matched_snippets = []
 
         for episode in found_episodes:

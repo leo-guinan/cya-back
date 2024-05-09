@@ -13,14 +13,14 @@ def ask_submind(submind_id:int, question: str, extra_data: str, fast: bool):
     new_goal.uuid = str(uuid.uuid4())
     new_goal.fast = fast
     new_goal.save()
-    return new_goal.id
+    return new_goal
 
 def answer_submind(goal: Goal):
     if not goal.fast:
         answer = research(goal)
     else:
         answer = answer_from_memory(goal)
-    learn(goal.client.id if goal.client else None,{"question": goal.content, "answer": answer}, goal.submind)
+    learn({"question": goal.content, "answer": answer}, goal.submind)
 
 
 

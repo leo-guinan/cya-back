@@ -76,7 +76,7 @@ TOOL_DESCRIPTION = "This tool allows you to get information about startups, thei
 
 
 @traceable
-def query_records(query, previous_results=None):
+def query_records(query, data_to_send, previous_results=None):
     pc = Pinecone(api_key=config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
                                   openai_api_base=config('OPENAI_API_BASE'),

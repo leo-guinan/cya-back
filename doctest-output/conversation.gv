@@ -1,0 +1,8 @@
+// Main Conversation 50
+digraph {
+	rankdir=TB size="8,15"
+	node [fillcolor=lightblue fontsize=11 shape=box style="rounded,filled"]
+	edge [fontsize=10]
+	50 [label="What do early stage investors ...
+(ID: 50)" fillcolor=red]
+}

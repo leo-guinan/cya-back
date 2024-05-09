@@ -34,6 +34,7 @@ class PitchDeck(models.Model):
     updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=255)
     error_message = models.TextField(blank=True, null=True)
+    target_audience = models.TextField(default="Founder")
     def __str__(self):
         return self.s3_path
 

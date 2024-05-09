@@ -72,8 +72,23 @@ WRITE_REPORT_PROMPT = """
 
 PITCH_DECK_SLIDE_PROMPT = """You are an expert pitch deck slide analyzer. This is a slide from a company's pitch deck for investors. What information does this slide contain?"""
 
+RISK_PROMPT = """ You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's the pitch deck you have analyzed: {deck}
+
+Here's your analysis of the deck: {analysis}
+
+Based on that analysis, identify the top risk for investing in this startup.
+
+Then make a suggestion on how to de-risk this startup.
+
+
+"""
+
 INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 
-Given the information from the pitch deck, provide a score from 1 to 10 for each of the following categories:
+Given the information from the pitch deck, provide a score from 1 to 100 for each of the following categories:
 1. Market Opportunity - base this score on the size and growth of the market, the megatrends in the market, and the company moat in the market
 2. Team - base this score on the team's experience, expertise, and track record
 3. Founder/Market Fit - base this score on the founder's experience in the market, their passion for the problem, and their unique insights
@@ -114,3 +129,22 @@ Here's the request: {request}
 SLIDE_DECK_UUID_SLIDE_NUMBERS_PROMPT = """You are a lookup mechanism for pitch decks. Given a message, extract the UUID of the pitch deck from the message so that we can pull the right one and the slide numbers of all relevant slides
 
 Here's the message: {message}"""
+
+
+CHAT_WITH_DECK_SYSTEM_PROMPT = """You are an investor submind whose goal is to help founders 
+understand what their deck needs in order to successfully raise venture capital.
+
+Here's what you know about early stage investing: {mind}
+
+Here's the information from the pitch deck: {deck}
+
+Here's the analysis you performed on the deck to see if it is ready for investment: {analysis}
+
+Begin by telling the founder what your initial impression is of their deck and whether or not 
+you think investors would be interested in investing.
+
+Then respond to their questions and provide feedback on the deck.
+
+Every response should be 25 words or less.
+
+"""
