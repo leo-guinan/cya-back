@@ -20,7 +20,7 @@ from submind.memory.memory import remember
 from submind.models import Goal, SubmindClient, Submind
 from submind.overrides.mongodb import MongoDBChatMessageHistoryOverride
 from submind.tasks import think
-
+from prelo.tasks import check_for_decks
 
 # Create your views here.
 @api_view(('POST',))
@@ -197,3 +197,20 @@ def send_founder_chat_message(request):
     print(answer.content)
 
     return Response({"message": answer.content})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_deck_name(request):
+    body = json.loads(request.body)
+    deck_id = body["deck_id"]
+
+    deck = PitchDeck.objects.get(id=deck_id)
+    return Response({'name': deck.name})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def check_decks(request):
+    check_for_decks.delay()
+    return Response({'status': 'Successful'})

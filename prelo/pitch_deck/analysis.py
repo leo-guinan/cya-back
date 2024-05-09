@@ -81,6 +81,7 @@ def initial_analysis(data, deck_id, deck_uuid):
     company.founder_market_fit = response.get('founder_market_fit', '')
     company.deck_id = deck_id
     company.save()
+
     return response
 
 
@@ -110,6 +111,9 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
                                              pitch_deck_analysis.deck.uuid)
     pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
     pitch_deck_analysis.save()
+    # update the name of the deck with the name of the company
+    pitch_deck_analysis.deck.name = pitch_deck_analysis.deck.company.name
+    pitch_deck_analysis.deck.save()
     print("Initial analysis complete, starting extra analysis")
     extra_analysis_data = extra_analysis(pitch_deck_analysis.compiled_slides, initial_analysis_data, pitch_deck_analysis.deck.uuid)
     pitch_deck_analysis.extra_analysis = extra_analysis_data

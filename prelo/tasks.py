@@ -57,10 +57,7 @@ def create_report_for_deck(pitch_deck_analysis_id: int):
     )
     message_history.add_ai_message(report)
     try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                {"type": "deck.status.update", "message": report,
-                                                 "id": pitch_deck_analysis.deck.id, "status": pitch_deck_analysis.deck.status})
+
         scores = pitch_deck_analysis.deck.company.scores.first()
         score_object = {
             'market': {
@@ -89,6 +86,7 @@ def create_report_for_deck(pitch_deck_analysis_id: int):
                 'reason': scores.final_reasoning
             }
         }
+        channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
                                                 {"type": "deck.score.update", "message": report,
                                                  "id": pitch_deck_analysis.deck.id, "scores": score_object})
@@ -111,10 +109,6 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
     )
     message_history.add_ai_message(risk_report)
     try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                {"type": "deck.status.update", "message": risk_report,
-                                                 "id": pitch_deck_analysis.deck.id, "status": pitch_deck_analysis.deck.status})
         scores = pitch_deck_analysis.deck.company.scores.first()
         score_object = {
             'market': {
@@ -143,6 +137,8 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
                 'reason': scores.final_reasoning
             }
         }
+        channel_layer = get_channel_layer()
+
         async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
                                                 {"type": "deck.score.update", "message": risk_report,
                                                  "id": pitch_deck_analysis.deck.id, "scores": score_object})
@@ -164,8 +160,11 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
     try:
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                {"type": "deck.status.update", "message": "Deck analyzed. Writing report",
-                                                 "id": pitch_deck_analysis.deck.id, "status": pitch_deck_analysis.deck.status})
+                                                {"type": "deck.status.update", "message": "",
+                                                 "id": pitch_deck_analysis.deck.id,
+                                                 "status": pitch_deck_analysis.deck.status,
+                                                 "name": pitch_deck_analysis.deck.name
+                                                 })
     except Exception as e:
         print(e)
         # not vital, just try to return response to chat if possible.
@@ -235,7 +234,7 @@ def processing_callback(results, deck_id, start_time):
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(deck.uuid,
                                                 {"type": "deck.status.update",
-                                                 "message": "Deck processed. Beginning analysis.",
+                                                 "message": "",
                                                  "id": deck.id, "status": deck.status})
     except Exception as e:
         print(e)
