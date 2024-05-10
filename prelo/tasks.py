@@ -10,7 +10,8 @@ from langchain_openai import ChatOpenAI
 
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
-from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide
+from prelo.investor.analysis import check_deck_against_thesis
+from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor
 from prelo.pitch_deck.analysis import analyze_deck
 from prelo.pitch_deck.processing import prep_deck_for_analysis, pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
@@ -41,59 +42,27 @@ def check_for_reporting():
     for deck_analysis in decks_to_report:
         create_report_for_deck.delay(deck_analysis.id)
 
-
-@app.task(name="prelo.tasks.create_report_for_deck")
-def create_report_for_deck(pitch_deck_analysis_id: int):
+@app.task(name="prelo.tasks.thesis_check")
+def thesis_check(pitch_deck_analysis_id: int):
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.REPORTING
     pitch_deck_analysis.deck.save()
-    report = combine_into_report(pitch_deck_analysis)
+    investor_report = check_deck_against_thesis(pitch_deck_analysis)
 
-    message_history = MongoDBChatMessageHistoryOverride(
-        connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
-        session_id=f'{pitch_deck_analysis.deck.uuid}_chat',
-        database_name=config('SCORE_MY_DECK_DATABASE_NAME'),
-        collection_name=config('SCORE_MY_DECK_COLLECTION_NAME')
-    )
-    message_history.add_ai_message(report)
-    try:
 
-        scores = pitch_deck_analysis.deck.company.scores.first()
-        score_object = {
-            'market': {
-                'score': scores.market_opportunity,
-                'reason': scores.market_reasoning
-            },
-            'team': {
-                'score': scores.team,
-                'reason': scores.team_reasoning
-            },
-            'founder': {
-                'score': scores.founder_market_fit,
-                'reason': scores.founder_market_reasoning
-            },
-            'product': {
-                'score': scores.product,
-                'reason': scores.product_reasoning
-            },
-            'traction': {
-                'score': scores.traction,
-                'reason': scores.traction_reasoning
 
-            },
-            'final': {
-                'score': scores.final_score,
-                'reason': scores.final_reasoning
-            }
-        }
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                {"type": "deck.score.update", "message": report,
-                                                 "id": pitch_deck_analysis.deck.id, "scores": score_object})
-    except Exception as e:
-        print(e)
-        # not vital, just try to return response to chat if possible.
-    return
+
+
+@app.task(name="prelo.tasks.create_report_for_deck")
+def create_report_for_deck(pitch_deck_analysis_id: int, investor_id: int):
+    pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
+    pitch_deck_analysis.deck.status = PitchDeck.REPORTING
+    pitch_deck_analysis.deck.save()
+    investor = Investor.objects.get(id=investor_id)
+    investor_report = check_deck_against_thesis(pitch_deck_analysis, investor)
+    report = combine_into_report(pitch_deck_analysis, investor_report)
+    print(report)
+
 
 @app.task(name="prelo.tasks.identify_biggest_risk")
 def identify_biggest_risk(pitch_deck_analysis_id: int):
@@ -119,10 +88,6 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
                 'score': scores.team,
                 'reason': scores.team_reasoning
             },
-            'founder': {
-                'score': scores.founder_market_fit,
-                'reason': scores.founder_market_reasoning
-            },
             'product': {
                 'score': scores.product,
                 'reason': scores.product_reasoning
@@ -130,7 +95,6 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
             'traction': {
                 'score': scores.traction,
                 'reason': scores.traction_reasoning
-
             },
             'final': {
                 'score': scores.final_score,

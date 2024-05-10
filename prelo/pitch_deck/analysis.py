@@ -1,5 +1,6 @@
 import json
 import time
+from statistics import mean
 
 from decouple import config
 from langchain_core.output_parsers import StrOutputParser
@@ -164,9 +165,7 @@ def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid
     traction = response.get("traction", {"score": 0, "reasoning": "missing"})
     scores.traction = traction['score']
     scores.traction_reasoning = traction['reasoning']
-    final_score = response.get("final_score", {"score": 0, "reasoning": "missing"})
-    scores.final_score = final_score['score']
-    scores.final_reasoning = final_score['reasoning']
+    scores.final_score = mean([market['score'], team['score'], product['score'], traction['score']])
     scores.save()
     pitch_deck_analysis.report = response
     pitch_deck_analysis.save()

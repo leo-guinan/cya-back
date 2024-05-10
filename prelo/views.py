@@ -109,10 +109,6 @@ def get_scores(request):
                 'score': scores.team,
                 'reason': scores.team_reasoning
             },
-            'founder': {
-                'score': scores.founder_market_fit,
-                'reason': scores.founder_market_reasoning
-            },
             'product': {
                 'score': scores.product,
                 'reason': scores.product_reasoning
@@ -159,7 +155,7 @@ def send_founder_chat_message(request):
     start_time = time.perf_counter()
     # Needs a submind to chat with. How does this look in practice?
     # Should have tools to pull data, knowledge to respond from, with LLM backing.
-    model = SubmindModelFactory.get_model(submind.uuid, "chat")
+    model = SubmindModelFactory.get_model(conversation_uuid, "chat")
     # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -188,7 +184,7 @@ def send_founder_chat_message(request):
             "deck": pitch_deck.analysis.compiled_slides,
             "analysis": pitch_deck.analysis.extra_analysis,
         },
-        config={"configurable": {"session_id": submind.uuid}},
+        config={"configurable": {"session_id": conversation_uuid}},
 
     )
     end_time = time.perf_counter()

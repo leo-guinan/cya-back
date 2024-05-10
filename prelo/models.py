@@ -117,3 +117,20 @@ class CompanyScores(models.Model):
     final_reasoning = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.company.name
+
+
+class Investor(models.Model):
+    firm = models.TextField()
+    thesis = models.TextField()
+    location = models.TextField()
+    website = models.TextField()
+    name = models.TextField()
+    personal_notes = models.TextField()  # anything about the investor as a person that might be relevant
+
+
+class InvestorReport(models.Model):
+    matches_thesis = models.BooleanField()
+    thesis_reasons = models.TextField()
+    thesis_match_score = models.TextField()
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="reports")
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="investor_reports")

@@ -58,8 +58,14 @@ WRITE_REPORT_PROMPT = """
     Detailed analysis of risks, opportunities, and questions: {extra_analysis}
     
     Scored analysis of the company's investment potential: {investment_score}
+    
+    Does the company match the investment thesis? {matches_thesis}
+    
+    Reasons for or against the thesis match: {thesis_reasons}
 
     Write a report in Markdown that starts with a decision to contact the founder, learn more, or pass.
+    
+    If the thesis isn't a match, pass.
     
     Then describe the problem, the solution, and the industry.
     
@@ -80,11 +86,46 @@ Here's the pitch deck you have analyzed: {deck}
 
 Here's your analysis of the deck: {analysis}
 
-Based on that analysis, identify the top risk for investing in this startup.
+Based on that analysis, identify the top investor concern in one sentence.
 
-Then make a suggestion on how to de-risk this startup.
+Then write a paragraph that identifies the objections that need to be overcome by the company.
+
+Finally, offer 3-5 suggestions in a list format for how the company can overcome those objections.
 
 
+"""
+
+TOP_CONCERN_PROMPT = """You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's the pitch deck you have analyzed: {deck}
+
+Here's your analysis of the deck: {analysis}
+
+Based on that analysis, identify the top investor concern in one sentence of less than 30 words.
+"""
+
+OBJECTIONS_PROMPT = """You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's the pitch deck you have analyzed: {deck}
+
+Here's your analysis of the deck: {analysis}
+
+Based on that analysis, write a short paragraph on the investor objections that the startup needs to be prepared to overcome.
+"""
+
+DERISKING_PROMPT = """You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's the pitch deck you have analyzed: {deck}
+
+Here's your analysis of the deck: {analysis}
+
+Based on that analysis, offer 3-5 suggestions in a list format for how the company can de-risk their business.
 """
 
 INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 

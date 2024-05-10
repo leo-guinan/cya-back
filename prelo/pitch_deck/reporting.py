@@ -8,17 +8,20 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pymongo import MongoClient
 
-from prelo.models import PitchDeck, PitchDeckAnalysis
-from prelo.prompts.prompts import WRITE_REPORT_PROMPT, RISK_PROMPT
+from prelo.models import PitchDeck, PitchDeckAnalysis, InvestorReport
+from prelo.prompts.prompts import WRITE_REPORT_PROMPT, RISK_PROMPT, TOP_CONCERN_PROMPT, OBJECTIONS_PROMPT, \
+    DERISKING_PROMPT
+from prelo.prompts.functions import functions
 from submind.memory.memory import remember
 from submind.models import Submind
+from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 
 
-def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
+def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis, investor_report: InvestorReport):
     start_time = time.perf_counter()
     analysis_score = combine_scores(pitch_deck_analysis)
     report = create_report(pitch_deck_analysis.initial_analysis, pitch_deck_analysis.extra_analysis, analysis_score,
-                           pitch_deck_analysis.deck.uuid)
+                           pitch_deck_analysis.deck.uuid, investor_report)
     print("Report written")
     update_document(pitch_deck_analysis.deck.uuid, report)
     pitch_deck_analysis.report = report
@@ -30,38 +33,107 @@ def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis):
     pitch_deck_analysis.save()
     return report
 
-def create_risk_report(pitch_deck_analysis: PitchDeckAnalysis):
-    start_time = time.perf_counter()
+
+def get_top_objection(pitch_deck_analysis: PitchDeckAnalysis, submind_document):
     model = ChatOpenAI(
         model="gpt-4-turbo",
         openai_api_key=config("OPENAI_API_KEY"),
         model_kwargs={
             "extra_headers": {
                 "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid
+                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid,
+                "Helicone-Property-STEP": "risk_report"
             }
         },
         openai_api_base="https://oai.hconeai.com/v1",
     )
-    prompt = ChatPromptTemplate.from_template(RISK_PROMPT)
+    prompt = ChatPromptTemplate.from_template(TOP_CONCERN_PROMPT)
     chain = prompt | model | StrOutputParser()
-    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
-    submind_document = remember(submind)
     response = chain.invoke({
         "mind": submind_document,
         "deck": pitch_deck_analysis.compiled_slides,
         "analysis": pitch_deck_analysis.extra_analysis,
     })
-    update_document(pitch_deck_analysis.deck.uuid, response)
-    pitch_deck_analysis.report = response
+    return response
+
+
+def get_investor_objections(pitch_deck_analysis: PitchDeckAnalysis, submind_document):
+    model = ChatOpenAI(
+        model="gpt-4-turbo",
+        openai_api_key=config("OPENAI_API_KEY"),
+        model_kwargs={
+            "extra_headers": {
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid,
+                "Helicone-Property-STEP": "risk_report"
+            }
+        },
+        openai_api_base="https://oai.hconeai.com/v1",
+    )
+    prompt = ChatPromptTemplate.from_template(OBJECTIONS_PROMPT)
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({
+        "mind": submind_document,
+        "deck": pitch_deck_analysis.compiled_slides,
+        "analysis": pitch_deck_analysis.extra_analysis,
+    })
+    return response
+
+
+def get_de_risking_strategies(pitch_deck_analysis: PitchDeckAnalysis, submind_document):
+    model = ChatOpenAI(
+        model="gpt-4-turbo",
+        openai_api_key=config("OPENAI_API_KEY"),
+        model_kwargs={
+            "extra_headers": {
+                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
+                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid,
+                "Helicone-Property-STEP": "risk_report"
+            }
+        },
+        openai_api_base="https://oai.hconeai.com/v1",
+    )
+    prompt = ChatPromptTemplate.from_template(DERISKING_PROMPT)
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({
+        "mind": submind_document,
+        "deck": pitch_deck_analysis.compiled_slides,
+        "analysis": pitch_deck_analysis.extra_analysis,
+    })
+    return response
+
+
+def create_risk_report(pitch_deck_analysis: PitchDeckAnalysis):
+    start_time = time.perf_counter()
+    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
+    submind_document = remember(submind)
+
+    top_concern = get_top_objection(pitch_deck_analysis, submind_document)
+    objections = get_investor_objections(pitch_deck_analysis, submind_document)
+    derisking = get_de_risking_strategies(pitch_deck_analysis, submind_document)
+    report = write_how_to_de_risk(pitch_deck_analysis, top_concern, objections, derisking)
+    update_document(pitch_deck_analysis.deck.uuid, report)
+    pitch_deck_analysis.report = report
     pitch_deck_analysis.save()
     pitch_deck_analysis.deck.status = PitchDeck.COMPLETE
     pitch_deck_analysis.deck.save()
     end_time = time.perf_counter()
     pitch_deck_analysis.report_time = end_time - start_time
     pitch_deck_analysis.save()
-    return response
+    return report
 
+
+def write_how_to_de_risk(pitch_deck_analysis, top_concern, objections, derisking):
+    return f"""
+# Top Investor Concerns 
+{top_concern}
+
+# Objections To Overcome
+{objections}
+
+# How To De-Risk {pitch_deck_analysis.deck.company.name}
+{derisking}        
+    """.strip()
 
 
 def combine_scores(pitch_deck_analysis: PitchDeckAnalysis):
@@ -101,7 +173,7 @@ def update_document(doc_uuid, content):
             "$set": {"content": content, "updatedAt": datetime.now(), "status": "complete"}})
 
 
-def create_report(basic_analysis, extra_analysis, investment_score, deck_uuid):
+def create_report(basic_analysis, extra_analysis, investment_score, deck_uuid, investor_report: InvestorReport):
     model = ChatOpenAI(
         model="gpt-4-turbo",
         openai_api_key=config("OPENAI_API_KEY"),
@@ -116,6 +188,8 @@ def create_report(basic_analysis, extra_analysis, investment_score, deck_uuid):
     prompt = ChatPromptTemplate.from_template(WRITE_REPORT_PROMPT)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({"basic_analysis": json.dumps(basic_analysis), "extra_analysis": extra_analysis,
-                             "investment_score": investment_score, })
+                             "investment_score": investment_score,
+                             "matches_thesis": investor_report.matches_thesis,
+                             "thesis_reasons": investor_report.thesis_reasons})
     print(f"After report has been written: {response}")
     return response

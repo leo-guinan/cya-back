@@ -25,6 +25,35 @@ functions = [
         },
     },
     {
+        "name": "risk_breakdown",
+        "description": "identify the risks, objections, and ways to de-risk a company for investment",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the risk analysis",
+                    "properties": {
+                        "top_risk": {
+                            "type": "string",
+                            "description": "The biggest risk to the company",
+                        },
+                        "objections_to_overcome": {
+                            "type": "string",
+                            "description": "The biggest objections to the company",
+                        },
+                        "how_to_de_risk": {
+                            "type": "string",
+                            "description": "The best ways to de-risk the company",
+                        },
+
+                    }
+                },
+            },
+            "required": ["results"],
+        },
+    },
+    {
         "name": "extract_company_info",
         "description": "identify information about the company pitching the investor",
         "parameters": {
