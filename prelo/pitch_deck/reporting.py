@@ -131,7 +131,7 @@ def write_how_to_de_risk(pitch_deck_analysis, top_concern, objections, derisking
 # Objections To Overcome
 {objections}
 
-# How To De-Risk {pitch_deck_analysis.deck.company.name}
+# How to Address the Concerns
 {derisking}        
     """.strip()
 
