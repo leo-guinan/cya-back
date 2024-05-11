@@ -11,6 +11,7 @@ from langchain_openai import ChatOpenAI
 from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember, CompanyScores
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, INVESTMENT_SCORE_PROMPT
+from submind.llms.submind import SubmindModelFactory
 
 
 def clean_data(data, deck_uuid):
@@ -130,18 +131,7 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
 
 
 def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid: str):
-    model = ChatOpenAI(
-        model="gpt-4-turbo",
-        openai_api_key=config("OPENAI_API_KEY"),
-        model_kwargs={
-            "extra_headers": {
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": deck_uuid
-
-            }
-        },
-        openai_api_base="https://oai.hconeai.com/v1",
-    )
+    model = SubmindModelFactory.get_model(deck_uuid, "score_investment_potential", 0.0)
     prompt = ChatPromptTemplate.from_template(INVESTMENT_SCORE_PROMPT)
     chain = prompt | model.bind(function_call={"name": "calculate_company_score"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
