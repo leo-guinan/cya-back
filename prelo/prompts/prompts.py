@@ -114,7 +114,11 @@ Here's the pitch deck you have analyzed: {deck}
 
 Here's your analysis of the deck: {analysis}
 
-Based on that analysis, write a short paragraph on the investor objections that the startup needs to be prepared to overcome.
+Based on that analysis, write a short paragraph on the investor objections 
+that the startup founder needs to be prepared to overcome.
+
+In your suggestions, address them to the founder of the company using second person language.
+
 """
 
 DERISKING_PROMPT = """You are a powerful submind for a top early-stage investor.
@@ -126,6 +130,8 @@ Here's the pitch deck you have analyzed: {deck}
 Here's your analysis of the deck: {analysis}
 
 Based on that analysis, offer 3-5 suggestions in a list format for how the company can de-risk their business.
+
+In your suggestions, address them to the founder of the company using second person language.
 """
 
 INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 
