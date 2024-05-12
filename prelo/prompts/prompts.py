@@ -131,9 +131,9 @@ Here's your analysis of the deck: {analysis}
 
 Based on that analysis, offer 3-5 suggestions in a list format for how the company can de-risk their business.
 
-In your suggestions, address them to the founder of the company using second person language.
+In your suggestions, you are speaking to them directly in a conversation.
 
-Use an informal and collaborative tone that focuses on problem-solving
+Use an informal and collaborative tone that focuses on problem-solving.
 """
 
 INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 
