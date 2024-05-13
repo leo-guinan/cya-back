@@ -161,32 +161,32 @@ def send_founder_chat_message(request):
     model = SubmindModelFactory.get_model(conversation_uuid, "chat", 0.0)
     # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
 
-    choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
-
-    path = choose_path_prompt | model.bind(function_call={"name": "choose_path"}, functions=functions) | JsonOutputFunctionsParser()
-
-    tools_available = """
-    Id: 1, Name: Investor Lookup, Description: Find investors
-    Id: 2, Name: Company Matches, Description: Find companies 
-    Id: 3, Name: Market Research, Description: Research a market
-    
-    """
-
-    path_response = path.invoke({
-        "message": message,
-        "tools": tools_available
-    })
-
-    print(path_response)
-
-    if path_response['use_tool']:
-        if path_response['tool_id'] == 1:
-            print("Investor Lookup")
-        elif path_response['tool_id'] == 2:
-            print("Company Matches")
-        elif path_response['tool_id'] == 3:
-            print("Market Research")
-        return Response({"message": "I need to look that up. Give me a moment..."})
+    # choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
+    #
+    # path = choose_path_prompt | model.bind(function_call={"name": "choose_path"}, functions=functions) | JsonOutputFunctionsParser()
+    #
+    # tools_available = """
+    # Id: 1, Name: Investor Lookup, Description: Find investors
+    # Id: 2, Name: Company Matches, Description: Find companies
+    # Id: 3, Name: Market Research, Description: Research a market
+    #
+    # """
+    #
+    # path_response = path.invoke({
+    #     "message": message,
+    #     "tools": tools_available
+    # })
+    #
+    # print(path_response)
+    #
+    # if path_response['use_tool']:
+    #     if path_response['tool_id'] == 1:
+    #         print("Investor Lookup")
+    #     elif path_response['tool_id'] == 2:
+    #         print("Company Matches")
+    #     elif path_response['tool_id'] == 3:
+    #         print("Market Research")
+    #     return Response({"message": "I need to look that up. Give me a moment..."})
 
     prompt = ChatPromptTemplate.from_messages(
         [
