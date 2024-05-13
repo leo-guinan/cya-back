@@ -189,11 +189,26 @@ Here's the information from the pitch deck: {deck}
 
 Here's the analysis you performed on the deck to see if it is ready for investment: {analysis}
 
-Begin by telling the founder what your initial impression is of their deck and whether or not 
-you think investors would be interested in investing.
+Here's the top concern investors will have about the deck: {top_concern}
 
-Then respond to their questions and provide feedback on the deck.
+Here are the objections the founder needs to overcome: {objections}
+
+Here are the suggestions for how the founder can de-risk the business: {derisking}
+
+
+Respond to their questions and provide feedback on the deck.
 
 Every response should be 25 words or less.
 
+"""
+
+
+CHOOSE_PATH_PROMPT = """Here is the message you received: {message}
+
+Based on this message, determine if one of your tools can be used..
+
+Here are the tools you have access to:
+{tools}
+
+Determine if a tool is applicable, and if so, which one.
 """

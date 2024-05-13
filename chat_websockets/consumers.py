@@ -68,3 +68,11 @@ class ChatConsumer(WebsocketConsumer):
         message_id = event["id"]
         scores = event["scores"]
         self.send(text_data=json.dumps({"message": message, "id": message_id, "scores": scores}))
+
+    def deck_report_update(self, event):
+        top_concern = event["top_concern"]
+        objections = event["objections"]
+        how_to_overcome = event["how_to_overcome"]
+        scores = event["scores"]
+        self.send(text_data=json.dumps({"top_concern": top_concern, "objections": objections,
+                                        "how_to_overcome": how_to_overcome, "scores": scores}))

@@ -14,8 +14,11 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url
 from prelo.models import PitchDeck
-from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT
+from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
+from prelo.prompts.functions import functions
 from submind.llms.submind import SubmindModelFactory
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 from submind.memory.memory import remember
 from submind.models import Goal, SubmindClient, Submind
 from submind.overrides.mongodb import MongoDBChatMessageHistoryOverride
@@ -155,8 +158,36 @@ def send_founder_chat_message(request):
     start_time = time.perf_counter()
     # Needs a submind to chat with. How does this look in practice?
     # Should have tools to pull data, knowledge to respond from, with LLM backing.
-    model = SubmindModelFactory.get_model(conversation_uuid, "chat")
+    model = SubmindModelFactory.get_model(conversation_uuid, "chat", 0.0)
     # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
+
+    choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
+
+    path = choose_path_prompt | model.bind(function_call={"name": "choose_path"}, functions=functions) | JsonOutputFunctionsParser()
+
+    tools_available = """
+    Id: 1, Name: Investor Lookup, Description: Find investors
+    Id: 2, Name: Company Matches, Description: Find companies 
+    Id: 3, Name: Market Research, Description: Research a market
+    
+    """
+
+    path_response = path.invoke({
+        "message": message,
+        "tools": tools_available
+    })
+
+    print(path_response)
+
+    if path_response['use_tool']:
+        if path_response['tool_id'] == 1:
+            print("Investor Lookup")
+        elif path_response['tool_id'] == 2:
+            print("Company Matches")
+        elif path_response['tool_id'] == 3:
+            print("Market Research")
+        return Response({"message": "I need to look that up. Give me a moment..."})
+
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -168,6 +199,7 @@ def send_founder_chat_message(request):
         ]
     )
     runnable = prompt | model
+
 
     with_message_history = RunnableWithMessageHistory(
         runnable,
@@ -183,6 +215,9 @@ def send_founder_chat_message(request):
             "mind": submind_document,
             "deck": pitch_deck.analysis.compiled_slides,
             "analysis": pitch_deck.analysis.extra_analysis,
+            "top_concern": pitch_deck.analysis.top_concern,
+            "objections": pitch_deck.analysis.objections,
+            "derisking": pitch_deck.analysis.how_to_overcome
         },
         config={"configurable": {"session_id": conversation_uuid}},
 
@@ -210,3 +245,28 @@ def get_deck_name(request):
 def check_decks(request):
     check_for_decks.delay()
     return Response({'status': 'Successful'})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_deck_report(request):
+    try:
+        body = json.loads(request.body)
+        deck_id = body["deck_id"]
+        deck = PitchDeck.objects.get(id=deck_id)
+        analysis = deck.analysis
+        print(analysis.top_concern)
+        print(analysis.objections)
+        print(analysis.how_to_overcome)
+        return Response({
+            'top_concern': analysis.top_concern,
+            'objections': analysis.objections,
+            'how_to_overcome': analysis.how_to_overcome,
+        })
+    except Exception as e:
+        print(e)
+        return Response({
+            'top_concern': "",
+            'objections': "",
+            'how_to_overcome': "",
+        })

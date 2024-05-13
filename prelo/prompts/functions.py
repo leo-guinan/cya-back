@@ -302,6 +302,26 @@ functions = [
             },
             "required": ["uuid", "slide_numbers"],
         },
-    }
+    },
+{
+        "name": "choose_path",
+        "description": "identify whether or not one of your tools can be used",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "use_tool": {
+                    "type": "boolean",
+                    "description": "whether or not to use a tool",
+
+                },
+                "tool_id": {
+                    "type": "string",
+                    "description": "the id of the tool to use if one is chosen",
+                }
+            },
+            "required": ["path"],
+        },
+    },
+
 
 ]

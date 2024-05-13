@@ -71,12 +71,72 @@ def load_records_into_pinecone(records):
 
     vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_PRELO_NAMESPACE'))
 
+def load_no_warm_intro_investor_records_into_pinecone(records):
+    pc = Pinecone(api_key=config("PINECONE_API_KEY"))
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
+                                  openai_api_base=config('OPENAI_API_BASE'),
+                                  headers={
+                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+                                  })
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"), host=config("PINECONE_HOST"))
+    vectorstore = PineconeVectorStore(index, embeddings, "text")
+    metadatas = []
+    ids = []
+    chunks_to_save = []
+    for record in records:
+        formatted_record = ", ".join(f"{key}: {value}" for key, value in record['fields'].items())
+        id = str(uuid.uuid4())
+        metadata = {
+            "airtable_id": record['id'],
+            "created_at": record['createdTime'],
+            "founders": record['fields'].get("Founders", ""),
+            "stage": record['fields'].get("Funding Stage", ""),
+            "industry": record['fields'].get("Industry", ""),
+            "funding_amount": record['fields'].get("Last Funding (USD)", ""),
+        }
+
+        chunks_to_save.append(formatted_record)
+        metadatas.append(metadata)
+        ids.append(id)
+
+    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_PRELO_NAMESPACE'))
+
+def load_angel_investor_records_into_pinecone(records):
+    pc = Pinecone(api_key=config("PINECONE_API_KEY"))
+    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
+                                  openai_api_base=config('OPENAI_API_BASE'),
+                                  headers={
+                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+                                  })
+    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"), host=config("PINECONE_HOST"))
+    vectorstore = PineconeVectorStore(index, embeddings, "text")
+    metadatas = []
+    ids = []
+    chunks_to_save = []
+    for record in records:
+        formatted_record = ", ".join(f"{key}: {value}" for key, value in record['fields'].items())
+        id = str(uuid.uuid4())
+        metadata = {
+            "airtable_id": record['id'],
+            "created_at": record['createdTime'],
+            "founders": record['fields'].get("Founders", ""),
+            "stage": record['fields'].get("Funding Stage", ""),
+            "industry": record['fields'].get("Industry", ""),
+            "funding_amount": record['fields'].get("Last Funding (USD)", ""),
+        }
+
+        chunks_to_save.append(formatted_record)
+        metadatas.append(metadata)
+        ids.append(id)
+
+    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_PRELO_NAMESPACE'))
+
 
 TOOL_DESCRIPTION = "This tool allows you to get information about startups, their founders, and their fundraising efforts"
 
 
 @traceable
-def query_records(query, data_to_send, previous_results=None):
+def query_records(query, previous_results=None):
     pc = Pinecone(api_key=config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
                                   openai_api_base=config('OPENAI_API_BASE'),

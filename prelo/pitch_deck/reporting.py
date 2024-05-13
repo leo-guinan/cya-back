@@ -111,16 +111,18 @@ def create_risk_report(pitch_deck_analysis: PitchDeckAnalysis):
     top_concern = get_top_objection(pitch_deck_analysis, submind_document)
     objections = get_investor_objections(pitch_deck_analysis, submind_document)
     derisking = get_de_risking_strategies(pitch_deck_analysis, submind_document)
-    report = write_how_to_de_risk(pitch_deck_analysis, top_concern, objections, derisking)
-    update_document(pitch_deck_analysis.deck.uuid, report)
-    pitch_deck_analysis.report = report
+    print(f"Top Concern: {top_concern}")
+    print(f"Objections: {objections}")
+    print(f"De-risking: {derisking}")
+    end_time = time.perf_counter()
+    pitch_deck_analysis.top_concern = top_concern
+    pitch_deck_analysis.objections = objections
+    pitch_deck_analysis.how_to_overcome = derisking
     pitch_deck_analysis.save()
     pitch_deck_analysis.deck.status = PitchDeck.COMPLETE
-    pitch_deck_analysis.deck.save()
-    end_time = time.perf_counter()
     pitch_deck_analysis.report_time = end_time - start_time
-    pitch_deck_analysis.save()
-    return report
+    pitch_deck_analysis.deck.save()
+    return top_concern, objections, derisking
 
 
 def write_how_to_de_risk(pitch_deck_analysis, top_concern, objections, derisking):

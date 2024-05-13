@@ -69,14 +69,7 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.REPORTING
     pitch_deck_analysis.deck.save()
-    risk_report = create_risk_report(pitch_deck_analysis)
-    message_history = MongoDBChatMessageHistoryOverride(
-        connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
-        session_id=f'{pitch_deck_analysis.deck.uuid}_chat',
-        database_name=config('SCORE_MY_DECK_DATABASE_NAME'),
-        collection_name=config('SCORE_MY_DECK_COLLECTION_NAME')
-    )
-    message_history.add_ai_message(risk_report)
+    top_concern, objections, how_to_overcome = create_risk_report(pitch_deck_analysis)
     try:
         scores = pitch_deck_analysis.deck.company.scores.first()
         score_object = {
@@ -104,8 +97,9 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
         channel_layer = get_channel_layer()
 
         async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                {"type": "deck.score.update", "message": risk_report,
-                                                 "id": pitch_deck_analysis.deck.id, "scores": score_object})
+                                                {"type": "deck.report.update",
+                                                    "top_concern": top_concern, "objections": objections,
+                                                    "how_to_overcome": how_to_overcome, "scores": score_object})
     except Exception as e:
         print(e)
         # not vital, just try to return response to chat if possible.
@@ -247,3 +241,15 @@ def process_deck(deck_id):
 def send_message_to_submind(submind_id, message):
 
     pass
+
+@app.task(name="prelo.tasks.lookup_investors")
+def lookup_investors(message:str, session_uuid:str):
+
+
+
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(session_uuid,
+                                            {"type": "chat.message",
+                                             "message": "",
+                                             "id": ""})
