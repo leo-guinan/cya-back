@@ -42,7 +42,6 @@ def remember(submind: Submind, client_id=None):
 def learn(learning: dict, submind: Submind):
     print("Beginning learning process")
     mind = remember(submind)
-    print(f"Existing mind: {mind}")
     model = SubmindModelFactory.get_model(submind.uuid, "learn")
     prompt = ChatPromptTemplate.from_template(LEARNING_PROMPT)
     output_parser = StrOutputParser()
@@ -65,6 +64,5 @@ def learn(learning: dict, submind: Submind):
         "createdAt": previous_doc["createdAt"],
         "documentUUID": previous_doc["uuid"]
     })
-    print(f"New mind: {new_mind}")
     db.documents.update_one({"uuid": submind.mindUUID}, {
         "$set": {"content": new_mind, "previousVersion": historical_uuid, "updatedAt": datetime.now()}}, upsert=True)

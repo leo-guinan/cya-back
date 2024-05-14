@@ -119,6 +119,8 @@ that the startup founder needs to be prepared to overcome.
 
 In your suggestions, address them to the founder of the company using second person language.
 
+Include a 3-word sub-header that specifically focuses on highlighting each concern.
+
 """
 
 DERISKING_PROMPT = """You are a powerful submind for a top early-stage investor.

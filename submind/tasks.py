@@ -260,71 +260,59 @@ def chat(goal_id: int):
 @app.task(name="submind.tasks.receive_messages")
 def receive_messages():
     messages = Message.objects.filter(received=False).all()
+    print(f"found {len(messages)} messages to receive...\n\n")
     for message in messages:
-        receive_message.delay(message.id)
+        model = SubmindModelFactory.get_model(message.sender.uuid, "receive_message")
+        prompt = ChatPromptTemplate.from_template(CAN_I_HELP_PROMPT)
+        chain = prompt | model.bind(function_call={"name": "can_I_help"},
+                                    functions=functions) | JsonOutputFunctionsParser()
 
+        from_submind = message.sender
+        receiving_submind = message.receiver
 
-@app.task(name="submind.tasks.receive_message")
-def receive_message(message_id: int):
-    message = Message.objects.get(id=message_id)
-    model = SubmindModelFactory.get_model(message.sender.uuid, "receive_message")
-    prompt = ChatPromptTemplate.from_template(CAN_I_HELP_PROMPT)
-    chain = prompt | model.bind(function_call={"name": "can_I_help"},
-                                functions=functions) | JsonOutputFunctionsParser()
-
-    from_submind = message.sender
-    receiving_submind = message.receiver
-
-    if receiving_submind == message.conversation.initiated_by:
-        print("receiving a message back, think I should learn something based on this")
-        print("What I knew before:\n\n")
+        if receiving_submind == message.conversation.initiated_by:
+            receiving_mind = remember(receiving_submind)
+            learn({"question": message.conversation.topic, "answer": message.content}, receiving_submind)
+            receiving_mind = remember(receiving_submind)
+            message.received = True
+            message.save()
+            return
         receiving_mind = remember(receiving_submind)
-        print(receiving_mind)
-        print("Now learning...\n\n")
-        learn({"question": message.conversation.topic, "answer": message.content}, receiving_submind)
-        print("Now I know kung fu! J/k. Here's what I know:\n\n")
-        receiving_mind = remember(receiving_submind)
-        print(receiving_mind)
+        prepped_subminds = []
+        for child in receiving_submind.subminds.all():
+            prepped_subminds.append(
+                f"Submind -- Id: {child.id} -- Name: {child.name} -- Description: {child.description}")
+        response = chain.invoke(
+            {"description": receiving_submind.description,
+             "subminds": "\n".join(prepped_subminds),
+             "topic":message.content,
+             "mind": receiving_mind
+             })
+
+        if response['can_i_help']:
+            print(f"Receiving submind, submind {receiving_submind.name}, has {len(prepped_subminds)} children. Delegating...\n\n")
+            if len(prepped_subminds) == 0:
+                print("responding...\n\n")
+                # determine whether or not should try to learn or should answer from memory. Alternate question: how much do I actually need to learn? Or at this level, is simply the specificity enought?
+                respond_prompt = ChatPromptTemplate.from_template(SUBMIND_CONVERSATION_RESPONSE)
+                response_chain = respond_prompt | model | StrOutputParser()
+                answer = response_chain.invoke(
+                    {"description": receiving_submind.description,
+                     "topic":message.content,
+                     "mind": receiving_mind
+                     })
+                Message.objects.create(uuid=str(uuid.uuid4()), content=answer, sender=receiving_submind, receiver=from_submind, conversation=message.conversation)
+
+
+            else:
+                print(f"Starting a new conversation with children")
+                passed_along = ask_children(receiving_submind.id, message.content, message.conversation.id)
+        else:
+            print("Can't help, bailing...\n\n")
+
         message.received = True
         message.save()
-        return
-    receiving_mind = remember(receiving_submind)
-    prepped_subminds = []
-    for child in receiving_submind.subminds.all():
-        prepped_subminds.append(
-            f"Submind -- Id: {child.id} -- Name: {child.name} -- Description: {child.description}")
-    response = chain.invoke(
-        {"description": receiving_submind.description,
-         "subminds": "\n".join(prepped_subminds),
-         "topic":message.content,
-         "mind": receiving_mind
-         })
-
-    if response['can_i_help']:
-        print(f"I can help, according to {response}")
-        print(f"Receiving submind, submind {receiving_submind.name}, has {len(prepped_subminds)} children. Delegating...\n\n")
-        if len(prepped_subminds) == 0:
-            print("responding...\n\n")
-            # determine whether or not should try to learn or should answer from memory. Alternate question: how much do I actually need to learn? Or at this level, is simply the specificity enought?
-            respond_prompt = ChatPromptTemplate.from_template(SUBMIND_CONVERSATION_RESPONSE)
-            response_chain = respond_prompt | model | StrOutputParser()
-            answer = response_chain.invoke(
-                {"description": receiving_submind.description,
-                 "topic":message.content,
-                 "mind": receiving_mind
-                 })
-            print(answer)
-            Message.objects.create(uuid=str(uuid.uuid4()), content=answer, sender=receiving_submind, receiver=from_submind, conversation=message.conversation)
-
-
-        else:
-            print(f"Starting a new conversation with children")
-            passed_along = ask_children(receiving_submind.id, message.content, message.conversation.id)
-    else:
-        print("Can't help, bailing...\n\n")
-
-    message.received = True
-    message.save()
+    finalize_conversations.delay()
 
 
 
@@ -415,6 +403,6 @@ def finalize_conversations():
                      "topic": msg.content,
                      "mind": mind
                      })
-                print(answer)
+                # print(answer)
                 Message.objects.create(uuid=str(uuid.uuid4()), content=answer, sender=msg.receiver, receiver=msg.sender,
                                        conversation=msg.conversation)
