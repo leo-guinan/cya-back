@@ -262,6 +262,7 @@ def receive_messages():
     messages = Message.objects.filter(received=False).all()
     print(f"found {len(messages)} messages to receive...\n\n")
     for message in messages:
+        print(f"Receiving message {message.id} from {message.sender.name} to {message.receiver.name}...\n\n")
         model = SubmindModelFactory.get_model(message.sender.uuid, "receive_message")
         prompt = ChatPromptTemplate.from_template(CAN_I_HELP_PROMPT)
         chain = prompt | model.bind(function_call={"name": "can_I_help"},
@@ -276,7 +277,7 @@ def receive_messages():
             receiving_mind = remember(receiving_submind)
             message.received = True
             message.save()
-            return
+            continue
         receiving_mind = remember(receiving_submind)
         prepped_subminds = []
         for child in receiving_submind.subminds.all():

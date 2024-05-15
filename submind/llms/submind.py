@@ -9,7 +9,7 @@ class SubmindModelFactory:
     @classmethod
     def get_model(cls, request_uuid, step, temperature=0.5):
         return ChatOpenAI(
-            model="gpt-4-turbo",
+            model="gpt-4o",
             temperature=temperature,
             openai_api_key=config("OPENAI_API_KEY"),
             model_kwargs={
