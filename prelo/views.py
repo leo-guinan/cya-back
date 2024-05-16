@@ -88,7 +88,8 @@ def get_upload_url(request):
     # get filename from request parameters
     filename = request.query_params.get('filename')
     uuid_for_document = request.query_params.get('uuid')
-    object_name = f'pitch_decks/{filename}'
+    client = request.query_params.get('client', '')
+    object_name = f'pitch_decks/{client}/{filename}' if client else f'pitch_decks/{filename}'
     bucket_name = config('PRELO_AWS_BUCKET')
     # Generate a PUT URL for uploads
     url = create_presigned_url(bucket_name, object_name)
@@ -231,6 +232,86 @@ def send_founder_chat_message(request):
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
+def send_investor_chat_message(request):
+    body = json.loads(request.body)
+    conversation_uuid = body["uuid"]
+    message = body["message"]
+    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
+    start_time = time.perf_counter()
+    # Needs a submind to chat with. How does this look in practice?
+    # Should have tools to pull data, knowledge to respond from, with LLM backing.
+    model = SubmindModelFactory.get_model(conversation_uuid, "chat", 0.0)
+    # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
+
+    choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
+
+    path = choose_path_prompt | model.bind(function_call={"name": "choose_path"}, functions=functions) | JsonOutputFunctionsParser()
+
+    tools_available = """
+    Id: 1, Name: Investor Lookup, Description: Find investors
+
+    """
+
+    path_response = path.invoke({
+        "message": message,
+        "tools": tools_available
+    })
+
+    print(path_response)
+
+    if path_response['use_tool']:
+        if path_response['tool_id'] == '1':
+            response = lookup_investors(message)
+            get_message_history(conversation_uuid).add_ai_message(response)
+            end_time = time.perf_counter()
+            print(f"Chat with lookup took {end_time - start_time} seconds")
+
+            return Response({"message": response})
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                CHAT_WITH_DECK_SYSTEM_PROMPT
+            ),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ]
+    )
+    runnable = prompt | model
+
+
+    with_message_history = RunnableWithMessageHistory(
+        runnable,
+        get_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    pitch_deck = PitchDeck.objects.filter(uuid=conversation_uuid).first()
+    submind_document = remember(submind)
+    answer = with_message_history.invoke(
+        {
+            "input": message,
+            "mind": submind_document,
+            "deck": pitch_deck.analysis.compiled_slides,
+            "analysis": pitch_deck.analysis.extra_analysis,
+            "top_concern": pitch_deck.analysis.top_concern,
+            "objections": pitch_deck.analysis.objections,
+            "derisking": pitch_deck.analysis.how_to_overcome
+        },
+        config={"configurable": {"session_id": conversation_uuid}},
+
+    )
+    end_time = time.perf_counter()
+    print(f"Chat took {end_time - start_time} seconds")
+
+    print(answer.content)
+
+    return Response({"message": answer.content})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
 def get_deck_name(request):
     body = json.loads(request.body)
     deck_id = body["deck_id"]
@@ -249,6 +330,31 @@ def check_decks(request):
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
 def get_deck_report(request):
+    try:
+        body = json.loads(request.body)
+        deck_id = body["deck_id"]
+        deck = PitchDeck.objects.get(id=deck_id)
+        analysis = deck.analysis
+        print(analysis.top_concern)
+        print(analysis.objections)
+        print(analysis.how_to_overcome)
+        return Response({
+            'top_concern': analysis.top_concern,
+            'objections': analysis.objections,
+            'how_to_overcome': analysis.how_to_overcome,
+        })
+    except Exception as e:
+        print(e)
+        return Response({
+            'top_concern': "",
+            'objections': "",
+            'how_to_overcome': "",
+        })
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_investor_deck_report(request):
     try:
         body = json.loads(request.body)
         deck_id = body["deck_id"]
