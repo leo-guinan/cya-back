@@ -32,4 +32,27 @@ functions = [
             "required": ["matches", "reason", "score"],
         },
     },
+    {
+        "name": "recommendation_analysis",
+        "description": "make a recommendation to an investor based on the analysis of a pitch deck",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "score": {
+                    "type": "number",
+                    "description": "The score of the company's investment potential from 1 to 100 based on the company analysis and the investor's thesis"
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why the company outlined in the deck matches the thesis or why it does not"
+
+                },
+                "matches": {
+                    "type": "boolean",
+                    "description": "Whether or not the company matches the investment thesis",
+                },
+            },
+            "required": ["matches", "reason", "score"],
+        },
+    }
 ]

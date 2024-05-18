@@ -310,10 +310,10 @@ def receive_messages():
                 passed_along = ask_children(receiving_submind.id, message.content, message.conversation.id)
         else:
             print("Can't help, bailing...\n\n")
-
+            Message.objects.create(uuid=str(uuid.uuid4()), content="I can't help with that.", sender=receiving_submind,
+                                   receiver=from_submind, conversation=message.conversation)
         message.received = True
         message.save()
-    finalize_conversations.delay()
 
 
 
@@ -353,6 +353,7 @@ def ask_children(submind_id, topic, previous_conversation_id=None):
             to_submind = Submind.objects.get(id=conversation["submind_id"])
             new_conversation.participants.add(to_submind)
             new_conversation.save()
+            print(f"Starting conversation between {base_submind.name} and {to_submind.name}...\n\n")
             msg = Message.objects.create(uuid=str(uuid.uuid4()), content=conversation["conversation_topic"],
                                          sender=base_submind, receiver=to_submind, conversation=new_conversation)
             messages.append(msg)
@@ -361,7 +362,6 @@ def ask_children(submind_id, topic, previous_conversation_id=None):
             print(f'Error with submind id: {conversation.get("submind_id", "Missing submind id")}')
             continue
 
-    receive_messages.delay()
 
 @app.task(name="submind.tasks.finalize_conversations")
 def finalize_conversations():

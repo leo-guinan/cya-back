@@ -63,6 +63,29 @@ class ChatConsumer(WebsocketConsumer):
         status = event["status"]
         self.send(text_data=json.dumps({"message": message, "id": message_id, "status": status}))
 
+    def deck_recommendation(self, event):
+        message_id = event["id"]
+        concerns = event["concerns"]
+        believe = event["believe"]
+        traction = event["traction"]
+        summary = event["summary"]
+        recommendation_score = event["recommendation_score"]
+        if recommendation_score > 70:
+            recommendation = "contact"
+        elif recommendation_score > 50:
+            recommendation = "maybe"
+        else:
+            recommendation = "pass"
+        recommendation_reasons = event["recommendation"]
+        self.send(text_data=json.dumps({"id": message_id,
+                                        "concerns": concerns,
+                                        "believe": believe,
+                                        "traction": traction,
+                                        "summary": summary,
+                                        "recommendation": recommendation,
+                                        "recommendation_reasons": recommendation_reasons}))
+
+
     def deck_score_update(self, event):
         message = event["message"]
         message_id = event["id"]

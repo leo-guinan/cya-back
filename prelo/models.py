@@ -1,5 +1,6 @@
 from django.db import models
 
+
 # Create your models here.
 
 class PitchDeck(models.Model):
@@ -35,6 +36,7 @@ class PitchDeck(models.Model):
     name = models.CharField(max_length=255)
     error_message = models.TextField(blank=True, null=True)
     target_audience = models.TextField(default="Founder")
+
     def __str__(self):
         return self.s3_path
 
@@ -46,6 +48,7 @@ class PitchDeckSlide(models.Model):
     s3_path = models.CharField(max_length=255, blank=True, null=True)
     category = models.CharField(max_length=255, blank=True, null=True)
     uuid = models.CharField(max_length=255, unique=True)
+
     def __str__(self):
         return f"{self.deck.name} - {self.order}"
 
@@ -62,6 +65,13 @@ class PitchDeckAnalysis(models.Model):
     top_concern = models.TextField(blank=True, null=True)
     objections = models.TextField(blank=True, null=True)
     how_to_overcome = models.TextField(blank=True, null=True)
+    recommendation = models.TextField(blank=True, null=True)
+    summary = models.TextField(blank=True, null=True)
+    traction = models.TextField(blank=True, null=True)
+    concerns = models.TextField(blank=True, null=True)
+    believe = models.TextField(blank=True, null=True)
+    investor_report = models.OneToOneField("InvestorReport", on_delete=models.CASCADE, related_name="analysis", null=True)
+
     def __str__(self):
         return self.deck.name
 
@@ -85,14 +95,17 @@ class Company(models.Model):
     competition = models.TextField(blank=True, null=True)
     partnerships = models.TextField(blank=True, null=True)
     founder_market_fit = models.TextField(blank=True, null=True)
+
     def __str__(self):
         return self.name
 
 
 class Team(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="team")
+
     def __str__(self):
         return self.name
+
 
 class TeamMember(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="members")
@@ -103,6 +116,7 @@ class TeamMember(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class CompanyScores(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="scores")
@@ -118,12 +132,12 @@ class CompanyScores(models.Model):
     traction_reasoning = models.TextField(blank=True, null=True)
     final_score = models.FloatField(default=0.0)
     final_reasoning = models.TextField(blank=True, null=True)
+
     def __str__(self):
         return self.company.name
 
 
 class Investor(models.Model):
-    firm = models.TextField()
     thesis = models.TextField()
     location = models.TextField()
     website = models.TextField()
@@ -131,9 +145,20 @@ class Investor(models.Model):
     personal_notes = models.TextField()  # anything about the investor as a person that might be relevant
 
 
+class InvestmentFirm(models.Model):
+    name = models.TextField
+    location = models.TextField
+    website = models.TextField
+    investors = models.ManyToManyField(Investor, related_name="firms")
+    thesis = models.TextField()
+    portfolio_companies = models.ManyToManyField(Company, related_name="investors")
+
+
 class InvestorReport(models.Model):
     matches_thesis = models.BooleanField()
-    thesis_reasons = models.TextField()
-    thesis_match_score = models.TextField()
+    recommendation_reasons = models.TextField()
+    investment_potential_score = models.IntegerField()
+    firm = models.ForeignKey(InvestmentFirm, on_delete=models.CASCADE, related_name="reports")
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="reports")
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="investor_reports")
+

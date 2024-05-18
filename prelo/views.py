@@ -1,10 +1,10 @@
 import json
 import time
 import uuid
-from datetime import datetime, date
 
 from decouple import config
 from django.views.decorators.csrf import csrf_exempt
+from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from rest_framework.decorators import permission_classes, renderer_classes, api_view
@@ -14,17 +14,16 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url
 from prelo.models import PitchDeck
-from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
 from prelo.prompts.functions import functions
+from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
+from prelo.tasks import check_for_decks
 from prelo.tools.company import lookup_investors
 from submind.llms.submind import SubmindModelFactory
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 from submind.memory.memory import remember
 from submind.models import Goal, SubmindClient, Submind
 from submind.overrides.mongodb import MongoDBChatMessageHistoryOverride
 from submind.tasks import think
-from prelo.tasks import check_for_decks
+
 
 # Create your views here.
 @api_view(('POST',))
@@ -77,7 +76,6 @@ def create_client(request):
 
     new_client = SubmindClient.objects.create(uuid=uuid_for_client, name="Prelo Client")
 
-
     return Response({'client_id': new_client.id})
 
 
@@ -89,7 +87,9 @@ def get_upload_url(request):
     filename = request.query_params.get('filename')
     uuid_for_document = request.query_params.get('uuid')
     client = request.query_params.get('client', '')
-    object_name = f'pitch_decks/{client}/{filename}' if client else f'pitch_decks/{filename}'
+    investor_id = request.query_params.get('investor_id', '')
+    firm_id = request.query_params.get('firm_id', '')
+    object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{filename}' if client else f'pitch_decks/{filename}'
     bucket_name = config('PRELO_AWS_BUCKET')
     # Generate a PUT URL for uploads
     url = create_presigned_url(bucket_name, object_name)
@@ -141,6 +141,7 @@ def get_scores(request):
 
     return Response({'scores': score_object, 'name': name})
 
+
 def get_message_history(session_id: str) -> MongoDBChatMessageHistoryOverride:
     return MongoDBChatMessageHistoryOverride(
         connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
@@ -148,6 +149,7 @@ def get_message_history(session_id: str) -> MongoDBChatMessageHistoryOverride:
         database_name=config("SCORE_MY_DECK_DATABASE_NAME"),
         collection_name=config("SCORE_MY_DECK_COLLECTION_NAME")
     )
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -165,7 +167,8 @@ def send_founder_chat_message(request):
 
     choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
 
-    path = choose_path_prompt | model.bind(function_call={"name": "choose_path"}, functions=functions) | JsonOutputFunctionsParser()
+    path = choose_path_prompt | model.bind(function_call={"name": "choose_path"},
+                                           functions=functions) | JsonOutputFunctionsParser()
 
     tools_available = """
     Id: 1, Name: Investor Lookup, Description: Find investors
@@ -200,7 +203,6 @@ def send_founder_chat_message(request):
     )
     runnable = prompt | model
 
-
     with_message_history = RunnableWithMessageHistory(
         runnable,
         get_message_history,
@@ -228,6 +230,7 @@ def send_founder_chat_message(request):
     print(answer.content)
 
     return Response({"message": answer.content})
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -245,7 +248,8 @@ def send_investor_chat_message(request):
 
     choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
 
-    path = choose_path_prompt | model.bind(function_call={"name": "choose_path"}, functions=functions) | JsonOutputFunctionsParser()
+    path = choose_path_prompt | model.bind(function_call={"name": "choose_path"},
+                                           functions=functions) | JsonOutputFunctionsParser()
 
     tools_available = """
     Id: 1, Name: Investor Lookup, Description: Find investors
@@ -280,7 +284,6 @@ def send_investor_chat_message(request):
     )
     runnable = prompt | model
 
-
     with_message_history = RunnableWithMessageHistory(
         runnable,
         get_message_history,
@@ -309,6 +312,7 @@ def send_investor_chat_message(request):
 
     return Response({"message": answer.content})
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
@@ -319,12 +323,14 @@ def get_deck_name(request):
     deck = PitchDeck.objects.get(id=deck_id)
     return Response({'name': deck.name})
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
 def check_decks(request):
     check_for_decks.delay()
     return Response({'status': 'Successful'})
+
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -351,6 +357,7 @@ def get_deck_report(request):
             'how_to_overcome': "",
         })
 
+
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
@@ -360,18 +367,27 @@ def get_investor_deck_report(request):
         deck_id = body["deck_id"]
         deck = PitchDeck.objects.get(id=deck_id)
         analysis = deck.analysis
-        print(analysis.top_concern)
-        print(analysis.objections)
-        print(analysis.how_to_overcome)
+        if analysis.investor_report.investment_potential_score > 70:
+            recommendation = "contact"
+        elif analysis.investor_report.investment_potential_score > 50:
+            recommendation = "maybe"
+        else:
+            recommendation = "pass"
         return Response({
-            'top_concern': analysis.top_concern,
-            'objections': analysis.objections,
-            'how_to_overcome': analysis.how_to_overcome,
+            "concerns": analysis.concerns,
+            "believe": analysis.believe,
+            "traction": analysis.traction,
+            "summary": analysis.summary,
+            "recommendation": recommendation,
+            "recommendation_reasons": analysis.investor_report.recommendation_reasons,
         })
     except Exception as e:
         print(e)
         return Response({
-            'top_concern': "",
-            'objections': "",
-            'how_to_overcome': "",
+             "concerns": "",
+            "believe": "",
+            "traction": "",
+            "summary": "",
+            "recommendation": "",
+            "recommendation_reasons": "",
         })

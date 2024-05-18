@@ -9,6 +9,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember, CompanyScores
+from prelo.pitch_deck.investor.believe import believe_analysis
+from prelo.pitch_deck.investor.concerns import concerns_analysis
+from prelo.pitch_deck.investor.recommendation import recommendation_analysis
+from prelo.pitch_deck.investor.summary import summarize_deck
+from prelo.pitch_deck.investor.traction import traction_analysis
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, INVESTMENT_SCORE_PROMPT
 from submind.llms.submind import SubmindModelFactory
@@ -128,6 +133,32 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
     end_time = time.perf_counter()
     pitch_deck_analysis.analysis_time = end_time - start_time
     pitch_deck_analysis.save()
+
+def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
+    start_time = time.perf_counter()
+    initial_analysis_data = initial_analysis(pitch_deck_analysis.compiled_slides, pitch_deck_analysis.deck.id,
+                                             pitch_deck_analysis.deck.uuid)
+    pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
+    pitch_deck_analysis.save()
+    # update the name of the deck with the name of the company
+    pitch_deck_analysis.deck.name = pitch_deck_analysis.deck.company.name
+    pitch_deck_analysis.deck.save()
+    print("Initial analysis complete, starting extra analysis")
+    summarize_deck(pitch_deck_analysis)
+    print("Summary complete")
+    traction_analysis(pitch_deck_analysis)
+    print("Traction complete")
+    concerns_analysis(pitch_deck_analysis)
+    print("Concerns complete")
+    believe_analysis(pitch_deck_analysis)
+    print("Believe complete")
+    recommendation_analysis(pitch_deck_analysis)
+    print("Recommendation complete")
+    end_time = time.perf_counter()
+    pitch_deck_analysis.analysis_time = end_time - start_time
+    pitch_deck_analysis.save()
+
+
 
 
 def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid: str):

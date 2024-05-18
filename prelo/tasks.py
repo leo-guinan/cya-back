@@ -1,8 +1,9 @@
 import tempfile
 import time
 import uuid
+
 from asgiref.sync import async_to_sync
-from celery import group, chord, signature
+from celery import chord, signature
 from channels.layers import get_channel_layer
 from decouple import config
 from langchain_core.messages import HumanMessage
@@ -12,11 +13,10 @@ from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
 from prelo.investor.analysis import check_deck_against_thesis
 from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor
-from prelo.pitch_deck.analysis import analyze_deck
-from prelo.pitch_deck.processing import prep_deck_for_analysis, pdf_to_images, encode_image, cleanup_local_file
+from prelo.pitch_deck.analysis import analyze_deck, investor_analysis
+from prelo.pitch_deck.processing import pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
 from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
-from submind.overrides.mongodb import MongoDBChatMessageHistoryOverride
 
 
 @app.task(name="prelo.tasks.check_for_decks")
@@ -30,11 +30,13 @@ def check_for_decks():
             deck.save()
             process_deck.delay(deck.id)
 
+
 @app.task(name="prelo.tasks.check_for_analysis")
 def check_for_analysis():
     decks_to_analyze = PitchDeckAnalysis.objects.filter(deck__status=PitchDeck.READY_FOR_ANALYSIS).all()
     for deck_analysis in decks_to_analyze:
         analyze_deck_task.delay(deck_analysis.id)
+
 
 @app.task(name="prelo.tasks.check_for_reporting")
 def check_for_reporting():
@@ -42,15 +44,13 @@ def check_for_reporting():
     for deck_analysis in decks_to_report:
         create_report_for_deck.delay(deck_analysis.id)
 
+
 @app.task(name="prelo.tasks.thesis_check")
 def thesis_check(pitch_deck_analysis_id: int):
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.REPORTING
     pitch_deck_analysis.deck.save()
     investor_report = check_deck_against_thesis(pitch_deck_analysis)
-
-
-
 
 
 @app.task(name="prelo.tasks.create_report_for_deck")
@@ -98,35 +98,54 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
 
         async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
                                                 {"type": "deck.report.update",
-                                                    "top_concern": top_concern, "objections": objections,
-                                                    "how_to_overcome": how_to_overcome, "scores": score_object})
+                                                 "top_concern": top_concern, "objections": objections,
+                                                 "how_to_overcome": how_to_overcome, "scores": score_object})
     except Exception as e:
         print(e)
         # not vital, just try to return response to chat if possible.
     return
+
 
 @app.task(name="prelo.tasks.analyze_deck")
 def analyze_deck_task(pitch_deck_analysis_id: int):
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.ANALYZING
     pitch_deck_analysis.deck.save()
-    analyze_deck(pitch_deck_analysis)
-    if pitch_deck_analysis.deck.target_audience == "Founder":
-        identify_biggest_risk.delay(pitch_deck_analysis.id)
+    if "prelovc" in pitch_deck_analysis.deck.s3_path:
+        investor_analysis(pitch_deck_analysis)
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
+                                                    {"type": "deck.recommendation",
+                                                     "id": pitch_deck_analysis.deck.id,
+                                                     "name": pitch_deck_analysis.deck.name,
+                                                     "concerns": pitch_deck_analysis.concerns,
+                                                     "believe": pitch_deck_analysis.believe,
+                                                     "traction": pitch_deck_analysis.traction,
+                                                     "summary": pitch_deck_analysis.summary,
+                                                     "recommendation_score": pitch_deck_analysis.investor_report.investment_potential_score,
+                                                     "recommendation": pitch_deck_analysis.investor_report.recommendation_reasons,
+                                                     })
+        except Exception as e:
+            print(e)
+            # not vital, just try to return response to chat if possible.
+        return
     else:
-        create_report_for_deck.delay(pitch_deck_analysis.id)
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                {"type": "deck.status.update", "message": "",
-                                                 "id": pitch_deck_analysis.deck.id,
-                                                 "status": pitch_deck_analysis.deck.status,
-                                                 "name": pitch_deck_analysis.deck.name
-                                                 })
-    except Exception as e:
-        print(e)
-        # not vital, just try to return response to chat if possible.
-    return
+        analyze_deck(pitch_deck_analysis)
+        identify_biggest_risk.delay(pitch_deck_analysis.id)
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
+                                                    {"type": "deck.status.update", "message": "",
+                                                     "id": pitch_deck_analysis.deck.id,
+                                                     "status": pitch_deck_analysis.deck.status,
+                                                     "name": pitch_deck_analysis.deck.name
+                                                     })
+        except Exception as e:
+            print(e)
+            # not vital, just try to return response to chat if possible.
+        return
+
 
 @app.task(name="process_slide")
 def process_slide(slide_id):
@@ -167,6 +186,7 @@ def process_slide(slide_id):
     slide.save()
 
     cleanup_local_file(image_uri)
+
 
 @app.task(name="processing_callback")
 def processing_callback(results, deck_id, start_time):
@@ -236,18 +256,13 @@ def process_deck(deck_id):
     result_chord = task_chord(callback)
 
 
-
 @app.task(name="prelo.tasks.send_message_to_submind")
 def send_message_to_submind(submind_id, message):
-
     pass
 
+
 @app.task(name="prelo.tasks.lookup_investors")
-def lookup_investors(message:str, session_uuid:str):
-
-
-
-
+def lookup_investors(message: str, session_uuid: str):
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(session_uuid,
                                             {"type": "chat.message",
