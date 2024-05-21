@@ -341,13 +341,11 @@ def get_deck_report(request):
         deck_id = body["deck_id"]
         deck = PitchDeck.objects.get(id=deck_id)
         analysis = deck.analysis
-        print(analysis.top_concern)
-        print(analysis.objections)
-        print(analysis.how_to_overcome)
         return Response({
             'top_concern': analysis.top_concern,
             'objections': analysis.objections,
             'how_to_overcome': analysis.how_to_overcome,
+            'pitch_deck_analysis': analysis.concerns
         })
     except Exception as e:
         print(e)
@@ -355,6 +353,7 @@ def get_deck_report(request):
             'top_concern': "",
             'objections': "",
             'how_to_overcome': "",
+            'pitch_deck_analysis': ""
         })
 
 

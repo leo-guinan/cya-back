@@ -14,6 +14,7 @@ from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_fro
 from prelo.investor.analysis import check_deck_against_thesis
 from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor
 from prelo.pitch_deck.analysis import analyze_deck, investor_analysis
+from prelo.pitch_deck.investor.concerns import concerns_analysis
 from prelo.pitch_deck.processing import pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
 from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
@@ -70,6 +71,8 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
     pitch_deck_analysis.deck.status = PitchDeck.REPORTING
     pitch_deck_analysis.deck.save()
     top_concern, objections, how_to_overcome = create_risk_report(pitch_deck_analysis)
+    analysis = concerns_analysis(pitch_deck_analysis)
+
     try:
         scores = pitch_deck_analysis.deck.company.scores.first()
         score_object = {
@@ -99,7 +102,9 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
         async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
                                                 {"type": "deck.report.update",
                                                  "top_concern": top_concern, "objections": objections,
-                                                 "how_to_overcome": how_to_overcome, "scores": score_object})
+                                                 "how_to_overcome": how_to_overcome,
+                                                 'pitch_deck_analysis': analysis,
+                                                 "scores": score_object})
     except Exception as e:
         print(e)
         # not vital, just try to return response to chat if possible.

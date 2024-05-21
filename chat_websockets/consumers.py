@@ -96,6 +96,9 @@ class ChatConsumer(WebsocketConsumer):
         top_concern = event["top_concern"]
         objections = event["objections"]
         how_to_overcome = event["how_to_overcome"]
+        pitch_deck_analysis = event["pitch_deck_analysis"]
         scores = event["scores"]
         self.send(text_data=json.dumps({"top_concern": top_concern, "objections": objections,
-                                        "how_to_overcome": how_to_overcome, "scores": scores}))
+                                        "how_to_overcome": how_to_overcome,
+                                        "pitch_deck_analysis": pitch_deck_analysis,
+                                        "scores": scores}))
