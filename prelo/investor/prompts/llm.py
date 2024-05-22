@@ -54,5 +54,32 @@ functions = [
             },
             "required": ["matches", "reason", "score"],
         },
+    },
+    {
+        "name": "concerns_analysis",
+        "description": "identify the top 5 concerns an investor might have about a company based on the pitch deck",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "concerns": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "concern": {
+                                "type": "string",
+                                "description": "The concern an investor might have"
+                            },
+                            "title": {
+                                "type": "string",
+                                "description": "The title of the concern"
+                            }
+                        }
+                    },
+                }
+
+            },
+            "description": "The top 5 concerns an investor might have about the company"
+        },
     }
 ]
