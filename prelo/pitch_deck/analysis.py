@@ -15,8 +15,11 @@ from prelo.pitch_deck.investor.recommendation import recommendation_analysis
 from prelo.pitch_deck.investor.summary import summarize_deck
 from prelo.pitch_deck.investor.traction import traction_analysis
 from prelo.prompts.functions import functions
-from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, INVESTMENT_SCORE_PROMPT
+from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, INVESTMENT_SCORE_PROMPT, \
+    IDENTIFY_UPDATES_PROMPT, DID_FOUNDER_ADDRESS_CONCERNS_PROMPT
 from submind.llms.submind import SubmindModelFactory
+from submind.memory.memory import remember
+from submind.models import Submind
 
 
 def clean_data(data, deck_uuid):
@@ -42,18 +45,7 @@ def clean_data(data, deck_uuid):
 
 
 def initial_analysis(data, deck_id, deck_uuid):
-    model = ChatOpenAI(
-        model="gpt-4-turbo",
-        openai_api_key=config("OPENAI_API_KEY"),
-        model_kwargs={
-            "extra_headers": {
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": deck_uuid
-
-            }
-        },
-        openai_api_base="https://oai.hconeai.com/v1",
-    )
+    model = SubmindModelFactory.get_model(deck_uuid, "initial_analysis", 0.0)
     prompt = ChatPromptTemplate.from_template(ANALYSIS_PROMPT)
     chain = prompt | model.bind(function_call={"name": "extract_company_info"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
@@ -86,29 +78,18 @@ def initial_analysis(data, deck_id, deck_uuid):
     company.competition = response.get('competition', '')
     company.partnerships = response.get('partnerships', '')
     company.founder_market_fit = response.get('founder_market_fit', '')
-    company.deck_id = deck_id
     company.save()
-
+    deck = PitchDeck.objects.get(id=deck_id)
+    deck.company = company
+    deck.save()
     return response
 
 
 def extra_analysis(data, summary, deck_uuid):
-    model = ChatOpenAI(
-        model="gpt-4-turbo",
-        openai_api_key=config("OPENAI_API_KEY"),
-        model_kwargs={
-            "extra_headers": {
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": deck_uuid
-
-            }
-        },
-        openai_api_base="https://oai.hconeai.com/v1",
-    )
+    model = SubmindModelFactory.get_model(deck_uuid, "extra_analysis", 0.0)
     prompt = ChatPromptTemplate.from_template(EXTRA_ANALYSIS_PROMPT)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({"data": data, "summary": summary})
-    print(f"After extra analysis: {response}")
     return response
 
 
@@ -118,9 +99,6 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
                                              pitch_deck_analysis.deck.uuid)
     pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
     pitch_deck_analysis.save()
-    # update the name of the deck with the name of the company
-    pitch_deck_analysis.deck.name = pitch_deck_analysis.deck.company.name
-    pitch_deck_analysis.deck.save()
     print("Initial analysis complete, starting extra analysis")
     extra_analysis_data = extra_analysis(pitch_deck_analysis.compiled_slides, initial_analysis_data, pitch_deck_analysis.deck.uuid)
     pitch_deck_analysis.extra_analysis = extra_analysis_data
@@ -133,6 +111,48 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
     end_time = time.perf_counter()
     pitch_deck_analysis.analysis_time = end_time - start_time
     pitch_deck_analysis.save()
+
+def analyze_deck_changes(new_deck, old_deck):
+    submind = Submind.objects.get(config("PRELO_SUBMIND_ID"))
+    submind_document = remember(submind)
+
+    model = SubmindModelFactory.get_model(submind.uuid, "identify_updates")
+
+    prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT)
+    chain = prompt | model | StrOutputParser()
+
+    response = chain.invoke(
+        {"mind": submind_document,
+         "earlier_deck": old_deck,
+         "newer_deck": new_deck
+         })
+    return response
+
+def check_against_concerns(deck_changes:str, previous_deck_analysis:PitchDeckAnalysis):
+    submind = Submind.objects.get(config("PRELO_SUBMIND_ID"))
+    submind_document = remember(submind)
+    model = SubmindModelFactory.get_model(submind.uuid, "addressed_concerns")
+
+    prompt = ChatPromptTemplate.from_template(DID_FOUNDER_ADDRESS_CONCERNS_PROMPT)
+    chain = prompt | model | StrOutputParser()
+
+    addressed = chain.invoke(
+        {"mind": submind_document,
+         "changes": deck_changes,
+         "top_concern": previous_deck_analysis.top_concern,
+         "concerns": previous_deck_analysis.objections,
+         "derisking": previous_deck_analysis.how_to_overcome
+         })
+    return addressed
+
+def compare_deck_to_previous_version(pitch_deck_analysis: PitchDeckAnalysis):
+    previous_deck = PitchDeck.objects.filter(company=pitch_deck_analysis.deck.company, version=(pitch_deck_analysis.deck.version-1)).first()
+    if previous_deck:
+        previous_deck_analysis = previous_deck.analysis
+        deck_changes = analyze_deck_changes(pitch_deck_analysis.compiled_slides, previous_deck_analysis.compiled_slides)
+        concerns_addressed = check_against_concerns(deck_changes, previous_deck_analysis)
+
+    pass
 
 def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     start_time = time.perf_counter()
