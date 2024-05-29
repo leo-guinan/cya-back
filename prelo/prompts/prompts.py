@@ -259,3 +259,39 @@ Here is the traction, TAM, and Team analysis: {traction}
 Based on this information, provide an integer score from 1 to 100 for the company's investment potential, and the reasoning for that score, and whether or not the company matches the investment thesis.
 
 """
+
+IDENTIFY_UPDATES_PROMPT = """You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+You are reviewing an updated version of a pitch deck.
+
+Here's the earlier version: {earlier_deck}
+
+Here's the newer version: {newer_deck}
+
+
+Identify the changes that have been made to the deck. Focus on the parts added, the parts removed, and the parts changed.
+"""
+
+DID_FOUNDER_ADDRESS_CONCERNS_PROMPT = """You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+You are reviewing an updated version of a pitch deck.
+
+Here are the changes made to the deck: {changes}
+
+Here was the top investor concern you noted: {top_concern}
+
+Here are the concerns you noted: {concerns}
+
+Here are they ways you suggested the founder could de-risk the business: {derisking}
+
+Based on the changes, determine how well the founder addressed the concerns.
+Are there concerns that weren't addressed? 
+
+Do you feel that the risk of investing in this business is lower than before?
+
+Finally, are there any new concerns based on information added or removed?
+"""

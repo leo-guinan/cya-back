@@ -191,3 +191,10 @@ Here is the current topic another submind wants to talk about: {topic}
 Here's what you currently know: {mind}
 
 """
+
+
+SUBMIND_CHAT_PROMPT = """You are a powerful submind that is focused on {description}.
+
+Here is what you know so far: {mind}
+
+"""
