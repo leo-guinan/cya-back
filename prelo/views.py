@@ -104,7 +104,7 @@ def get_scores(request):
     pitch_deck_id = request.query_params.get('pitch_deck_id')
     pitch_deck = PitchDeck.objects.get(id=pitch_deck_id)
     try:
-        scores = pitch_deck.company.scores.first()
+        scores = pitch_deck.scores.first()
         score_object = {
             'market': {
                 'score': scores.market_opportunity,

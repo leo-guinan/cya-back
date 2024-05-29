@@ -36,6 +36,8 @@ class PitchDeck(models.Model):
     name = models.CharField(max_length=255)
     error_message = models.TextField(blank=True, null=True)
     target_audience = models.TextField(default="Founder")
+    company = models.ForeignKey("Company", on_delete=models.CASCADE, related_name="decks", null=True)
+    version = models.IntegerField(default=1, null=True)
 
     def __str__(self):
         return self.s3_path
@@ -51,6 +53,14 @@ class PitchDeckSlide(models.Model):
 
     def __str__(self):
         return f"{self.deck.name} - {self.order}"
+
+class UpdatedVersionAnalysis(models.Model):
+    previous_deck = models.ForeignKey(PitchDeck, on_delete=models.CASCADE, related_name="previous_version")
+    new_deck = models.ForeignKey(PitchDeck, on_delete=models.CASCADE, related_name="new_version")
+    risks_addressed = models.TextField(blank=True, null=True)
+    slides_changed = models.TextField(blank=True, null=True)
+    questions_answered = models.TextField(blank=True, null=True)
+    still_missing = models.TextField(blank=True, null=True)
 
 
 class PitchDeckAnalysis(models.Model):
@@ -77,7 +87,6 @@ class PitchDeckAnalysis(models.Model):
 
 
 class Company(models.Model):
-    deck = models.OneToOneField(PitchDeck, on_delete=models.CASCADE, related_name="company", null=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     industry = models.CharField(max_length=255, blank=True, null=True)
     founded = models.DateField(blank=True, null=True)
@@ -119,7 +128,7 @@ class TeamMember(models.Model):
 
 
 class CompanyScores(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="scores")
+    deck = models.OneToOneField(PitchDeck, on_delete=models.CASCADE, related_name="scores", null=True)
     market_opportunity = models.FloatField(default=0.0)
     market_reasoning = models.TextField(blank=True, null=True)
     team = models.FloatField(default=0.0)
@@ -134,7 +143,7 @@ class CompanyScores(models.Model):
     final_reasoning = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return self.company.name
+        return self.deck.company.name
 
 
 class Investor(models.Model):
