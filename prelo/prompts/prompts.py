@@ -364,3 +364,8 @@ Do you feel that the risk of investing in this business is lower than before?
 
 Finally, are there any new concerns based on information added or removed?
 """
+
+COLD_OUTREACH_PROMPT = """You are an expert at cold outreach to investors.
+
+
+"""

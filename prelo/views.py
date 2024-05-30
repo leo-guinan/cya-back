@@ -18,6 +18,7 @@ from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
 from prelo.tasks import check_for_decks
 from prelo.tools.company import lookup_investors
+from prelo.tools.emails import write_cold_outreach_message
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Goal, SubmindClient, Submind
@@ -187,7 +188,7 @@ def send_founder_chat_message(request):
 
     tools_available = """
     Id: 1, Name: Investor Lookup, Description: Find investors
-
+    Id: 2, Name: Write Cold Outreach, Description: Write a cold outreach email
     """
 
     path_response = path.invoke({
@@ -200,6 +201,14 @@ def send_founder_chat_message(request):
     if path_response['use_tool']:
         if path_response['tool_id'] == '1':
             response = lookup_investors(message)
+            get_message_history(conversation_uuid).add_ai_message(response)
+            end_time = time.perf_counter()
+            print(f"Chat with lookup took {end_time - start_time} seconds")
+
+            return Response({"message": response})
+        elif path_response['tool_id'] == '2':
+            chat_history = get_message_history(conversation_uuid)
+            response = write_cold_outreach_message(message, chat_history)
             get_message_history(conversation_uuid).add_ai_message(response)
             end_time = time.perf_counter()
             print(f"Chat with lookup took {end_time - start_time} seconds")
