@@ -37,4 +37,5 @@ urlpatterns = [
     path('api/task/', include('task.urls')),
     path('api/document/', include('document.urls')),
     path('api/prelo/', include('prelo.urls')),
+    path('api/submind/', include('submind.urls')),
 ]

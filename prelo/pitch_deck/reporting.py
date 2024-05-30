@@ -9,12 +9,11 @@ from langchain_openai import ChatOpenAI
 from pymongo import MongoClient
 
 from prelo.models import PitchDeck, PitchDeckAnalysis, InvestorReport
-from prelo.prompts.prompts import WRITE_REPORT_PROMPT, RISK_PROMPT, TOP_CONCERN_PROMPT, OBJECTIONS_PROMPT, \
-    DERISKING_PROMPT
-from prelo.prompts.functions import functions
+from prelo.prompts.prompts import WRITE_REPORT_PROMPT, TOP_CONCERN_PROMPT, OBJECTIONS_PROMPT, \
+    DERISKING_PROMPT, UPDATED_TOP_CONCERN_PROMPT, UPDATED_OBJECTIONS_PROMPT, UPDATED_DERISKING_PROMPT
+from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Submind
-from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 
 
 def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis, investor_report: InvestorReport):
@@ -35,18 +34,7 @@ def combine_into_report(pitch_deck_analysis: PitchDeckAnalysis, investor_report:
 
 
 def get_top_objection(pitch_deck_analysis: PitchDeckAnalysis, submind_document):
-    model = ChatOpenAI(
-        model="gpt-4-turbo",
-        openai_api_key=config("OPENAI_API_KEY"),
-        model_kwargs={
-            "extra_headers": {
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid,
-                "Helicone-Property-STEP": "risk_report"
-            }
-        },
-        openai_api_base="https://oai.hconeai.com/v1",
-    )
+    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "top_concerns")
     prompt = ChatPromptTemplate.from_template(TOP_CONCERN_PROMPT)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({
@@ -56,20 +44,20 @@ def get_top_objection(pitch_deck_analysis: PitchDeckAnalysis, submind_document):
     })
     return response
 
+def get_updated_top_objection(pitch_deck_analysis:PitchDeckAnalysis, submind_document, deck_changes, thoughts, previous_concern):
+    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "updated_top_concerns")
+    prompt = ChatPromptTemplate.from_template(UPDATED_TOP_CONCERN_PROMPT)
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({
+        "mind": submind_document,
+        "changes": deck_changes,
+        "thoughts": thoughts,
+        "top_concern": previous_concern,
+    })
+    return response
 
 def get_investor_objections(pitch_deck_analysis: PitchDeckAnalysis, submind_document):
-    model = ChatOpenAI(
-        model="gpt-4-turbo",
-        openai_api_key=config("OPENAI_API_KEY"),
-        model_kwargs={
-            "extra_headers": {
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid,
-                "Helicone-Property-STEP": "risk_report"
-            }
-        },
-        openai_api_base="https://oai.hconeai.com/v1",
-    )
+    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "objections")
     prompt = ChatPromptTemplate.from_template(OBJECTIONS_PROMPT)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({
@@ -79,20 +67,21 @@ def get_investor_objections(pitch_deck_analysis: PitchDeckAnalysis, submind_docu
     })
     return response
 
+def get_updated_investor_objections(pitch_deck_analysis: PitchDeckAnalysis, submind_document, deck_changes, thoughts, previous_objections):
+    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "updated_objections")
+    prompt = ChatPromptTemplate.from_template(UPDATED_OBJECTIONS_PROMPT)
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({
+        "mind": submind_document,
+        "changes": deck_changes,
+        "thoughts": thoughts,
+        "objections": previous_objections,
+    })
+    return response
+
 
 def get_de_risking_strategies(pitch_deck_analysis: PitchDeckAnalysis, submind_document):
-    model = ChatOpenAI(
-        model="gpt-4-turbo",
-        openai_api_key=config("OPENAI_API_KEY"),
-        model_kwargs={
-            "extra_headers": {
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": pitch_deck_analysis.deck.uuid,
-                "Helicone-Property-STEP": "risk_report"
-            }
-        },
-        openai_api_base="https://oai.hconeai.com/v1",
-    )
+    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "de_risking")
     prompt = ChatPromptTemplate.from_template(DERISKING_PROMPT)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({
@@ -102,6 +91,17 @@ def get_de_risking_strategies(pitch_deck_analysis: PitchDeckAnalysis, submind_do
     })
     return response
 
+def get_updated_de_risking_strategies(pitch_deck_analysis: PitchDeckAnalysis, submind_document, deck_changes, thoughts, previous_derisking):
+    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "updated_de_risking")
+    prompt = ChatPromptTemplate.from_template(UPDATED_DERISKING_PROMPT)
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({
+        "mind": submind_document,
+        "changes": deck_changes,
+        "thoughts": thoughts,
+        "derisking": previous_derisking,
+    })
+    return response
 
 def create_risk_report(pitch_deck_analysis: PitchDeckAnalysis):
     start_time = time.perf_counter()
@@ -124,6 +124,26 @@ def create_risk_report(pitch_deck_analysis: PitchDeckAnalysis):
     pitch_deck_analysis.deck.save()
     return top_concern, objections, derisking
 
+def create_updated_risk_report(pitch_deck_analysis: PitchDeckAnalysis, deck_changes, thoughts, previous_analysis):
+    start_time = time.perf_counter()
+    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
+    submind_document = remember(submind)
+
+    top_concern = get_updated_top_objection(pitch_deck_analysis, submind_document, deck_changes, thoughts, previous_analysis.top_concern)
+    objections = get_updated_investor_objections(pitch_deck_analysis, submind_document, deck_changes, thoughts, previous_analysis.objections)
+    derisking = get_updated_de_risking_strategies(pitch_deck_analysis, submind_document, deck_changes, thoughts, previous_analysis.how_to_overcome)
+    print(f"Top Concern: {top_concern}")
+    print(f"Objections: {objections}")
+    print(f"De-risking: {derisking}")
+    end_time = time.perf_counter()
+    pitch_deck_analysis.top_concern = top_concern
+    pitch_deck_analysis.objections = objections
+    pitch_deck_analysis.how_to_overcome = derisking
+    pitch_deck_analysis.save()
+    pitch_deck_analysis.deck.status = PitchDeck.COMPLETE
+    pitch_deck_analysis.report_time = end_time - start_time
+    pitch_deck_analysis.deck.save()
+    return top_concern, objections, derisking
 
 def write_how_to_de_risk(pitch_deck_analysis, top_concern, objections, derisking):
     return f"""

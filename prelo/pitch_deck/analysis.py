@@ -10,13 +10,14 @@ from langchain_openai import ChatOpenAI
 
 from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember, CompanyScores
 from prelo.pitch_deck.investor.believe import believe_analysis
-from prelo.pitch_deck.investor.concerns import concerns_analysis
+from prelo.pitch_deck.investor.concerns import concerns_analysis, updated_concerns_analysis
 from prelo.pitch_deck.investor.recommendation import recommendation_analysis
 from prelo.pitch_deck.investor.summary import summarize_deck
 from prelo.pitch_deck.investor.traction import traction_analysis
+from prelo.pitch_deck.reporting import create_updated_risk_report
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, INVESTMENT_SCORE_PROMPT, \
-    IDENTIFY_UPDATES_PROMPT, DID_FOUNDER_ADDRESS_CONCERNS_PROMPT
+    IDENTIFY_UPDATES_PROMPT, DID_FOUNDER_ADDRESS_CONCERNS_PROMPT, UPDATE_INVESTMENT_SCORE_PROMPT
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Submind
@@ -100,7 +101,8 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
     pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
     pitch_deck_analysis.save()
     print("Initial analysis complete, starting extra analysis")
-    extra_analysis_data = extra_analysis(pitch_deck_analysis.compiled_slides, initial_analysis_data, pitch_deck_analysis.deck.uuid)
+    extra_analysis_data = extra_analysis(pitch_deck_analysis.compiled_slides, initial_analysis_data,
+                                         pitch_deck_analysis.deck.uuid)
     pitch_deck_analysis.extra_analysis = extra_analysis_data
     pitch_deck_analysis.save()
     scored_data = score_investment_potential(pitch_deck_analysis, pitch_deck_analysis.deck.uuid)
@@ -112,8 +114,9 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
     pitch_deck_analysis.analysis_time = end_time - start_time
     pitch_deck_analysis.save()
 
+
 def analyze_deck_changes(new_deck, old_deck):
-    submind = Submind.objects.get(config("PRELO_SUBMIND_ID"))
+    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
     submind_document = remember(submind)
 
     model = SubmindModelFactory.get_model(submind.uuid, "identify_updates")
@@ -128,8 +131,9 @@ def analyze_deck_changes(new_deck, old_deck):
          })
     return response
 
-def check_against_concerns(deck_changes:str, previous_deck_analysis:PitchDeckAnalysis):
-    submind = Submind.objects.get(config("PRELO_SUBMIND_ID"))
+
+def check_against_concerns(deck_changes: str, previous_deck_analysis: PitchDeckAnalysis):
+    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
     submind_document = remember(submind)
     model = SubmindModelFactory.get_model(submind.uuid, "addressed_concerns")
 
@@ -145,14 +149,27 @@ def check_against_concerns(deck_changes:str, previous_deck_analysis:PitchDeckAna
          })
     return addressed
 
-def compare_deck_to_previous_version(pitch_deck_analysis: PitchDeckAnalysis):
-    previous_deck = PitchDeck.objects.filter(company=pitch_deck_analysis.deck.company, version=(pitch_deck_analysis.deck.version-1)).first()
-    if previous_deck:
-        previous_deck_analysis = previous_deck.analysis
-        deck_changes = analyze_deck_changes(pitch_deck_analysis.compiled_slides, previous_deck_analysis.compiled_slides)
-        concerns_addressed = check_against_concerns(deck_changes, previous_deck_analysis)
 
-    pass
+def compare_deck_to_previous_version(pitch_deck_analysis: PitchDeckAnalysis):
+    previous_deck = PitchDeck.objects.filter(user_id=pitch_deck_analysis.deck.user_id,
+                                             version=(pitch_deck_analysis.deck.version - 1)).first()
+    print(f"Previous deck: {previous_deck}")
+    if not previous_deck:
+        raise "No previous deck found"
+    previous_deck_analysis = previous_deck.analysis
+    previous_scores = previous_deck_analysis.deck.scores
+    deck_changes = analyze_deck_changes(pitch_deck_analysis.compiled_slides, previous_deck_analysis.compiled_slides)
+    concerns_addressed = check_against_concerns(deck_changes, previous_deck_analysis)
+    updated_scores = update_scores(pitch_deck_analysis, deck_changes, concerns_addressed, previous_deck_analysis.report)
+    top_concern, objections, how_to_overcome = create_updated_risk_report(pitch_deck_analysis, deck_changes,
+                                                                          concerns_addressed, previous_deck_analysis)
+
+    updated_concerns = updated_concerns_analysis(pitch_deck_analysis,
+                                                 deck_changes,
+                                                 concerns_addressed,
+                                                 previous_deck_analysis.concerns)
+    return top_concern, objections, how_to_overcome, updated_concerns, previous_scores, updated_scores
+
 
 def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     start_time = time.perf_counter()
@@ -177,8 +194,6 @@ def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     end_time = time.perf_counter()
     pitch_deck_analysis.analysis_time = end_time - start_time
     pitch_deck_analysis.save()
-
-
 
 
 def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid: str):
@@ -207,9 +222,48 @@ def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid
     scores.traction = traction['score']
     scores.traction_reasoning = traction['reasoning']
     scores.final_score = mean([market['score'], team['score'], product['score'], traction['score']])
+    scores.deck = pitch_deck_analysis.deck
     scores.save()
     pitch_deck_analysis.report = response
     pitch_deck_analysis.save()
     pitch_deck_analysis.deck.status = PitchDeck.READY_FOR_REPORTING
+    pitch_deck_analysis.deck.save()
+    return response
+
+def update_scores(pitch_deck_analysis: PitchDeckAnalysis, changes: str, thoughts:str, scores:str ):
+    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "update_score_investment_potential", 0.0)
+    prompt = ChatPromptTemplate.from_template(UPDATE_INVESTMENT_SCORE_PROMPT)
+    chain = prompt | model.bind(function_call={"name": "calculate_company_score"},
+                                functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
+    response = chain.invoke(
+        {"changes": changes,
+         "thoughts": thoughts,
+         "scores": scores
+        })
+    print(f"Scored investment potential: {response}")
+    scores = CompanyScores()
+    scores.company = pitch_deck_analysis.deck.company
+    market = response.get("market", {"score": 0, "reasoning": "missing"})
+    scores.market_opportunity = market['score']
+    scores.market_reasoning = market['reasoning']
+    team = response.get("team", {"score": 0, "reasoning": "missing"})
+    scores.team = team['score']
+    scores.team_reasoning = team['reasoning']
+    founder_market_fit = response.get("founder_market_fit", {"score": 0, "reasoning": "missing"})
+    scores.founder_market_fit = founder_market_fit['score']
+    scores.founder_market_reasoning = founder_market_fit['reasoning']
+    product = response.get("product", {"score": 0, "reasoning": "missing"})
+    scores.product = product['score']
+    scores.product_reasoning = product['reasoning']
+    traction = response.get("traction", {"score": 0, "reasoning": "missing"})
+    scores.traction = traction['score']
+    scores.traction_reasoning = traction['reasoning']
+    scores.final_score = mean([market['score'], team['score'], product['score'], traction['score']])
+    scores.deck = pitch_deck_analysis.deck
+    scores.save()
+    pitch_deck_analysis.report = response
+    pitch_deck_analysis.save()
+    pitch_deck_analysis.deck.status = PitchDeck.READY_FOR_REPORTING
+
     pitch_deck_analysis.deck.save()
     return response

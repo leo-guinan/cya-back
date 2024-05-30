@@ -87,13 +87,21 @@ def get_upload_url(request):
     filename = request.query_params.get('filename')
     uuid_for_document = request.query_params.get('uuid')
     client = request.query_params.get('client', '')
+    deck_version = request.query_params.get('deck_version', '')
+    user_id = request.query_params.get('user_id', '')
     investor_id = request.query_params.get('investor_id', '')
     firm_id = request.query_params.get('firm_id', '')
-    object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{filename}' if client else f'pitch_decks/{filename}'
+    if client and firm_id and investor_id and user_id and deck_version:
+        object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{deck_version}/{filename}'
+    elif client and user_id and deck_version:
+        object_name = f'pitch_decks/{client}/{user_id}/{deck_version}/{filename}'
+    else:
+        object_name = f'pitch_decks/default/1/{filename}'
+
     bucket_name = config('PRELO_AWS_BUCKET')
     # Generate a PUT URL for uploads
     url = create_presigned_url(bucket_name, object_name)
-    pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=filename, uuid=uuid_for_document)
+    pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=filename, uuid=uuid_for_document, user_id=user_id, version=deck_version)
     return Response({'upload_url': url, 'pitch_deck_id': pitch_deck.id})
 
 
@@ -101,31 +109,38 @@ def get_upload_url(request):
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
 def get_scores(request):
+    print("getting scores")
     pitch_deck_id = request.query_params.get('pitch_deck_id')
     pitch_deck = PitchDeck.objects.get(id=pitch_deck_id)
+    previous_deck = PitchDeck.objects.filter(user_id=pitch_deck.user_id, version=pitch_deck.version-1).first()
     try:
         scores = pitch_deck.scores
         score_object = {
             'market': {
                 'score': scores.market_opportunity,
-                'reason': scores.market_reasoning
+                'reason': scores.market_reasoning,
+                'delta': scores.market_opportunity - previous_deck.scores.market_opportunity if previous_deck else 0
             },
             'team': {
                 'score': scores.team,
-                'reason': scores.team_reasoning
+                'reason': scores.team_reasoning,
+                'delta': scores.team - previous_deck.scores.team if previous_deck else 0
             },
             'product': {
                 'score': scores.product,
-                'reason': scores.product_reasoning
+                'reason': scores.product_reasoning,
+                'delta': scores.product - previous_deck.scores.product if previous_deck else 0
             },
             'traction': {
                 'score': scores.traction,
-                'reason': scores.traction_reasoning
+                'reason': scores.traction_reasoning,
+                'delta': scores.traction - previous_deck.scores.traction if previous_deck else 0
 
             },
             'final': {
                 'score': scores.final_score,
-                'reason': scores.final_reasoning
+                'reason': scores.final_reasoning,
+                'delta': scores.final_score - previous_deck.scores.final_score if previous_deck else 0
             }
         }
     except Exception as e:
@@ -320,8 +335,8 @@ def get_deck_name(request):
     body = json.loads(request.body)
     deck_id = body["deck_id"]
 
-    deck = PitchDeck.objects.get(id=deck_id)
-    return Response({'name': deck.name})
+    deck = PitchDeck.objects.filter(id=deck_id).first()
+    return Response({'name': deck.name if deck else ""})
 
 
 @api_view(('POST',))

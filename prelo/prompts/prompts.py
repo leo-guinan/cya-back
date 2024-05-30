@@ -106,6 +106,21 @@ Here's your analysis of the deck: {analysis}
 Based on that analysis, identify the top investor concern in one sentence of less than 30 words.
 """
 
+UPDATED_TOP_CONCERN_PROMPT = """You are a powerful submind for a top early-stage investor.
+Here's what you know about early-stage investing: {mind}
+
+You are reviewing an updated version of a pitch deck.
+
+Here's the updates made to the deck: {changes}
+
+Here are your thoughts on how well the founder addressed the concerns: {thoughts}
+
+Here is the previously identified top investor concern: {top_concern}
+
+Based on the changes, determine if the top investor concern has been addressed or if there is a new top investor concern.
+
+"""
+
 OBJECTIONS_PROMPT = """You are a powerful submind for a top early-stage investor.
 
 Here's what you know about early-stage investing: {mind}
@@ -120,6 +135,21 @@ that the startup founder needs to be prepared to overcome.
 In your suggestions, address them to the founder of the company using second person language.
 
 Include a 3-word sub-header that specifically focuses on highlighting each concern.
+
+"""
+
+UPDATED_OBJECTIONS_PROMPT = """You are a powerful submind for a top early-stage investor.
+Here's what you know about early-stage investing: {mind}
+
+You are reviewing an updated version of a pitch deck.
+
+Here's the updates made to the deck: {changes}
+
+Here are your thoughts on how well the founder addressed the concerns: {thoughts}
+
+Here is the previously identified investor objections: {objections}
+
+Based on the changes, determine if the objections have been addressed and update the objections if necessary.
 
 """
 
@@ -138,6 +168,21 @@ In your suggestions, you are speaking to them directly in a conversation.
 Use an informal and collaborative tone that focuses on problem-solving.
 """
 
+UPDATED_DERISKING_PROMPT = """You are a powerful submind for a top early-stage investor.
+Here's what you know about early-stage investing: {mind}
+
+ou are reviewing an updated version of a pitch deck.
+
+Here's the updates made to the deck: {changes}
+
+Here are your thoughts on how well the founder addressed the concerns: {thoughts}
+
+Here is the previously identified de-risking strategies: {derisking}
+
+Based on the changes, determine if the de-risking strategies have been addressed and update the strategies if necessary.
+
+"""
+
 INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 
 Given the information from the pitch deck, provide a score from 1 to 100 for each of the following categories:
 1. Market Opportunity - base this score on the size and growth of the market, the megatrends in the market, and the company moat in the market
@@ -150,6 +195,18 @@ After scoring each category individually, provide a final score for the company'
 
 Here is the data from the pitch deck: {data}
 Here is the analysis: {analysis}
+
+"""
+
+UPDATE_INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment.
+
+Here are the changes between pitch deck versions: {changes}
+
+Here are your thoughts on how well the founder addressed the concerns: {thoughts}
+
+Here are the previous scores: {scores}
+
+Based on the changes, update the scores for each category and provide a new final score for the company's investment potential and recommendation based on that score.
 
 """
 
@@ -232,6 +289,18 @@ Given the information from a pitch deck, identify the top 5 concerns that an inv
 
 Here's the pitch deck data: {data}
     
+"""
+
+UPDATED_CONCERNS_PROMPT = """You are an expert at identifying changes in investor concerns in a pitch deck.
+
+Here are the changes between pitch deck versions: {changes}
+
+Here are your thoughts on how well the founder addressed the concerns: {thoughts}
+
+Here are your previous concerns: {concerns}
+
+Based on the changes, identify the new top 5 concerns an investor might have about the company.
+
 """
 
 BELIEVE_PROMPT = """You are an expert at identifying why investors should believe in a company from a pitch deck.

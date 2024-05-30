@@ -13,11 +13,12 @@ from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
 from prelo.investor.analysis import check_deck_against_thesis
 from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor
-from prelo.pitch_deck.analysis import analyze_deck, investor_analysis
+from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version
 from prelo.pitch_deck.investor.concerns import concerns_analysis
 from prelo.pitch_deck.processing import pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
 from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
+from submind.llms.submind import SubmindModelFactory
 
 
 @app.task(name="prelo.tasks.check_for_decks")
@@ -28,6 +29,10 @@ def check_for_decks():
         # if it does, change status to UPLOADED
         if file_exists(deck.s3_path):
             deck.status = PitchDeck.UPLOADED
+
+            # get deck version from s3 path:
+            version = deck.s3_path.split("/")[-2]
+            deck.version = version if version.isnumeric() else 1
             deck.save()
             process_deck.delay(deck.id)
 
@@ -74,7 +79,7 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
     analysis = concerns_analysis(pitch_deck_analysis)
 
     try:
-        scores = pitch_deck_analysis.deck.company.scores.first()
+        scores = pitch_deck_analysis.deck.scores
         score_object = {
             'market': {
                 'score': scores.market_opportunity,
@@ -136,20 +141,65 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
             # not vital, just try to return response to chat if possible.
         return
     else:
-        analyze_deck(pitch_deck_analysis)
-        identify_biggest_risk.delay(pitch_deck_analysis.id)
-        try:
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                    {"type": "deck.status.update", "message": "",
-                                                     "id": pitch_deck_analysis.deck.id,
-                                                     "status": pitch_deck_analysis.deck.status,
-                                                     "name": pitch_deck_analysis.deck.name
-                                                     })
-        except Exception as e:
-            print(e)
-            # not vital, just try to return response to chat if possible.
-        return
+        if pitch_deck_analysis.deck.version > 1:
+            #need to compare new version results to old version
+            top_concern, objections, how_to_overcome, analysis, previous_scores, updated_scores = compare_deck_to_previous_version(pitch_deck_analysis)
+            try:
+                scores = pitch_deck_analysis.deck.scores
+                score_object = {
+                    'market': {
+                        'score': scores.market_opportunity,
+                        'reason': scores.market_reasoning,
+                        'delta': updated_scores.market_opportunity - previous_scores.market_opportunity
+                    },
+                    'team': {
+                        'score': updated_scores.team,
+                        'reason': updated_scores.team_reasoning,
+                        'delta': updated_scores.team - previous_scores.team
+
+                    },
+                    'product': {
+                        'score': updated_scores.product,
+                        'reason': updated_scores.product_reasoning,
+                        'delta': updated_scores.product - previous_scores.product
+                    },
+                    'traction': {
+                        'score': updated_scores.traction,
+                        'reason': updated_scores.traction_reasoning,
+                        'delta': updated_scores.traction - previous_scores.traction
+                    },
+                    'final': {
+                        'score': updated_scores.final_score,
+                        'reason': updated_scores.final_reasoning,
+                        'delta': updated_scores.final_score - previous_scores.final_score
+                    }
+                }
+                channel_layer = get_channel_layer()
+
+                async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
+                                                        {"type": "deck.report.update",
+                                                         "top_concern": top_concern, "objections": objections,
+                                                         "how_to_overcome": how_to_overcome,
+                                                         'pitch_deck_analysis': analysis,
+                                                         "scores": score_object})
+            except Exception as e:
+                print(e)
+                return
+        else:
+            analyze_deck(pitch_deck_analysis)
+            identify_biggest_risk.delay(pitch_deck_analysis.id)
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
+                                                        {"type": "deck.status.update", "message": "",
+                                                         "id": pitch_deck_analysis.deck.id,
+                                                         "status": pitch_deck_analysis.deck.status,
+                                                         "name": pitch_deck_analysis.deck.name
+                                                         })
+            except Exception as e:
+                print(e)
+                # not vital, just try to return response to chat if possible.
+            return
 
 
 @app.task(name="process_slide")
@@ -160,18 +210,7 @@ def process_slide(slide_id):
 
     print(f"Analyzing image: {image_uri}")
     base64_image = encode_image(image_uri)
-    model = ChatOpenAI(
-        model="gpt-4-turbo",
-        openai_api_key=config("OPENAI_API_KEY"),
-        model_kwargs={
-            "extra_headers": {
-                "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
-                "Helicone-Property-UUID": slide.deck.uuid
-
-            }
-        },
-        openai_api_base="https://oai.hconeai.com/v1",
-    )
+    model = SubmindModelFactory.get_model(slide.deck.uuid, "pitch_deck_slide_analysis")
     message = HumanMessage([
         {
             "type": "image_url",

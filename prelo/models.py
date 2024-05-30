@@ -38,7 +38,7 @@ class PitchDeck(models.Model):
     target_audience = models.TextField(default="Founder")
     company = models.ForeignKey("Company", on_delete=models.CASCADE, related_name="decks", null=True)
     version = models.IntegerField(default=1, null=True)
-
+    user_id = models.CharField(max_length=255, blank=True, null=True)
     def __str__(self):
         return self.s3_path
 

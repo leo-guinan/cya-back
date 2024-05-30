@@ -16,7 +16,8 @@ class SubmindModelFactory:
                 "extra_headers": {
                     "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}",
                     "Helicone-Property-UUID": request_uuid,
-                    "Helicone-Property-Step": step
+                    "Helicone-Property-Step": step,
+                    "Helicone-Property-Environment": "dev" if config("DEBUG") == 1 else "prod"
 
                 }
             },
