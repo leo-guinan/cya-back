@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url
+from prelo.chat.history import get_message_history
 from prelo.models import PitchDeck
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
@@ -158,13 +159,6 @@ def get_scores(request):
     return Response({'scores': score_object, 'name': name})
 
 
-def get_message_history(session_id: str) -> MongoDBChatMessageHistoryOverride:
-    return MongoDBChatMessageHistoryOverride(
-        connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
-        session_id=f'{session_id}_chat',
-        database_name=config("SCORE_MY_DECK_DATABASE_NAME"),
-        collection_name=config("SCORE_MY_DECK_COLLECTION_NAME")
-    )
 
 
 @api_view(('POST',))
@@ -197,21 +191,22 @@ def send_founder_chat_message(request):
     })
 
     print(path_response)
+    chat_history = get_message_history(conversation_uuid)
 
     if path_response['use_tool']:
         if path_response['tool_id'] == '1':
             response = lookup_investors(message)
-            get_message_history(conversation_uuid).add_ai_message(response)
+            chat_history.add_user_message(message)
+
+            chat_history.add_ai_message(response)
             end_time = time.perf_counter()
             print(f"Chat with lookup took {end_time - start_time} seconds")
 
             return Response({"message": response})
         elif path_response['tool_id'] == '2':
-            chat_history = get_message_history(conversation_uuid)
-            response = write_cold_outreach_message(message, chat_history)
-            get_message_history(conversation_uuid).add_ai_message(response)
+            response = write_cold_outreach_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
-            print(f"Chat with lookup took {end_time - start_time} seconds")
+            print(f"Chat with cold email writing took {end_time - start_time} seconds")
 
             return Response({"message": response})
 
