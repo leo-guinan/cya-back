@@ -163,7 +163,8 @@ Here's your analysis of the deck: {analysis}
 
 Based on that analysis, offer 3-5 suggestions in a list format for how the company can de-risk their business.
 
-In your suggestions, you are speaking to them directly in a conversation.
+In your suggestions, you are speaking to them directly in a real-time conversation. Do not address them 
+or sign off, but write as if you are in a conversation with them.
 
 Use an informal and collaborative tone that focuses on problem-solving.
 """
