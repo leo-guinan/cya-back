@@ -142,10 +142,13 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
         return
     else:
         if pitch_deck_analysis.deck.version > 1:
+            print("Checking updated version")
             #need to compare new version results to old version
             top_concern, objections, how_to_overcome, analysis, previous_scores, updated_scores = compare_deck_to_previous_version(pitch_deck_analysis)
+            print(f"Top Concern: {top_concern}")
             try:
                 scores = pitch_deck_analysis.deck.scores
+                print(f"Scores: {scores}")
                 score_object = {
                     'market': {
                         'score': scores.market_opportunity,
@@ -187,19 +190,45 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
                 return
         else:
             analyze_deck(pitch_deck_analysis)
-            identify_biggest_risk.delay(pitch_deck_analysis.id)
+            top_concern, objections, how_to_overcome = create_risk_report(pitch_deck_analysis)
+            analysis = concerns_analysis(pitch_deck_analysis)
+
             try:
+                scores = pitch_deck_analysis.deck.scores
+                score_object = {
+                    'market': {
+                        'score': scores.market_opportunity,
+                        'reason': scores.market_reasoning
+                    },
+                    'team': {
+                        'score': scores.team,
+                        'reason': scores.team_reasoning
+                    },
+                    'product': {
+                        'score': scores.product,
+                        'reason': scores.product_reasoning
+                    },
+                    'traction': {
+                        'score': scores.traction,
+                        'reason': scores.traction_reasoning
+                    },
+                    'final': {
+                        'score': scores.final_score,
+                        'reason': scores.final_reasoning
+                    }
+                }
                 channel_layer = get_channel_layer()
+
                 async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                        {"type": "deck.status.update", "message": "",
-                                                         "id": pitch_deck_analysis.deck.id,
-                                                         "status": pitch_deck_analysis.deck.status,
-                                                         "name": pitch_deck_analysis.deck.name
-                                                         })
+                                                        {"type": "deck.report.update",
+                                                         "top_concern": top_concern, "objections": objections,
+                                                         "how_to_overcome": how_to_overcome,
+                                                         'pitch_deck_analysis': analysis,
+                                                         "scores": score_object})
             except Exception as e:
                 print(e)
                 # not vital, just try to return response to chat if possible.
-            return
+
 
 
 @app.task(name="process_slide")

@@ -143,7 +143,7 @@ class CompanyScores(models.Model):
     final_reasoning = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return self.deck.company.name
+        return f"{self.final_score} - {self.deck.name}"
 
 
 class Investor(models.Model):

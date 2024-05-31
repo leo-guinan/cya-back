@@ -163,11 +163,14 @@ def compare_deck_to_previous_version(pitch_deck_analysis: PitchDeckAnalysis):
     updated_scores = update_scores(pitch_deck_analysis, deck_changes, concerns_addressed, previous_deck_analysis.report)
     top_concern, objections, how_to_overcome = create_updated_risk_report(pitch_deck_analysis, deck_changes,
                                                                           concerns_addressed, previous_deck_analysis)
+    print("Updated risk report created")
 
     updated_concerns = updated_concerns_analysis(pitch_deck_analysis,
                                                  deck_changes,
                                                  concerns_addressed,
                                                  previous_deck_analysis.concerns)
+
+    print("Updated concerns analysis complete")
     return top_concern, objections, how_to_overcome, updated_concerns, previous_scores, updated_scores
 
 
@@ -266,4 +269,4 @@ def update_scores(pitch_deck_analysis: PitchDeckAnalysis, changes: str, thoughts
     pitch_deck_analysis.deck.status = PitchDeck.READY_FOR_REPORTING
 
     pitch_deck_analysis.deck.save()
-    return response
+    return scores
