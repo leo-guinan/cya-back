@@ -19,11 +19,10 @@ from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
 from prelo.tasks import check_for_decks
 from prelo.tools.company import lookup_investors
-from prelo.tools.emails import write_cold_outreach_message
+from prelo.tools.emails import write_cold_outreach_message, write_forwardable_message
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Goal, SubmindClient, Submind
-from submind.overrides.mongodb import MongoDBChatMessageHistoryOverride
 from submind.tasks import think
 
 
@@ -103,7 +102,8 @@ def get_upload_url(request):
     bucket_name = config('PRELO_AWS_BUCKET')
     # Generate a PUT URL for uploads
     url = create_presigned_url(bucket_name, object_name)
-    pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=filename, uuid=uuid_for_document, user_id=user_id, version=deck_version)
+    pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=filename, uuid=uuid_for_document, user_id=user_id,
+                                          version=deck_version)
     return Response({'upload_url': url, 'pitch_deck_id': pitch_deck.id})
 
 
@@ -114,7 +114,7 @@ def get_scores(request):
     print("getting scores")
     pitch_deck_id = request.query_params.get('pitch_deck_id')
     pitch_deck = PitchDeck.objects.get(id=pitch_deck_id)
-    previous_deck = PitchDeck.objects.filter(user_id=pitch_deck.user_id, version=pitch_deck.version-1).first()
+    previous_deck = PitchDeck.objects.filter(user_id=pitch_deck.user_id, version=pitch_deck.version - 1).first()
     try:
         scores = pitch_deck.scores
         score_object = {
@@ -159,8 +159,6 @@ def get_scores(request):
     return Response({'scores': score_object, 'name': name})
 
 
-
-
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
@@ -183,6 +181,7 @@ def send_founder_chat_message(request):
     tools_available = """
     Id: 1, Name: Investor Lookup, Description: Find investors
     Id: 2, Name: Write Cold Outreach, Description: Write a cold outreach email
+    Id: 3, Name: Write Forwardable Introduction email, Description: Write an introductory email someone can forward to an investor
     """
 
     path_response = path.invoke({
@@ -207,6 +206,12 @@ def send_founder_chat_message(request):
             response = write_cold_outreach_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
             print(f"Chat with cold email writing took {end_time - start_time} seconds")
+
+            return Response({"message": response})
+        elif path_response['tool_id'] == '3':
+            response = write_forwardable_message(message, conversation_uuid, submind)
+            end_time = time.perf_counter()
+            print(f"Chat with forwardable email writing took {end_time - start_time} seconds")
 
             return Response({"message": response})
 
@@ -402,7 +407,7 @@ def get_investor_deck_report(request):
     except Exception as e:
         print(e)
         return Response({
-             "concerns": "",
+            "concerns": "",
             "believe": "",
             "traction": "",
             "summary": "",
