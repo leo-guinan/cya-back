@@ -166,6 +166,7 @@ def send_founder_chat_message(request):
     body = json.loads(request.body)
     conversation_uuid = body["uuid"]
     message = body["message"]
+    credits = body.get("credits", 0)
     submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
     start_time = time.perf_counter()
     # Needs a submind to chat with. How does this look in practice?
@@ -194,6 +195,8 @@ def send_founder_chat_message(request):
 
     if path_response['use_tool']:
         if path_response['tool_id'] == '1':
+            if credits < 2:
+                return Response({"message": "Not enough credits remaining. Please add credits to continue.", "credits_used": 0})
             response = lookup_investors(message)
             chat_history.add_user_message(message)
 
@@ -201,20 +204,25 @@ def send_founder_chat_message(request):
             end_time = time.perf_counter()
             print(f"Chat with lookup took {end_time - start_time} seconds")
 
-            return Response({"message": response})
+            return Response({"message": response, "credits_used": 2})
         elif path_response['tool_id'] == '2':
+            if credits < 5:
+                return Response({"message": "Not enough credits remaining. Please add credits to continue.", "credits_used": 0})
             response = write_cold_outreach_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
             print(f"Chat with cold email writing took {end_time - start_time} seconds")
 
-            return Response({"message": response})
+            return Response({"message": response, "credits_used": 5})
         elif path_response['tool_id'] == '3':
+            if credits < 5:
+                return Response({"message": "Not enough credits remaining. Please add credits to continue.", "credits_used": 0})
             response = write_forwardable_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
             print(f"Chat with forwardable email writing took {end_time - start_time} seconds")
 
-            return Response({"message": response})
-
+            return Response({"message": response, "credits_used": 5})
+    if credits < 1:
+        return Response({"message": "Not enough credits remaining. Please add credits to continue.", "credits_used": 0})
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -253,7 +261,7 @@ def send_founder_chat_message(request):
 
     print(answer.content)
 
-    return Response({"message": answer.content})
+    return Response({"message": answer.content, "credits_used": 1})
 
 
 @api_view(('POST',))
