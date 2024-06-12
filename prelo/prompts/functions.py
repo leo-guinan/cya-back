@@ -303,7 +303,7 @@ functions = [
             "required": ["uuid", "slide_numbers"],
         },
     },
-{
+    {
         "name": "choose_path",
         "description": "identify whether or not one of your tools can be used",
         "parameters": {
@@ -328,35 +328,50 @@ functions = [
         "parameters": {
             "type": "object",
             "properties": {
-                "results": {
+
+                "strategy": {
                     "type": "object",
-                    "description": "the results of the analysis",
+                    "description": "The go-to-market strategy for the company",
                     "properties": {
-                        "strategy": {
-                            "type": "string",
-                            "description": "The go-to-market strategy for the company",
-                        },
-                        "competitors": {
+                        "suggestions": {
                             "type": "array",
-                            "description": "The company's competitors",
+                            "description": "The suggestions for the go-to-market strategy",
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "name": {
+                                    "step": {
                                         "type": "string",
-                                        "description": "The name of the competitor"
+                                        "description": "The step in the strategy"
                                     },
-                                    "strategy": {
+                                    "description": {
                                         "type": "string",
-                                        "description": "The competitor's go-to-market strategy"
+                                        "description": "The description of the step"
                                     }
                                 }
                             }
-                        },
+                        }
                     }
                 },
+                "competitors": {
+                    "type": "array",
+                    "description": "The company's competitors",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "The name of the competitor"
+                            },
+                            "strategy": {
+                                "type": "string",
+                                "description": "The competitor's go-to-market strategy"
+                            }
+                        }
+                    }
+
+                },
             },
-            "required": ["results"],
+            "required": ["strategy", "competitors"],
         },
     }
 

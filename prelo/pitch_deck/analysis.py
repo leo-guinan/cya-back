@@ -4,7 +4,7 @@ from statistics import mean
 
 from decouple import config
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
+from langchain_core.output_parsers.openai_functions import JsonKeyOutputFunctionsParser, JsonOutputFunctionsParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
@@ -90,7 +90,7 @@ def gtm_strategy(pitch_deck_analysis_id, company_id):
 
     prompt = ChatPromptTemplate.from_template(COMPETITOR_SELECTION)
     chain = prompt | model.bind(function_call={"name": "create_gtm_strategy"},
-                                functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
+                                functions=functions) | JsonOutputFunctionsParser()
 
     gtm_strategy = chain.invoke(
             {"mind": submind_document,
@@ -99,7 +99,7 @@ def gtm_strategy(pitch_deck_analysis_id, company_id):
             })
     strategy = GoToMarketStrategy()
     strategy.company = company
-    strategy.strategy = gtm_strategy['strategy']
+    strategy.strategy = json.dumps(gtm_strategy['strategy'])
     strategy.save()
     for competitor in gtm_strategy['competitors']:
         competitor_strategy = CompetitorStrategy()
