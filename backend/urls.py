@@ -38,4 +38,5 @@ urlpatterns = [
     path('api/document/', include('document.urls')),
     path('api/prelo/', include('prelo.urls')),
     path('api/submind/', include('submind.urls')),
+    path('api/toolkit/', include('toolkit.urls')),
 ]

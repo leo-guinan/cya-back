@@ -5,15 +5,14 @@ import uuid
 from asgiref.sync import async_to_sync
 from celery import chord, signature
 from channels.layers import get_channel_layer
-from decouple import config
 from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
 
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
 from prelo.investor.analysis import check_deck_against_thesis
-from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor
-from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version
+from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company
+from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version, \
+    initial_analysis, gtm_strategy
 from prelo.pitch_deck.investor.concerns import concerns_analysis
 from prelo.pitch_deck.processing import pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
@@ -29,12 +28,15 @@ def check_for_decks():
         # if it does, change status to UPLOADED
         if file_exists(deck.s3_path):
             deck.status = PitchDeck.UPLOADED
-
             # get deck version from s3 path:
             version = deck.s3_path.split("/")[-2]
             deck.version = version if version.isnumeric() else 1
             deck.save()
-            process_deck.delay(deck.id)
+            company_to_populate = Company.objects.filter(deck_uuid=deck.uuid).first()
+            if not company_to_populate:
+                process_deck.delay(deck.id)
+            else:
+                process_deck.delay(deck.id, company_to_populate.id)
 
 
 @app.task(name="prelo.tasks.check_for_analysis")
@@ -116,8 +118,14 @@ def identify_biggest_risk(pitch_deck_analysis_id: int):
     return
 
 
+@app.task(name="prelo.tasks.populate_company_data")
+def populate_company_data(company_id, pitch_deck_analysis_id):
+    initial_analysis(pitch_deck_analysis_id, company_id)
+    gtm_strategy(pitch_deck_analysis_id, company_id)
+
+
 @app.task(name="prelo.tasks.analyze_deck")
-def analyze_deck_task(pitch_deck_analysis_id: int):
+def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.ANALYZING
     pitch_deck_analysis.deck.save()
@@ -143,8 +151,9 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
     else:
         if pitch_deck_analysis.deck.version > 1:
             print("Checking updated version")
-            #need to compare new version results to old version
-            top_concern, objections, how_to_overcome, analysis, previous_scores, updated_scores = compare_deck_to_previous_version(pitch_deck_analysis)
+            # need to compare new version results to old version
+            top_concern, objections, how_to_overcome, analysis, previous_scores, updated_scores = compare_deck_to_previous_version(
+                pitch_deck_analysis)
             print(f"Top Concern: {top_concern}")
             try:
                 scores = pitch_deck_analysis.deck.scores
@@ -192,7 +201,6 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
             analyze_deck(pitch_deck_analysis)
             top_concern, objections, how_to_overcome = create_risk_report(pitch_deck_analysis)
             analysis = concerns_analysis(pitch_deck_analysis)
-
             try:
                 scores = pitch_deck_analysis.deck.scores
                 score_object = {
@@ -228,7 +236,8 @@ def analyze_deck_task(pitch_deck_analysis_id: int):
             except Exception as e:
                 print(e)
                 # not vital, just try to return response to chat if possible.
-
+        if company_id is not None:
+            populate_company_data.delay(company_id, pitch_deck_analysis_id)
 
 
 @app.task(name="process_slide")
@@ -262,7 +271,7 @@ def process_slide(slide_id):
 
 
 @app.task(name="processing_callback")
-def processing_callback(results, deck_id, start_time):
+def processing_callback(results, deck_id, start_time, company_id=None):
     deck = PitchDeck.objects.get(id=deck_id)
     print(f"Processing callback for deck: {deck.name}")
     print(f'Start_time: {start_time}')
@@ -290,11 +299,14 @@ def processing_callback(results, deck_id, start_time):
     except Exception as e:
         print(e)
         # not vital, just try to return response to chat if possible.
-    analyze_deck_task.delay(analysis.id)
+    if company_id is None:
+        analyze_deck_task.delay(analysis.id)
+    else:
+        analyze_deck_task.delay(analysis.id, company_id)
 
 
 @app.task(name="prelo.tasks.process_deck")
-def process_deck(deck_id):
+def process_deck(deck_id, company_id=None):
     deck = PitchDeck.objects.get(id=deck_id)
     # process the deck
     deck.status = PitchDeck.PROCESSING
@@ -323,7 +335,11 @@ def process_deck(deck_id):
         slides_to_process.append(process_slide.s(slide.id))
 
     task_chord = chord(slides_to_process)
-    callback = signature('processing_callback', args=(), kwargs={'deck_id': deck.id, "start_time": start_time})
+    if company_id is None:
+        callback = signature('processing_callback', args=(), kwargs={'deck_id': deck.id, "start_time": start_time})
+    else:
+        callback = signature('processing_callback', args=(),
+                             kwargs={'deck_id': deck.id, "start_time": start_time, "company_id": company_id})
 
     # Executes all tasks in the group in parallel
     result_chord = task_chord(callback)

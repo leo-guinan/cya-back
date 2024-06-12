@@ -12,10 +12,10 @@ def recommendation_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     prompt = ChatPromptTemplate.from_template(RECOMMENDATION_PROMPT)
     chain = prompt | model.bind(function_call={"name": "recommendation_analysis"},
                                 functions=functions) | JsonOutputFunctionsParser()
-    firm_id = pitch_deck_analysis.deck.s3_path.split("/")[-3]
-    investor_id = pitch_deck_analysis.deck.s3_path.split("/")[-2]
-    firm = InvestmentFirm.objects.get(id=firm_id)
-    investor = Investor.objects.get(id=investor_id)
+    firm_id = pitch_deck_analysis.deck.s3_path.split("/")[-4]
+    investor_id = pitch_deck_analysis.deck.s3_path.split("/")[-3]
+    firm = InvestmentFirm.objects.get(lookup_id=firm_id)
+    investor = Investor.objects.get(lookup_id=investor_id)
     response = chain.invoke({
         "firm_thesis": firm.thesis,
         "investor_thesis": investor.thesis,
@@ -26,7 +26,6 @@ def recommendation_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     })
     print(f"After data has been analyzed: {response}")
     investor_report = InvestorReport()
-    investor_report.company = pitch_deck_analysis.deck.company
     investor_report.investor = investor
     investor_report.firm = firm
     investor_report.recommendation_reasons = response['reason']

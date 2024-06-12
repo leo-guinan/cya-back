@@ -8,9 +8,11 @@ from langchain_core.output_parsers.openai_functions import JsonKeyOutputFunction
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember, CompanyScores
+from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember, CompanyScores, GoToMarketStrategy, \
+    CompetitorStrategy
 from prelo.pitch_deck.investor.believe import believe_analysis
 from prelo.pitch_deck.investor.concerns import concerns_analysis, updated_concerns_analysis
+from prelo.pitch_deck.investor.memo import write_memo
 from prelo.pitch_deck.investor.recommendation import recommendation_analysis
 from prelo.pitch_deck.investor.summary import summarize_deck
 from prelo.pitch_deck.investor.traction import traction_analysis
@@ -45,15 +47,78 @@ def clean_data(data, deck_uuid):
     return response
 
 
-def initial_analysis(data, deck_id, deck_uuid):
-    model = SubmindModelFactory.get_model(deck_uuid, "initial_analysis", 0.0)
-    prompt = ChatPromptTemplate.from_template(ANALYSIS_PROMPT)
-    chain = prompt | model.bind(function_call={"name": "extract_company_info"},
+def gtm_strategy(pitch_deck_analysis_id, company_id):
+    COMPETITOR_ANALYSIS = """You are a powerful submind for a top early-stage investor.
+
+    Here's what you know about early-stage investing: {mind}
+
+    You are reviewing a pitch deck.
+
+    Here's the deck: {deck}
+
+    Based on this, identify what types of competitors we should look for when doing competitive analysis.
+    """
+    pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
+    company = Company.objects.get(id=company_id)
+    deck = pitch_deck_analysis.deck
+    submind = Submind.objects.get(id=config('PRELO_SUBMIND_ID'))
+    submind_document = remember(submind)
+    model = SubmindModelFactory.get_model(submind.uuid, "competitor_analysis")
+
+    prompt = ChatPromptTemplate.from_template(COMPETITOR_ANALYSIS)
+    chain = prompt | model | StrOutputParser()
+
+    competitors = chain.invoke(
+        {"mind": submind_document,
+         "deck": pitch_deck_analysis.compiled_slides,
+         })
+
+
+    COMPETITOR_SELECTION = """
+    You are a powerful submind for a top early-stage investor.
+    
+    Here's what you know about early-stage investing: {mind}
+    
+    Here's your analysis of a company that submitted a pitch deck: {company}
+    
+    Here's the competitive analysis you created: {competitors}
+    
+    Based on that, select 5 companies that are the primary competitors, analyze their go to market strategies, and recommend a go to market strategy for the company you are working with. 
+    """
+    model = SubmindModelFactory.get_model(submind.uuid, "competitor_analysis")
+
+
+    prompt = ChatPromptTemplate.from_template(COMPETITOR_SELECTION)
+    chain = prompt | model.bind(function_call={"name": "create_gtm_strategy"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
+
+    gtm_strategy = chain.invoke(
+            {"mind": submind_document,
+             "company": deck.analysis.how_to_overcome,
+             "competitors":competitors,
+            })
+    strategy = GoToMarketStrategy()
+    strategy.company = company
+    strategy.strategy = gtm_strategy['strategy']
+    strategy.save()
+    for competitor in gtm_strategy['competitors']:
+        competitor_strategy = CompetitorStrategy()
+        competitor_strategy.company_name = competitor['name']
+        competitor_strategy.strategy = competitor['strategy']
+        competitor_strategy.gtm = strategy
+        competitor_strategy.save()
+
+
+def initial_analysis(pitch_deck_analysis_id, company_id):
+    pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
+    company = Company.objects.get(id=company_id)
+    data = pitch_deck_analysis.compiled_slides
+    model = SubmindModelFactory.get_model(company.deck_uuid, "initial_analysis", 0.0)
+    prompt = ChatPromptTemplate.from_template(ANALYSIS_PROMPT)
+    chain = prompt | model.bind(function_call={"name": "extract_company_info"}, functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
     response = chain.invoke({"data": data})
     print(f"After data has been analyzed: {response}")
-    company = Company()
-    company.save()
+
     team = Team.objects.create(company=company)
     for team_member in response.get('team', ''):
         member = TeamMember()
@@ -80,28 +145,21 @@ def initial_analysis(data, deck_id, deck_uuid):
     company.partnerships = response.get('partnerships', '')
     company.founder_market_fit = response.get('founder_market_fit', '')
     company.save()
-    deck = PitchDeck.objects.get(id=deck_id)
-    deck.company = company
-    deck.save()
-    return response
 
 
-def extra_analysis(data, summary, deck_uuid):
+def extra_analysis(data, deck_uuid):
     model = SubmindModelFactory.get_model(deck_uuid, "extra_analysis", 0.0)
     prompt = ChatPromptTemplate.from_template(EXTRA_ANALYSIS_PROMPT)
     chain = prompt | model | StrOutputParser()
-    response = chain.invoke({"data": data, "summary": summary})
+    response = chain.invoke({"data": data})
     return response
 
 
 def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
     start_time = time.perf_counter()
-    initial_analysis_data = initial_analysis(pitch_deck_analysis.compiled_slides, pitch_deck_analysis.deck.id,
-                                             pitch_deck_analysis.deck.uuid)
-    pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
-    pitch_deck_analysis.save()
+
     print("Initial analysis complete, starting extra analysis")
-    extra_analysis_data = extra_analysis(pitch_deck_analysis.compiled_slides, initial_analysis_data,
+    extra_analysis_data = extra_analysis(pitch_deck_analysis.compiled_slides,
                                          pitch_deck_analysis.deck.uuid)
     pitch_deck_analysis.extra_analysis = extra_analysis_data
     pitch_deck_analysis.save()
@@ -181,7 +239,6 @@ def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
     pitch_deck_analysis.save()
     # update the name of the deck with the name of the company
-    pitch_deck_analysis.deck.name = pitch_deck_analysis.deck.company.name
     pitch_deck_analysis.deck.save()
     print("Initial analysis complete, starting extra analysis")
     summarize_deck(pitch_deck_analysis)
@@ -194,6 +251,7 @@ def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     print("Believe complete")
     recommendation_analysis(pitch_deck_analysis)
     print("Recommendation complete")
+    write_memo(pitch_deck_analysis)
     end_time = time.perf_counter()
     pitch_deck_analysis.analysis_time = end_time - start_time
     pitch_deck_analysis.save()

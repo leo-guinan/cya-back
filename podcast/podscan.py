@@ -19,11 +19,13 @@ def look_for_podcast_episodes(query, per_page=10, pages=1):
     """
     pc = Pinecone(api_key=config("PINECONE_API_KEY"))
 
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
-                                  openai_api_base=config('OPENAI_API_BASE'),
-                                  headers={
-                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
-                                  })
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        openai_api_key=config("OPENAI_API_KEY"),
+        openai_api_base=config('OPENAI_API_BASE'),
+        headers={
+            "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+        })
     index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"), host=config("PINECONE_HOST"))
     vectorstore = PineconeVectorStore(index, embeddings, "text")
     text_splitter = SemanticChunker(embeddings)
@@ -56,7 +58,9 @@ def look_for_podcast_episodes(query, per_page=10, pages=1):
     for episode in raw_episodes:
         # if podcast episode is already in the database, skip it.
         if not episode['episode_guid']:
-            existing_episode = PodcastEpisode.objects.filter(name=episode['episode_title'], podcast__external_id=episode['podcast']['podcast_id']).first()
+            existing_episode = PodcastEpisode.objects.filter(name=episode['episode_title'],
+                                                             podcast__external_id=episode['podcast'][
+                                                                 'podcast_id']).first()
         else:
             existing_episode = PodcastEpisode.objects.filter(transcript_guid=episode['episode_guid']).first()
         if existing_episode:
@@ -135,7 +139,8 @@ def look_for_podcast_episodes(query, per_page=10, pages=1):
                 metadatas.append(metadata)
                 ids.append(id)
 
-        vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_PODCAST_NAMESPACE'))
+        vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids,
+                              namespace=config('PINECONE_PODCAST_NAMESPACE'))
 
         found.append(existing_episode)
 

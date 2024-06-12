@@ -91,7 +91,8 @@ INSTALLED_APPS = [
     'document',
     'deployment',
     'prelo',
-    'submind'
+    'submind',
+    'toolkit'
 ]
 SITE_ID = 2
 

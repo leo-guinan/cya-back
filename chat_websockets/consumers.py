@@ -8,7 +8,7 @@ from agi.tasks import respond_to_agi_message
 from cli.tasks import run_command
 from coach.tasks import respond_to_chat_message
 from cofounder.tasks import respond_to_cofounder_message
-
+from toolkit.tasks import youtube_to_blog
 
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
@@ -46,6 +46,11 @@ class ChatConsumer(WebsocketConsumer):
             async_to_sync(channel_layer.group_send)(self.session,
                                                     {"type": "chat.message", "message": "message received",
                                                      "id": "state"})
+        elif self.app == 'toolkit':
+            print(f"toolkit received: {text_data}")
+            youtube_url = text_data_json["youtube_url"]
+            audience = text_data_json["audience"]
+            youtube_to_blog.delay(youtube_url, audience, self.session)
 
         else:
             respond_to_chat_message.delay(message, text_data_json['user_id'], self.session)
@@ -102,3 +107,7 @@ class ChatConsumer(WebsocketConsumer):
                                         "how_to_overcome": how_to_overcome,
                                         "pitch_deck_analysis": pitch_deck_analysis,
                                         "scores": scores}))
+
+    def write_blog(self, event):
+        message = event["message"]
+        self.send(text_data=json.dumps({"content": message,}))

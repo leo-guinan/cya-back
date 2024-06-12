@@ -66,7 +66,7 @@ def process_page(soup: BeautifulSoup, url, parent_link, search_engine_slug_match
     # docs = text_splitter.split_documents(data)
 
 
-    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model="gpt-4-turbo")
+    llm = ChatOpenAI(openai_api_key=config('OPENAI_API_KEY'), temperature=0, model="gpt-4o")
 
     template = """
         Based on this webpage, it this a listing for a single specific property?

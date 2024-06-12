@@ -43,8 +43,6 @@ EXTRA_ANALYSIS_PROMPT = """
 
         Here's the pitch deck data: {data}
 
-        And the summarized data: {summary}
-
 """
 
 WRITE_REPORT_PROMPT = """
@@ -368,5 +366,28 @@ Finally, are there any new concerns based on information added or removed?
 
 COLD_OUTREACH_PROMPT = """You are an expert at cold outreach to investors.
 
+
+"""
+
+MEMO_PROMPT = """
+You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+You are tasked with writing an investment memo for a pitch deck you have analyzed.
+
+Here's the thesis of the investment firm: {firm_thesis}
+
+Here's the thesis of the investor: {investor_thesis}
+
+Here's the pitch deck summary: {summary}
+
+Here are the top 5 concerns: {concerns}
+
+Here are the top 5 reasons to believe: {believe}
+
+Here is the traction, TAM, and Team analysis: {traction}
+
+Based on this information, write an investment memo for this opportunity
 
 """

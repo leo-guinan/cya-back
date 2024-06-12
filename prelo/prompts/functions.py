@@ -322,6 +322,42 @@ functions = [
             "required": ["path"],
         },
     },
-
+    {
+        "name": "create_gtm_strategy",
+        "description": "create a go-to-market strategy for a company",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the analysis",
+                    "properties": {
+                        "strategy": {
+                            "type": "string",
+                            "description": "The go-to-market strategy for the company",
+                        },
+                        "competitors": {
+                            "type": "array",
+                            "description": "The company's competitors",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "The name of the competitor"
+                                    },
+                                    "strategy": {
+                                        "type": "string",
+                                        "description": "The competitor's go-to-market strategy"
+                                    }
+                                }
+                            }
+                        },
+                    }
+                },
+            },
+            "required": ["results"],
+        },
+    }
 
 ]

@@ -14,7 +14,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url
 from prelo.chat.history import get_message_history
-from prelo.models import PitchDeck
+from prelo.models import PitchDeck, Company
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
 from prelo.tasks import check_for_decks
@@ -92,6 +92,11 @@ def get_upload_url(request):
     user_id = request.query_params.get('user_id', '')
     investor_id = request.query_params.get('investor_id', '')
     firm_id = request.query_params.get('firm_id', '')
+    if user_id:
+        company = Company.objects.filter(user_id=user_id).first()
+        if not company:
+            print("Company doesn't exist yet, creating one.")
+            company = Company.objects.create(user_id=user_id, deck_uuid=uuid_for_document)
     if client and firm_id and investor_id and user_id and deck_version:
         object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{deck_version}/{filename}'
     elif client and user_id and deck_version:
@@ -371,13 +376,17 @@ def get_deck_report(request):
     try:
         body = json.loads(request.body)
         deck_id = body["deck_id"]
+        user_id = body.get("user_id", "")
+        company = Company.objects.filter(user_id=user_id).first()
+        gtm_strategy = company.go_to_market.first().strategy if company else ""
         deck = PitchDeck.objects.get(id=deck_id)
         analysis = deck.analysis
         return Response({
             'top_concern': analysis.top_concern,
             'objections': analysis.objections,
             'how_to_overcome': analysis.how_to_overcome,
-            'pitch_deck_analysis': analysis.concerns
+            'pitch_deck_analysis': analysis.concerns,
+            'gtm_strategy': gtm_strategy
         })
     except Exception as e:
         print(e)
@@ -385,7 +394,8 @@ def get_deck_report(request):
             'top_concern': "",
             'objections': "",
             'how_to_overcome': "",
-            'pitch_deck_analysis': ""
+            'pitch_deck_analysis': "",
+            'gtm_strategy': ""
         })
 
 
