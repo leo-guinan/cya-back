@@ -109,5 +109,7 @@ class ChatConsumer(WebsocketConsumer):
                                         "scores": scores}))
 
     def write_blog(self, event):
-        message = event["message"]
-        self.send(text_data=json.dumps({"content": message,}))
+        outline = event["outline"]
+        post = event["post"]
+        title = event["title"]
+        self.send(text_data=json.dumps({"outline": outline, "post": post, "title": title}))
