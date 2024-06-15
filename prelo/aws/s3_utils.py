@@ -1,17 +1,19 @@
 import tempfile
 
 import boto3
+import markdown
+import pdfkit
 from botocore.exceptions import ClientError
 from decouple import config
 
 
-def create_presigned_url(bucket_name, object_name, expiration=3600):
+def create_presigned_url(bucket_name, object_name, expiration=3600, method='PUT'):
     """
     Generate a presigned URL to share an S3 object
     :param bucket_name: string
     :param object_name: string
     :param expiration: Time in seconds for the presigned URL to remain valid
-    :param http_method: HTTP method (e.g., 'GET' for downloading, 'PUT' for uploading)
+    :param method: HTTP method (e.g., 'GET' for downloading, 'PUT' for uploading)
     :return: Presigned URL as string. If error, returns None.
     """
     s3_client = boto3.client('s3',
@@ -21,14 +23,20 @@ def create_presigned_url(bucket_name, object_name, expiration=3600):
                              )
 
     try:
-        response = s3_client.generate_presigned_url('put_object',
-                                                    Params={
-                                                        'Bucket': bucket_name,
-                                                        'Key': object_name,
-                                                        'ContentType': 'application/pdf'
-                                                    },
-                                                    ExpiresIn=expiration,
-                                                    HttpMethod='PUT')
+        if method == 'GET':
+            response = s3_client.generate_presigned_url('get_object',
+                                                        Params={'Bucket': bucket_name,
+                                                                'Key': object_name},
+                                                        ExpiresIn=expiration)
+        elif method == 'PUT':
+            response = s3_client.generate_presigned_url('put_object',
+                                                        Params={
+                                                            'Bucket': bucket_name,
+                                                            'Key': object_name,
+                                                            'ContentType': 'application/pdf'
+                                                        },
+                                                        ExpiresIn=expiration,
+                                                        HttpMethod=method)
     except Exception as e:
         print(f"Error generating presigned URL: {e}")
         return None
@@ -98,3 +106,40 @@ def upload_file_to_s3(key, input_file):
                       region_name=config('PRELO_AWS_REGION')
                       )
     s3.upload_file(Filename=input_file, Bucket=bucket, Key=key)
+
+
+def markdown_to_pdf(markdown_content, output_path):
+    """
+    Convert Markdown content to a PDF file.
+
+    :param markdown_content: str, the Markdown content to convert
+    :param output_path: str, the path to save the PDF file
+    """
+    temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+
+    # Convert markdown to HTML
+    html_content = markdown.markdown(markdown_content)
+
+    # Generate PDF from HTML
+    pdfkit.from_string(html_content, temp_pdf.name)
+
+    # Save the HTML content to a temporary file
+
+    upload_file_to_s3(output_path, temp_pdf.name)
+
+
+def html_to_pdf(html_content, output_path):
+    """
+    Convert Markdown content to a PDF file.
+
+    :param html_content: str, the html content to convert
+    :param output_path: str, the path to save the PDF file
+    """
+    temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+
+    # Generate PDF from HTML
+    pdfkit.from_string(html_content, temp_pdf.name, options={"enable-local-file-access": True}, verbose=True)
+
+    # Save the HTML content to a temporary file
+
+    upload_file_to_s3(output_path, temp_pdf.name)

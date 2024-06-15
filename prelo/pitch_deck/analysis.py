@@ -234,12 +234,6 @@ def compare_deck_to_previous_version(pitch_deck_analysis: PitchDeckAnalysis):
 
 def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     start_time = time.perf_counter()
-    initial_analysis_data = initial_analysis(pitch_deck_analysis.compiled_slides, pitch_deck_analysis.deck.id,
-                                             pitch_deck_analysis.deck.uuid)
-    pitch_deck_analysis.initial_analysis = json.dumps(initial_analysis_data)
-    pitch_deck_analysis.save()
-    # update the name of the deck with the name of the company
-    pitch_deck_analysis.deck.save()
     print("Initial analysis complete, starting extra analysis")
     summarize_deck(pitch_deck_analysis)
     print("Summary complete")

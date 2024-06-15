@@ -208,6 +208,7 @@ EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 DEFAULT_FILE_STORAGE = "storages.backends.s3.S3Storage"
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 STATIC_URL = '/static/'
 # Following settings only make sense on production and may break development environments.

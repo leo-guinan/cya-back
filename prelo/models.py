@@ -213,3 +213,8 @@ class CompetitorStrategy(models.Model):
     company_name = models.TextField()
     strategy = models.TextField()
     gtm = models.ForeignKey(GoToMarketStrategy, on_delete=models.CASCADE, related_name="competitors")
+
+
+class DeckReport(models.Model):
+    deck = models.OneToOneField(PitchDeck, on_delete=models.CASCADE, related_name="report")
+    s3_path = models.CharField(max_length=255)

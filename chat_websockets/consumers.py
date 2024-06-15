@@ -8,7 +8,8 @@ from agi.tasks import respond_to_agi_message
 from cli.tasks import run_command
 from coach.tasks import respond_to_chat_message
 from cofounder.tasks import respond_to_cofounder_message
-from toolkit.tasks import youtube_to_blog
+from toolkit.tasks import youtube_to_blog, idea_collider
+
 
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
@@ -48,9 +49,16 @@ class ChatConsumer(WebsocketConsumer):
                                                      "id": "state"})
         elif self.app == 'toolkit':
             print(f"toolkit received: {text_data}")
-            youtube_url = text_data_json["youtube_url"]
-            audience = text_data_json["audience"]
-            youtube_to_blog.delay(youtube_url, audience, self.session)
+            if text_data_json["type"] == "idea_collider":
+                video_url = text_data_json["youtube_url"]
+                other_youtube_video_url = text_data_json["other_youtube_url"]
+                intersection = text_data_json["intersection"]
+                audience = text_data_json["audience"]
+                idea_collider.delay(video_url, other_youtube_video_url, intersection, audience, self.session)
+            elif text_data_json["type"] == "video_to_blog":
+                youtube_url = text_data_json["youtube_url"]
+                audience = text_data_json["audience"]
+                youtube_to_blog.delay(youtube_url, audience, self.session)
 
         else:
             respond_to_chat_message.delay(message, text_data_json['user_id'], self.session)
@@ -113,3 +121,7 @@ class ChatConsumer(WebsocketConsumer):
         post = event["post"]
         title = event["title"]
         self.send(text_data=json.dumps({"outline": outline, "post": post, "title": title}))
+
+    def idea_collider(self, event):
+        result = event["result"]
+        self.send(text_data=json.dumps({"result": result,}))

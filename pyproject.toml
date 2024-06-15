@@ -82,6 +82,8 @@ graphviz = "^0.20.3"
 playwright = "^1.43.0"
 resend = "^1.1.0"
 google-api-python-client = "^2.132.0"
+markdown = "^3.6"
+pdfkit = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 

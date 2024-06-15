@@ -3,6 +3,7 @@ import time
 import uuid
 
 from decouple import config
+from django.templatetags.static import static
 from django.views.decorators.csrf import csrf_exempt
 from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -14,7 +15,8 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url
 from prelo.chat.history import get_message_history
-from prelo.models import PitchDeck, Company
+from prelo.models import PitchDeck, Company, DeckReport
+from prelo.pitch_deck.generate import create_report_for_deck
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
 from prelo.tasks import check_for_decks
@@ -110,6 +112,34 @@ def get_upload_url(request):
     pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=filename, uuid=uuid_for_document, user_id=user_id,
                                           version=deck_version)
     return Response({'upload_url': url, 'pitch_deck_id': pitch_deck.id})
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def download_deck_report(request):
+    body = json.loads(request.body)
+    deck_id = body["pitch_deck_id"]
+    deck = PitchDeck.objects.filter(id=deck_id).first()
+    try:
+        if deck.report:
+            report = deck.report.s3_path
+        else:
+            download_path = create_report_for_deck(deck)
+            DeckReport.objects.create(deck=deck, s3_path=download_path)
+            report = download_path
+
+    except Exception as e:
+        # assume report doesn't exist, so create one.
+        print(e)
+        download_path = create_report_for_deck(deck)
+        DeckReport.objects.create(deck=deck, s3_path=download_path)
+        report = download_path
+
+    bucket_name = config('PRELO_AWS_BUCKET')
+    # Generate a PUT URL for uploads
+    url = create_presigned_url(bucket_name, report, method='GET')
+
+    return Response({'download_url': url})
 
 
 @api_view(('GET',))
