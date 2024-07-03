@@ -218,3 +218,4 @@ class CompetitorStrategy(models.Model):
 class DeckReport(models.Model):
     deck = models.OneToOneField(PitchDeck, on_delete=models.CASCADE, related_name="report")
     s3_path = models.CharField(max_length=255)
+

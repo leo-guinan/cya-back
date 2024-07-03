@@ -1,14 +1,18 @@
 import uuid
+
+import chromadb
+import chromadb.utils.embedding_functions as embedding_functions
 import requests
 from decouple import config
+from django.db import transaction
+from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from langsmith import traceable
 from pinecone import Pinecone
 from pyairtable import Api
-from django.db import models, transaction
 
 from submind.prompts.prompts import TOOL_RESULT_PROMPT
 
@@ -99,6 +103,7 @@ def populate_django_db(table_name, model, base_id, api_key):
                 setattr(model_instance, django_field_name, value)
             model_instance.save()
 
+
 def get_all_records():
     api = Api(config('PRELO_AIRTABLE_API_KEY'))
     table = api.table(config('PRELO_BASE_ID'), config('PRELO_TABLE_ID'))
@@ -142,7 +147,8 @@ def load_records_into_pinecone(records):
         metadatas.append(metadata)
         ids.append(id)
 
-    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_IPRELO_NAMESPACE'))
+    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_PRELO_NAMESPACE'))
+
 
 def load_angel_investor_records_into_pinecone(records):
     pc = Pinecone(api_key=config("PINECONE_API_KEY"))
@@ -173,10 +179,11 @@ def load_angel_investor_records_into_pinecone(records):
         metadatas.append(metadata)
         ids.append(id)
 
-    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_INVESTOR_PRELO_NAMESPACE'))
+    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids,
+                          namespace=config('PINECONE_INVESTOR_PRELO_NAMESPACE'))
+
 
 def load_no_warm_intro_investor_records_into_pinecone(records):
-
     pc = Pinecone(api_key=config("PINECONE_API_KEY"))
     embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
                                   openai_api_base=config('OPENAI_API_BASE'),
@@ -206,24 +213,37 @@ def load_no_warm_intro_investor_records_into_pinecone(records):
         metadatas.append(metadata)
         ids.append(id)
 
-    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids, namespace=config('PINECONE_INVESTOR_PRELO_NAMESPACE'))
+    vectorstore.add_texts(chunks_to_save, metadatas=metadatas, ids=ids,
+                          namespace=config('PINECONE_INVESTOR_PRELO_NAMESPACE'))
 
 
 TOOL_DESCRIPTION = "This tool allows you to get information about startups, their founders, and their fundraising efforts"
 
 
-@traceable
 def query_records(query, previous_results=None):
-    pc = Pinecone(api_key=config("PINECONE_API_KEY"))
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
-                                  openai_api_base=config('OPENAI_API_BASE'),
-                                  headers={
-                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
-                                  })
-    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"), host=config("PINECONE_HOST"))
-    vectorstore = PineconeVectorStore(index, embeddings, "text")
-    matched = vectorstore.similarity_search_with_score(query, k=5, namespace=config('PINECONE_PRELO_NAMESPACE'))
-    docs = "\n\n".join(doc[0].page_content for doc in matched)
+    openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+        api_key=config("OPENAI_API_KEY"),
+        model_name="text-embedding-3-small"
+    )
+    chroma_client = chromadb.HttpClient(host='3.21.190.76', port=8000)
+
+    collection = chroma_client.get_or_create_collection(name="investor_lookup", embedding_function=openai_ef)
+
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        openai_api_key=config("OPENAI_API_KEY"),
+        openai_api_base=config('OPENAI_API_BASE'),
+        headers={
+            "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+        })
+    langchain_chroma = Chroma(
+        client=chroma_client,
+        collection_name="investor_lookup",
+        embedding_function=embeddings,
+    )
+
+    matched = langchain_chroma.similarity_search(query, k=5)
+    docs = "\n\n".join(doc.page_content for doc in matched)
     model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(TOOL_RESULT_PROMPT)
     chain = prompt | model | StrOutputParser()
@@ -236,24 +256,33 @@ def query_records(query, previous_results=None):
     print(response)
     return response
 
+
 INVESTOR_LOOKUP_PROMPT = """
 
 Given this message, 
 
 """
 
+
 def lookup_investors(query):
-    pc = Pinecone(api_key=config("PINECONE_API_KEY"))
-    embeddings = OpenAIEmbeddings(openai_api_key=config("OPENAI_API_KEY"),
-                                  openai_api_base=config('OPENAI_API_BASE'),
-                                  headers={
-                                      "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
-                                  })
-    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"), host=config("PINECONE_HOST"))
-    vectorstore = PineconeVectorStore(index, embeddings, "text")
-    matched = vectorstore.similarity_search_with_score(query, k=5, namespace=config('PINECONE_INVESTOR_PRELO_NAMESPACE'))
-    docs = "\n\n".join(doc[0].page_content for doc in matched)
-    model = ChatOpenAI(model="gpt-4o", openai_api_key=config("OPENAI_API_KEY"))
+    chroma_client = chromadb.HttpClient(host=config('CHROMA_HOST'), port=8000)
+
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        openai_api_key=config("OPENAI_API_KEY"),
+        openai_api_base=config('OPENAI_API_BASE'),
+        headers={
+            "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+        })
+    langchain_chroma = Chroma(
+        client=chroma_client,
+        collection_name=config('PRELO_INVESTOR_LOOKUP_COLLECTION'),
+        embedding_function=embeddings,
+    )
+
+    matched = langchain_chroma.similarity_search(query, k=5)
+    docs = "\n\n".join(doc.page_content for doc in matched)
+    model = ChatOpenAI(model="gpt-4-turbo", openai_api_key=config("OPENAI_API_KEY"))
     prompt = ChatPromptTemplate.from_template(TOOL_RESULT_PROMPT)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({
@@ -261,7 +290,6 @@ def lookup_investors(query):
         "tool_description": TOOL_DESCRIPTION,
         "tool_output": docs
     })
-    print(response)
     return response
 
 # records = get_all_records()

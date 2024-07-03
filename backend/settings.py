@@ -33,7 +33,8 @@ ALLOWED_HOSTS = [
     '0.0.0.0',
     '127.0.0.1',
     'd408-71-176-75-4.ngrok-free.app',
-    'web'
+    'web',
+    '192.168.68.101'
 ]
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
@@ -48,6 +49,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append('app.scoremydeck.com')
     ALLOWED_HOSTS.append('app.prelovc.com')
     ALLOWED_HOSTS.append('d2slpnz9rtrehg.cloudfront.net')
+    ALLOWED_HOSTS.append('lab.ideanexusventures.com')
 
 # Application definition
 
@@ -93,7 +95,8 @@ INSTALLED_APPS = [
     'deployment',
     'prelo',
     'submind',
-    'toolkit'
+    'toolkit',
+    'lobow'
 ]
 SITE_ID = 2
 

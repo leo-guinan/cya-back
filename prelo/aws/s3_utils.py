@@ -107,6 +107,21 @@ def upload_file_to_s3(key, input_file):
                       )
     s3.upload_file(Filename=input_file, Bucket=bucket, Key=key)
 
+def upload_uploaded_file_to_s3(key, uploaded_file):
+    bucket = config('PRELO_AWS_BUCKET')
+    s3 = boto3.client('s3',
+                      aws_access_key_id=config('PRELO_AWS_ACCESS_KEY_ID'),
+                      aws_secret_access_key=config('PRELO_AWS_SECRET_ACCESS_KEY'),
+                      region_name=config('PRELO_AWS_REGION')
+                      )
+    s3.upload_fileobj(
+        uploaded_file,
+        config('PRELO_AWS_BUCKET'),
+        key,
+        ExtraArgs={'ContentType': uploaded_file.content_type},
+
+    )
+
 
 def markdown_to_pdf(markdown_content, output_path):
     """

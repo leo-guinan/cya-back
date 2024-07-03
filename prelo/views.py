@@ -8,17 +8,19 @@ from django.views.decorators.csrf import csrf_exempt
 from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from rest_framework.decorators import permission_classes, renderer_classes, api_view
+from rest_framework.decorators import permission_classes, renderer_classes, api_view, parser_classes
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
-from prelo.aws.s3_utils import create_presigned_url
+from prelo.aws.s3_utils import create_presigned_url, upload_uploaded_file_to_s3
 from prelo.chat.history import get_message_history
 from prelo.models import PitchDeck, Company, DeckReport
 from prelo.pitch_deck.generate import create_report_for_deck
 from prelo.prompts.functions import functions
-from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT
+from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT, \
+    INTERVIEW_SYSTEM_PROMPT_WITH_CUSTOMIZATION, INTERVIEW_SYSTEM_PROMPT_PLAIN
 from prelo.tasks import check_for_decks
 from prelo.tools.company import lookup_investors
 from prelo.tools.emails import write_cold_outreach_message, write_forwardable_message
@@ -462,3 +464,99 @@ def get_investor_deck_report(request):
             "recommendation": "",
             "recommendation_reasons": "",
         })
+
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def send_interview_chat_message(request):
+    conversation_uuid = request.data.get('uuid')
+    message = request.data.get('message')
+    submind_id = request.data.get('submind_id')
+    submind = Submind.objects.get(id=submind_id)
+
+    # Access optional file uploads
+    optional_file = request.data.get('file', None)
+
+    # Add your logic here to handle the optional file if present
+    if optional_file:
+        key = f'prelovc/{conversation_uuid}/{optional_file.name}'
+        upload_uploaded_file_to_s3(key, optional_file)
+        print(f'Uploaded to: {key}')
+    start_time = time.perf_counter()
+    # Needs a submind to chat with. How does this look in practice?
+    # Should have tools to pull data, knowledge to respond from, with LLM backing.
+    model = SubmindModelFactory.get_model(conversation_uuid, "interview_chat", 0.0)
+    model_claude = SubmindModelFactory.get_claude(conversation_uuid, "interview_chat")
+    # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
+
+    basic_prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                INTERVIEW_SYSTEM_PROMPT_PLAIN
+            ),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ]
+    )
+    custom_prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                INTERVIEW_SYSTEM_PROMPT_WITH_CUSTOMIZATION
+            ),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ]
+    )
+    basic_runnable_gpt4o = basic_prompt | model
+    basic_runnable_claude = basic_prompt | model_claude
+    custom_runnable_claude = custom_prompt | model_claude
+
+    basic_gpt40_with_message_history = RunnableWithMessageHistory(
+        basic_runnable_gpt4o,
+        get_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    basic_claude_with_message_history = RunnableWithMessageHistory(
+        basic_runnable_claude,
+        get_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    custom_claude_with_message_history = RunnableWithMessageHistory(
+        custom_runnable_claude,
+        get_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    submind_document = remember(submind)
+    custom_answer = custom_claude_with_message_history.invoke(
+        {
+            "input": message,
+            "mind": submind_document,
+        },
+        config={"configurable": {"session_id": f'custom_claude_{conversation_uuid}'}},
+
+    )
+    basic_gpt40_answer = basic_gpt40_with_message_history.invoke(
+        {
+            "input": message,
+        },
+        config={"configurable": {"session_id": f'basic_gpt4o_{conversation_uuid}'}},
+
+    )
+    basic_claude_answer = basic_claude_with_message_history.invoke(
+        {
+            "input": message,
+        },
+        config={"configurable": {"session_id": f'basic_claude_{conversation_uuid}'}},
+
+    )
+    end_time = time.perf_counter()
+    print(f"Chat took {end_time - start_time} seconds")
+
+    return Response({"custom_message": custom_answer.content, "gpt4o_message": basic_gpt40_answer.content, "claude_message": basic_claude_answer.content})

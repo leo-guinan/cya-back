@@ -1,14 +1,26 @@
+import os
 import time
+import uuid
+from datetime import datetime
+from io import BytesIO
 
+import chromadb
 import requests
+from PIL import Image
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from decouple import config
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 from langchain_community.output_parsers.ernie_functions import JsonOutputFunctionsParser
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_experimental.text_splitter import SemanticChunker
+from langchain_openai import OpenAIEmbeddings
+from pymongo import MongoClient
 
 from backend.celery import app
+from prelo.aws.s3_utils import upload_file_to_s3
 from submind.llms.submind import SubmindModelFactory
 from toolkit.models import YoutubeVideo, BlogPost, IdeaColliderOutput
 
@@ -213,7 +225,8 @@ def youtube_to_blog(video_url, audience, ws_uuid):
          "post": post.get("blog_post", "")
          }
     )
-    BlogPost.objects.create(title=title.get("title"), content=post.get("blog_post"), outline=outline.get("blog_outline"))
+    BlogPost.objects.create(title=title.get("title"), content=post.get("blog_post"),
+                            outline=outline.get("blog_outline"), uuid=str(uuid.uuid4()))
 
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(ws_uuid, {
@@ -267,8 +280,8 @@ def idea_collider(video_url, other_youtube_video_url, intersection, audience, ws
          }
     )
     IdeaColliderOutput.objects.create(first_video=YoutubeVideo.objects.get(url=video_url),
-                                        second_video=YoutubeVideo.objects.get(url=other_youtube_video_url),
-                                        result=result)
+                                      second_video=YoutubeVideo.objects.get(url=other_youtube_video_url),
+                                      result=result, uuid=str(uuid.uuid4()))
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(ws_uuid, {
         "type": "idea.collider",
@@ -277,11 +290,9 @@ def idea_collider(video_url, other_youtube_video_url, intersection, audience, ws
 
 
 def transcribe_youtube_video(video_url):
-
     existing_video = YoutubeVideo.objects.filter(url=video_url).first()
     if existing_video:
         return existing_video.transcript
-
 
     gladia_key = config('GLADIA_API_KEY')
     request_data = {
@@ -316,3 +327,155 @@ def transcribe_youtube_video(video_url):
             else:
                 print("Transcription status:", poll_response.get("status"))
             time.sleep(1)
+
+
+@app.task(name='toolkit.tasks.sync_google_docs')
+def fetch_google_docs_data(tokens, user_id):
+    print(tokens)
+    creds = Credentials(
+        client_id=config('GOOGLE_CLIENT_ID'),
+        client_secret=config('GOOGLE_CLIENT_SECRET'),
+        refresh_token=tokens['refresh_token'],
+        token=tokens['access_token'],
+        token_uri='https://oauth2.googleapis.com/token',
+        scopes=['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive']
+    )
+
+    try:
+        service = build('docs', 'v1', credentials=creds)
+        drive_service = build('drive', 'v3', credentials=creds)
+
+        page_token = None
+        while True:
+            # List Google Docs owned by the user, with pagination
+            results = drive_service.files().list(
+                q="mimeType='application/vnd.google-apps.document' and 'me' in owners",
+                fields="nextPageToken, files(id, name)",
+                pageToken=page_token,
+                pageSize=100  # Adjust as needed
+            ).execute()
+
+            items = results.get('files', [])
+
+            for item in items:
+                process_single_doc.delay(tokens, item['id'], user_id)  # Kick off a sub-task for each doc
+
+            page_token = results.get('nextPageToken')
+            if not page_token:
+                break  # No more pages
+    except Exception as e:
+        print(f"Error fetching Google Docs: {e}")
+
+
+@app.task(name='toolkit.tasks.process_single_doc')
+def process_single_doc(tokens, doc_id, user_id):
+    creds = Credentials(
+        client_id=config('GOOGLE_CLIENT_ID'),
+        client_secret=config('GOOGLE_CLIENT_SECRET'),
+        refresh_token=tokens['refresh_token'],
+        token=tokens['access_token'],
+        token_uri='https://oauth2.googleapis.com/token',
+        scopes=['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive']
+    )
+    service = build('docs', 'v1', credentials=creds)
+    doc = service.documents().get(documentId=doc_id).execute()
+    html_content = document_to_html(doc)
+    for obj_id, obj in doc.get('inlineObjects', {}).items():
+        content_uri = obj['inlineObjectProperties']['embeddedObject']['imageProperties'].get('contentUri')
+        if content_uri:
+            response = requests.get(content_uri, headers={'Authorization': f'Bearer {creds.token}'})
+            if response.status_ok:
+                img = Image.open(BytesIO(response.content))
+                img_path = f'images/{obj_id}.png'
+                os.makedirs(os.path.dirname(img_path), exist_ok=True)
+                img.save(img_path)
+                upload_file_to_s3(f'toolkit/docs/{doc_id}/{img_path}', img_path)
+                # Replace content URI with local path in HTML
+                html_content = html_content.replace(content_uri,
+                                                    f's3://||PLACEHOLDER||toolkit/docs/{doc_id}/{img_path}')
+    mongo_client = MongoClient(config('MAC_MONGODB_CONNECTION_STRING'))
+    db = mongo_client.your_database_name
+    doc_uuid = str(uuid.uuid4())
+    db.documents.insert_one({
+        "content": html_content,
+        "uuid": doc_uuid,
+        "createdAt": datetime.now(),
+        "sourceId": doc_id
+
+    })
+    client = chromadb.HttpClient(host=config('CHROMA_SERVER_HOST'), port=8000)
+    # embeddings = OpenAIEmbeddings(
+    #     model="text-embedding-3-small",
+    #     openai_api_key=config("OPENAI_API_KEY"),
+    #     openai_api_base=config('OPENAI_API_BASE'),
+    #     headers={
+    #         "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
+    #     })
+    #
+    collection = client.get_or_create_collection("documents")
+    #
+    # text_splitter = SemanticChunker(embeddings)
+    # docs = text_splitter.split_text(html_content)
+    # metadatas = []
+    # ids = []
+    # chunks_to_save = []
+    # for chunk in docs:
+    #     chunk_id = str(uuid.uuid4())
+    #     metadata = {
+    #         "documentUUID": doc_uuid,
+    #         "date": datetime.now(),
+    #         "text": chunk,
+    #         "userId": user_id,
+    #         "sourceId": doc_id
+    #     }
+    #     metadatas.append(metadata)
+    #     ids.append(chunk_id)
+    #     chunks_to_save.append(chunk)
+    # collection.add(documents=chunks_to_save, metadatas=metadatas, ids=ids)
+
+
+def document_to_html(doc):
+    content = doc.get('body').get('content')
+    html = []
+    for element in content:
+        if 'paragraph' in element:
+            paragraph = element.get('paragraph')
+            html.append('<p>')
+            for run in paragraph.get('elements'):
+                if 'textRun' in run:
+                    text_run = run.get('textRun')
+                    text = text_run.get('content')
+                    text_style = text_run.get('textStyle', {})
+                    if text_style.get('link'):
+                        url = text_style['link'].get('url', '#')
+                        text = f'<a href="{url}">{text}</a>'
+                    if text_style.get('bold'):
+                        text = f'<strong>{text}</strong>'
+                    if text_style.get('italic'):
+                        text = f'<em>{text}</em>'
+                    if text_style.get('underline'):
+                        text = f'<u>{text}</u>'
+                    html.append(text)
+                elif 'inlineObjectElement' in run:
+                    object_id = run['inlineObjectElement']['inlineObjectId']
+                    inline_object = doc['inlineObjects'][object_id]
+                    image_properties = inline_object['inlineObjectProperties']['embeddedObject']['imageProperties']
+                    content_uri = image_properties.get('contentUri')
+                    if content_uri:
+                        html.append(f'<img src="{content_uri}" alt="Inline image" />')
+            html.append('</p>')
+        elif 'table' in element:
+            html.append('<table border="1">')
+            for row in element['table']['tableRows']:
+                html.append('<tr>')
+                for cell in row['tableCells']:
+                    html.append('<td>')
+                    for cell_content in cell['content']:
+                        if 'paragraph' in cell_content:
+                            for run in cell_content['paragraph']['elements']:
+                                if 'textRun' in run:
+                                    html.append(run['textRun']['content'])
+                    html.append('</td>')
+                html.append('</tr>')
+            html.append('</table>')
+    return ''.join(html)

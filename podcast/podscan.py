@@ -26,7 +26,7 @@ def look_for_podcast_episodes(query, per_page=10, pages=1):
         headers={
             "Helicone-Auth": f"Bearer {config('HELICONE_API_KEY')}"
         })
-    index = pc.Index(config("BIPC_PINECONE_INDEX_NAME"), host=config("PINECONE_HOST"))
+    index = pc.Index(config("CRAWLER_PINECONE_INDEX_NAME"), host=config("CRAWLER_PINECONE_HOST"))
     vectorstore = PineconeVectorStore(index, embeddings, "text")
     text_splitter = SemanticChunker(embeddings)
     backup_text_splitter = RecursiveCharacterTextSplitter(
