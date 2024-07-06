@@ -2,6 +2,8 @@ import json
 import time
 import uuid
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from decouple import config
 from django.templatetags.static import static
 from django.views.decorators.csrf import csrf_exempt
@@ -16,7 +18,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url, upload_uploaded_file_to_s3
 from prelo.chat.history import get_message_history
-from prelo.models import PitchDeck, Company, DeckReport
+from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload
 from prelo.pitch_deck.generate import create_report_for_deck
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT, \
@@ -475,15 +477,30 @@ def send_interview_chat_message(request):
     message = request.data.get('message')
     submind_id = request.data.get('submind_id')
     submind = Submind.objects.get(id=submind_id)
+    comparison_view = request.data.get('comparison_view', False)
 
     # Access optional file uploads
     optional_file = request.data.get('file', None)
 
     # Add your logic here to handle the optional file if present
     if optional_file:
-        key = f'prelovc/{conversation_uuid}/{optional_file.name}'
-        upload_uploaded_file_to_s3(key, optional_file)
-        print(f'Uploaded to: {key}')
+        client = request.data.get('client')
+        user_id = request.data.get('user_id')
+        investor_id = request.data.get('investor_id')
+        firm_id = request.data.get('firm_id')
+        object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{optional_file.name}'
+        upload_uploaded_file_to_s3(object_name, optional_file)
+        Company.objects.create(user_id=user_id, deck_uuid=conversation_uuid)
+        print(f'Uploaded to: {object_name}')
+        deck_uuid = str(uuid.uuid4())
+        pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=optional_file.name, uuid=deck_uuid,
+                                              user_id=user_id)
+        ConversationDeckUpload.objects.create(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(conversation_uuid,
+                                                {"type": "deck.received",
+                                                 "deck_uuid": deck_uuid
+                                                 })
     start_time = time.perf_counter()
     # Needs a submind to chat with. How does this look in practice?
     # Should have tools to pull data, knowledge to respond from, with LLM backing.
@@ -542,21 +559,25 @@ def send_interview_chat_message(request):
         config={"configurable": {"session_id": f'custom_claude_{conversation_uuid}'}},
 
     )
-    basic_gpt40_answer = basic_gpt40_with_message_history.invoke(
-        {
-            "input": message,
-        },
-        config={"configurable": {"session_id": f'basic_gpt4o_{conversation_uuid}'}},
+    if comparison_view:
+        basic_gpt40_answer = basic_gpt40_with_message_history.invoke(
+            {
+                "input": message,
+            },
+            config={"configurable": {"session_id": f'basic_gpt4o_{conversation_uuid}'}},
 
-    )
-    basic_claude_answer = basic_claude_with_message_history.invoke(
-        {
-            "input": message,
-        },
-        config={"configurable": {"session_id": f'basic_claude_{conversation_uuid}'}},
+        )
+        basic_claude_answer = basic_claude_with_message_history.invoke(
+            {
+                "input": message,
+            },
+            config={"configurable": {"session_id": f'basic_claude_{conversation_uuid}'}},
 
-    )
+        )
+        end_time = time.perf_counter()
+        print(f"Chat took {end_time - start_time} seconds")
+
+        return Response({"custom_message": custom_answer.content, "gpt4o_message": basic_gpt40_answer.content, "claude_message": basic_claude_answer.content})
     end_time = time.perf_counter()
     print(f"Chat took {end_time - start_time} seconds")
-
-    return Response({"custom_message": custom_answer.content, "gpt4o_message": basic_gpt40_answer.content, "claude_message": basic_claude_answer.content})
+    return Response({"message": custom_answer.content})

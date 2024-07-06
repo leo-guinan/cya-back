@@ -50,6 +50,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append('app.prelovc.com')
     ALLOWED_HOSTS.append('d2slpnz9rtrehg.cloudfront.net')
     ALLOWED_HOSTS.append('lab.ideanexusventures.com')
+    ALLOWED_HOSTS.append('d26r4trmuv7ej3.cloudfront.net')
 
 # Application definition
 
@@ -96,7 +97,8 @@ INSTALLED_APPS = [
     'prelo',
     'submind',
     'toolkit',
-    'lobow'
+    'lobow',
+    'creator_services'
 ]
 SITE_ID = 2
 

@@ -157,3 +157,4 @@ dump.rdb
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Python,dotenv,Django
 data/
 scraped/
+chroma/

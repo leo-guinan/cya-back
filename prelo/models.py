@@ -219,3 +219,12 @@ class DeckReport(models.Model):
     deck = models.OneToOneField(PitchDeck, on_delete=models.CASCADE, related_name="report")
     s3_path = models.CharField(max_length=255)
 
+
+class ConversationDeckUpload(models.Model):
+    conversation_uuid = models.CharField(max_length=255)
+    deck_uuid = models.CharField(max_length=255)
+
+    unique_together = ('conversation_uuid', 'deck_uuid')
+
+
+

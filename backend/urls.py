@@ -40,4 +40,5 @@ urlpatterns = [
     path('api/submind/', include('submind.urls')),
     path('api/toolkit/', include('toolkit.urls')),
     path('api/lobow/', include('lobow.urls')),
+    path('api/creator_services/', include('creator_services.urls')),
 ]

@@ -125,3 +125,7 @@ class ChatConsumer(WebsocketConsumer):
     def idea_collider(self, event):
         result = event["result"]
         self.send(text_data=json.dumps({"result": result,}))
+
+    def deck_received(self, event):
+        deck_uuid = event["deck_uuid"]
+        self.send(text_data=json.dumps({"deck_uuid": deck_uuid, "status": "received"}))
