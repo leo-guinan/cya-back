@@ -13,8 +13,8 @@ from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember
 from prelo.pitch_deck.investor.believe import believe_analysis
 from prelo.pitch_deck.investor.concerns import concerns_analysis, updated_concerns_analysis
 from prelo.pitch_deck.investor.memo import write_memo
-from prelo.pitch_deck.investor.recommendation import recommendation_analysis
-from prelo.pitch_deck.investor.summary import summarize_deck
+from prelo.pitch_deck.investor.recommendation import recommendation_analysis, recommended_next_steps
+from prelo.pitch_deck.investor.summary import summarize_deck, summarize_investor_report
 from prelo.pitch_deck.investor.traction import traction_analysis
 from prelo.pitch_deck.reporting import create_updated_risk_report
 from prelo.prompts.functions import functions
@@ -241,11 +241,12 @@ def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     print("Traction complete")
     concerns_analysis(pitch_deck_analysis)
     print("Concerns complete")
-    believe_analysis(pitch_deck_analysis)
-    print("Believe complete")
     recommendation_analysis(pitch_deck_analysis)
     print("Recommendation complete")
-    write_memo(pitch_deck_analysis)
+
+
+    summarize_investor_report(pitch_deck_analysis)
+    recommended_next_steps(pitch_deck_analysis)
     end_time = time.perf_counter()
     pitch_deck_analysis.analysis_time = end_time - start_time
     pitch_deck_analysis.save()

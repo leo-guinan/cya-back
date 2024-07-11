@@ -1,3 +1,4 @@
+import json
 import tempfile
 import time
 import uuid
@@ -10,15 +11,16 @@ from langchain_core.messages import HumanMessage
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
 from prelo.investor.analysis import check_deck_against_thesis
-from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company
+from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload
 from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version, \
     initial_analysis, gtm_strategy
 from prelo.pitch_deck.investor.concerns import concerns_analysis
+from prelo.pitch_deck.investor.founders import extract_founder_info
 from prelo.pitch_deck.processing import pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
 from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
 from submind.llms.submind import SubmindModelFactory
-
+from prelo.chat.history import get_prelo_message_history
 
 @app.task(name="prelo.tasks.check_for_decks")
 def check_for_decks():
@@ -33,6 +35,7 @@ def check_for_decks():
             deck.version = version if version.isnumeric() else 1
             deck.save()
             company_to_populate = Company.objects.filter(deck_uuid=deck.uuid).first()
+            print(f"Company to populate: {company_to_populate}")
             if not company_to_populate:
                 process_deck.delay(deck.id)
             else:
@@ -126,28 +129,45 @@ def populate_company_data(company_id, pitch_deck_analysis_id):
 
 @app.task(name="prelo.tasks.analyze_deck")
 def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
+    print(f"ANALYZING DECK WITH COMPANY ID: {company_id}")
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.ANALYZING
     pitch_deck_analysis.deck.save()
     if "prelovc" in pitch_deck_analysis.deck.s3_path:
+        initial_analysis(pitch_deck_analysis_id, company_id)
+        extract_founder_info(pitch_deck_analysis)
+        analyze_deck(pitch_deck_analysis)
         investor_analysis(pitch_deck_analysis)
         try:
             channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                    {"type": "deck.recommendation",
-                                                     "id": pitch_deck_analysis.deck.id,
-                                                     "name": pitch_deck_analysis.deck.name,
-                                                     "concerns": pitch_deck_analysis.concerns,
-                                                     "believe": pitch_deck_analysis.believe,
-                                                     "traction": pitch_deck_analysis.traction,
-                                                     "summary": pitch_deck_analysis.summary,
-                                                     "recommendation_score": pitch_deck_analysis.investor_report.investment_potential_score,
-                                                     "recommendation": pitch_deck_analysis.investor_report.recommendation_reasons,
+            # deck_uuid = event["deck_uuid"]
+            #         deck_score = event["deck_score"]
+            #         recommended_next_steps = event["recommended_next_steps"]
+            #         report_summary = event["report_summary"]
+            #         report_uuid = event["report_uuid"]
+            conversation = ConversationDeckUpload.objects.get(deck_uuid=pitch_deck_analysis.deck.uuid)
+            print(f"Conversation UUID: {conversation.conversation_uuid}")
+            # need to add the deck report to the conversation history in a way that can rebuild it. save message as JSON blob?
+            history = get_prelo_message_history(f'custom_claude_{conversation.conversation_uuid}')
+            history.add_ai_message(json.dumps({
+                "deck_uuid": pitch_deck_analysis.deck.uuid,
+                "status": "analyzed",
+                "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
+                "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
+                "report_summary": pitch_deck_analysis.investor_report.summary,
+                "report_uuid": pitch_deck_analysis.investor_report.uuid,
+            }))
+            async_to_sync(channel_layer.group_send)(conversation.conversation_uuid,
+                                                    {"type": "deck.analyzed",
+                                                        "deck_uuid": pitch_deck_analysis.deck.uuid,
+                                                        "report_uuid": pitch_deck_analysis.investor_report.uuid,
+                                                        "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
+                                                     "report_summary": pitch_deck_analysis.investor_report.summary,
+                                                     "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
                                                      })
         except Exception as e:
             print(e)
             # not vital, just try to return response to chat if possible.
-        return
     else:
         if pitch_deck_analysis.deck.version > 1:
             print("Checking updated version")
@@ -236,8 +256,8 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
             except Exception as e:
                 print(e)
                 # not vital, just try to return response to chat if possible.
-        if company_id is not None:
-            populate_company_data.delay(company_id, pitch_deck_analysis_id)
+            if company_id is not None:
+                populate_company_data.delay(company_id, pitch_deck_analysis_id)
 
 
 @app.task(name="process_slide")
@@ -272,6 +292,8 @@ def process_slide(slide_id):
 
 @app.task(name="processing_callback")
 def processing_callback(results, deck_id, start_time, company_id=None):
+    print(f"PROCESSING CALLBACK WITH COMPANY ID: {company_id}")
+
     deck = PitchDeck.objects.get(id=deck_id)
     print(f"Processing callback for deck: {deck.name}")
     print(f'Start_time: {start_time}')
@@ -307,6 +329,8 @@ def processing_callback(results, deck_id, start_time, company_id=None):
 
 @app.task(name="prelo.tasks.process_deck")
 def process_deck(deck_id, company_id=None):
+    print(f"PROCESSING DECK WITH COMPANY ID: {company_id}")
+
     deck = PitchDeck.objects.get(id=deck_id)
     # process the deck
     deck.status = PitchDeck.PROCESSING

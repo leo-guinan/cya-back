@@ -13,8 +13,8 @@ def write_memo(pitch_deck_analysis: PitchDeckAnalysis):
     model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "write_memo")
     prompt = ChatPromptTemplate.from_template(MEMO_PROMPT)
     chain = prompt | model | StrOutputParser()
-    firm_id = pitch_deck_analysis.deck.s3_path.split("/")[-4]
-    investor_id = pitch_deck_analysis.deck.s3_path.split("/")[-3]
+    firm_id = pitch_deck_analysis.deck.s3_path.split("/")[-3]
+    investor_id = pitch_deck_analysis.deck.s3_path.split("/")[-2]
     firm = InvestmentFirm.objects.get(lookup_id=firm_id)
     investor = Investor.objects.get(lookup_id=investor_id)
     submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))

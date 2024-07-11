@@ -17,8 +17,8 @@ from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url, upload_uploaded_file_to_s3
-from prelo.chat.history import get_message_history
-from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload
+from prelo.chat.history import get_message_history, get_prelo_message_history
+from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport
 from prelo.pitch_deck.generate import create_report_for_deck
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT, \
@@ -439,8 +439,10 @@ def get_deck_report(request):
 def get_investor_deck_report(request):
     try:
         body = json.loads(request.body)
-        deck_id = body["deck_id"]
-        deck = PitchDeck.objects.get(id=deck_id)
+        deck_uuid = body["deck_uuid"]
+        report_uuid = body["report_uuid"]
+        deck = PitchDeck.objects.get(uuid=deck_uuid)
+        investor_report = InvestorReport.objects.get(uuid=report_uuid)
         analysis = deck.analysis
         if analysis.investor_report.investment_potential_score > 70:
             recommendation = "contact"
@@ -448,13 +450,52 @@ def get_investor_deck_report(request):
             recommendation = "maybe"
         else:
             recommendation = "pass"
+        company = Company.objects.filter(deck_uuid=deck_uuid).first()
+        company_name = company.name
+        amount_raising = company.funding_amount
+        scores = deck.scores
+        score_object = {
+            'market': {
+                'score': scores.market_opportunity,
+                'reason': scores.market_reasoning,
+            },
+            'team': {
+                'score': scores.team,
+                'reason': scores.team_reasoning,
+            },
+            'product': {
+                'score': scores.product,
+                'reason': scores.product_reasoning,
+            },
+            'traction': {
+                'score': scores.traction,
+                'reason': scores.traction_reasoning,
+            },
+            'final': {
+                'score': analysis.investor_report.investment_potential_score,
+                'reason': analysis.investor_report.recommendation_reasons,
+
+            }
+        }
+        founders = analysis.founder_summary
         return Response({
             "concerns": analysis.concerns,
             "believe": analysis.believe,
             "traction": analysis.traction,
             "summary": analysis.summary,
+            "executive_summary": analysis.investor_report.executive_summary,
             "recommendation": recommendation,
             "recommendation_reasons": analysis.investor_report.recommendation_reasons,
+            "investment_potential_score": analysis.investor_report.investment_potential_score,
+            "recommendation_summary": analysis.investor_report.summary,
+            "recommended_next_steps": analysis.investor_report.recommended_next_steps,
+            "company_name": company_name,
+            "amount_raising": amount_raising,
+            "scores": score_object,
+            "founders": founders,
+            "founders_contact_info": analysis.founder_contact_info
+
+
         })
     except Exception as e:
         print(e)
@@ -485,22 +526,27 @@ def send_interview_chat_message(request):
     # Add your logic here to handle the optional file if present
     if optional_file:
         client = request.data.get('client')
-        user_id = request.data.get('user_id')
         investor_id = request.data.get('investor_id')
         firm_id = request.data.get('firm_id')
         object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{optional_file.name}'
         upload_uploaded_file_to_s3(object_name, optional_file)
-        Company.objects.create(user_id=user_id, deck_uuid=conversation_uuid)
+        Company.objects.create(user_id=investor_id, deck_uuid=conversation_uuid)
         print(f'Uploaded to: {object_name}')
         deck_uuid = str(uuid.uuid4())
         pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=optional_file.name, uuid=deck_uuid,
-                                              user_id=user_id)
+                                              user_id=investor_id)
+        Company.objects.create(user_id=investor_id, deck_uuid=deck_uuid)
         ConversationDeckUpload.objects.create(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid)
+        check_for_decks.delay()
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(conversation_uuid,
                                                 {"type": "deck.received",
                                                  "deck_uuid": deck_uuid
                                                  })
+        history = get_prelo_message_history(f'custom_claude_{conversation_uuid}')
+        history.add_user_message(f"Uploaded pitch deck {optional_file.name}")
+        history.add_ai_message("Deck has been uploaded and I'm analyzing it now.")
+        return Response({"message": "Deck has been uploaded and I'm analyzing it now.", "type": "deck_uploaded"})
     start_time = time.perf_counter()
     # Needs a submind to chat with. How does this look in practice?
     # Should have tools to pull data, knowledge to respond from, with LLM backing.
@@ -534,19 +580,19 @@ def send_interview_chat_message(request):
 
     basic_gpt40_with_message_history = RunnableWithMessageHistory(
         basic_runnable_gpt4o,
-        get_message_history,
+        get_prelo_message_history,
         input_messages_key="input",
         history_messages_key="history",
     )
     basic_claude_with_message_history = RunnableWithMessageHistory(
         basic_runnable_claude,
-        get_message_history,
+        get_prelo_message_history,
         input_messages_key="input",
         history_messages_key="history",
     )
     custom_claude_with_message_history = RunnableWithMessageHistory(
         custom_runnable_claude,
-        get_message_history,
+        get_prelo_message_history,
         input_messages_key="input",
         history_messages_key="history",
     )
@@ -581,3 +627,50 @@ def send_interview_chat_message(request):
     end_time = time.perf_counter()
     print(f"Chat took {end_time - start_time} seconds")
     return Response({"message": custom_answer.content})
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_investor_report(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]
+    report_uuid = body["report_uuid"]
+    deck = PitchDeck.objects.get(uuid=deck_uuid)
+    report = InvestorReport.objects.get(uuid=report_uuid)
+    scores = deck.scores
+    score_object = {
+        'market': {
+            'score': scores.market_opportunity,
+            'reason': scores.market_reasoning,
+        },
+        'team': {
+            'score': scores.team,
+            'reason': scores.team_reasoning,
+        },
+        'product': {
+            'score': scores.product,
+            'reason': scores.product_reasoning,
+        },
+        'traction': {
+            'score': scores.traction,
+            'reason': scores.traction_reasoning,
+        },
+        'final': {
+            'score': report.investment_potential_score,
+            'reason': report.recommendation_reasons,
+
+        }
+    }
+    return Response({
+        "concerns": deck.analysis.concerns,
+        "believe": deck.analysis.believe,
+        "traction": deck.analysis.traction,
+        "summary": deck.analysis.summary,
+        "executive_summary": report.executive_summary,
+        "recommendation_reasons": report.recommendation_reasons,
+        "investment_potential_score": report.investment_potential_score,
+        "matches_thesis": report.matches_thesis,
+        "scores": score_object,
+        "founder_info": "",
+    })

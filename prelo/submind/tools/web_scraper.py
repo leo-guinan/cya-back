@@ -1,29 +1,20 @@
-import sys
-from datetime import datetime
-
-import requests
-from decouple import config
-from langchain.embeddings import OpenAIEmbeddings
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_pinecone  import PineconeVectorStore
-from pinecone import Pinecone
+import re
 import uuid
-from langchain_experimental.text_splitter import SemanticChunker
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-import json
+from datetime import datetime
 from urllib.parse import urlparse, urljoin
 from urllib.request import Request, urlopen
-from bs4 import BeautifulSoup
-import re
 
+import requests
+from bs4 import BeautifulSoup
+from decouple import config
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from pymongo import MongoClient
 
-from prelo.submind.prompts import INTEGRATE_LEARNING_PROMPT, LEARN_FROM_TEXT_PROMPT
+from prelo.submind.prompts import LEARN_FROM_TEXT_PROMPT
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Submind
-
 
 
 def url_to_filename(url):
@@ -53,7 +44,6 @@ def process_page(soup: BeautifulSoup, url, submind: Submind = None, what_to_lear
 
     if submind:
         learn_from_page(content, submind, what_to_learn)
-
 
 
 def is_valid(url: str) -> bool:
@@ -96,6 +86,8 @@ def crawl(base_url: str, submind: Submind = None, what_to_learn=None):
             process_page(soup, url, submind, what_to_learn)
 
             crawled_urls.add(url)
+            if len(crawled_urls) > 50:
+                return
 
             for link in get_all_links(url, base_url):
                 if link not in crawled_urls:
@@ -104,8 +96,7 @@ def crawl(base_url: str, submind: Submind = None, what_to_learn=None):
             print(f"Error crawling {url}: {e}")
 
 
-def scrape(url, submind: Submind=None, what_to_learn=None):
-
+def scrape(url, submind: Submind = None, what_to_learn=None):
     print(f"----- Crawling: {url} -----")
     headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1'}
     session = requests.Session()
@@ -118,10 +109,11 @@ def scrape(url, submind: Submind=None, what_to_learn=None):
     soup = BeautifulSoup(response.content, 'html.parser')
     process_page(soup, url, submind, what_to_learn)
 
+
 def learn_from_page(content: str, submind: Submind, what_to_learn: str):
     current_knowledge = remember(submind)
     # model = SubmindModelFactory.get_claude(submind.uuid, "Submind Webpage Learning")
-    model = SubmindModelFactory.get_model(submind.uuid, "Submind Webpage Learning")
+    model = SubmindModelFactory.get_ollama(submind.uuid, "Submind Webpage Learning")
     print("Current submind knowledge")
     print(current_knowledge)
     learning_prompt = ChatPromptTemplate.from_template(LEARN_FROM_TEXT_PROMPT)
@@ -134,7 +126,6 @@ def learn_from_page(content: str, submind: Submind, what_to_learn: str):
     print("New information learned")
     print(learning)
 
-
     historical_uuid = str(uuid.uuid4())
     mongo_client = MongoClient(config('MAC_MONGODB_CONNECTION_STRING'))
     db = mongo_client.submind
@@ -146,6 +137,6 @@ def learn_from_page(content: str, submind: Submind, what_to_learn: str):
         "documentUUID": previous_doc["uuid"]
     })
     db.documents.update_one({"uuid": submind.mindUUID}, {
-        "$set": {"content": f"{previous_doc['content']}\n\n{learning}", "previousVersion": historical_uuid, "updatedAt": datetime.now()}},
-                                 upsert=True)
-
+        "$set": {"content": f"{previous_doc['content']}\n\n{learning}", "previousVersion": historical_uuid,
+                 "updatedAt": datetime.now()}},
+                            upsert=True)

@@ -295,7 +295,71 @@ Given the raw data from the pitch deck, summarize the key points in a way that i
 
 Here's the pitch deck data: {data}
 
+In the summary, include a problem statement, a solution statement, the market size, the traction, and the team.
+
+Then add the amount they are raising and a summary of the founders' expertise.
+
 """
+
+EXECUTIVE_SUMMARY_PROMPT = """
+You are an expert at writing executive summaries that include the relevant information for investors.
+
+Given a summary of a pitch deck that includes a problem statement, a solution statement, the market size, the traction, the team,
+the amount raising, and the founders' expertise, write an executive summary that is concise, compelling, and easy to skim.
+
+Use this format for the executive summary:
+
+**company name - Executive Summary ✍️**
+
+<One-sentence description of the product/service>
+
+Market size: <market size and growth rate>
+
+**Traction 📈**
+<Traction metrics, presented as a bulleted list, focusing on current usage?
+
+**Founder(s) 🚀**
+<Brief description of the founding team's background>
+
+**Investment Ask 💵**
+ <investment ask and projected growth>
+
+Limit it to 100 words or less. Include section headers of "Traction", "Founder(s)", and "Investment Ask". 
+
+Use whitespace to separate the sections.
+
+Here's the summary: {summary}
+
+"""
+
+FOUNDER_LINKEDIN_PROMPT = """You are an expert at extracting information from Google search results.
+
+Given the name of a founder, a company and some search results, identify their linkedin profile.
+
+Founder: {founder}
+Company: {company}
+Search Results: {search_results}
+
+"""
+
+FOUNDER_TWITTER_PROMPT = """You are an expert at extracting information from Google search results.
+
+Given the name of a founder, a company and some search results, identify their twitter/X profile.
+
+Founder: {founder}
+Company: {company}
+Search Results: {search_results}
+
+
+"""
+
+FOUNDER_CONTACT_PROMPT = """You are an expert at extracting contact information from a pitch deck.
+
+Given a pitch deck, pull out the email address of the founders, if available.
+
+Deck: {pitch_deck}
+"""
+
 
 TRACTION_PROMPT = """You are an expert at analyzing the traction, team, and TAM of a company for an investor.
 
@@ -412,5 +476,40 @@ Here are the top 5 reasons to believe: {believe}
 Here is the traction, TAM, and Team analysis: {traction}
 
 Based on this information, write an investment memo for this opportunity
+
+"""
+
+SUMMARIZE_REPORT_PROMPT = """
+You are a powerful submind for a top early-stage investor.
+
+Your job right now is to concisely summarize the investor report to help the investor get a high level overview of the company.
+
+Here's the report: {report}
+
+Here's the score for how well the company matches the firm's thesis: {score}
+
+Write the summary in 50 words or less.
+
+"""
+
+RECOMMEND_NEXT_STEPS_PROMPT = """
+You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+You have written a report on a pitch deck for an investor.
+
+Here's the report: {report}
+
+Here's your score for how well the company matches the firm's thesis: {score}
+
+Based on that, recommend the next step in the process.
+
+Available next steps: 
+step_id:1, step_description: Contact the founders
+step_id:2, step_description: Learn more about the company
+step_id:3, step_description: Write a rejection email.
+
+Pick one step and return the step_id and step_description for that step.
 
 """

@@ -373,6 +373,77 @@ functions = [
             },
             "required": ["strategy", "competitors"],
         },
+    },
+    {
+        "name": "founder_linkedin_extraction",
+        "description": "extract the linkedin information of a founder",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the linkedin extraction",
+                    "properties": {
+                        "linkedin_url": {
+                            "type": "string",
+                            "description": "The linkedin url of the founder",
+                        },
+                        "linkedin_info": {
+                            "type": "string",
+                            "description": "The linkedin information of the founder"
+                        }
+
+                    }
+                },
+            },
+            "required": ["results"],
+        }
+    },
+    {
+        "name": "founder_twitter_extraction",
+        "description": "extract the twitter information of a founder",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the twitter extraction",
+                    "properties": {
+                        "twitter_url": {
+                            "type": "string",
+                            "description": "The twitter url of the founder",
+                        },
+                        "twitter_info": {
+                            "type": "string",
+                            "description": "The twitter information of the founder"
+                        }
+
+                    }
+                },
+            },
+            "required": ["results"],
+        },
+
+    },
+    {
+        "name": "founder_contact_extraction",
+        "description": "extract the contact information of a founder",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the contact extraction",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "description": "The email address of the founder or company",
+                        },
+                    }
+                },
+            },
+            "required": ["results"],
+        },
     }
 
 ]

@@ -81,5 +81,24 @@ functions = [
             },
             "description": "The top 5 concerns an investor might have about the company"
         },
+    },
+    {
+        "name": "recommended_next_step",
+        "description": "provide the recommended next step for an investor based on the analysis of a pitch deck",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "next_step_id": {
+                    "type": "string",
+                    "description": "The id of the recommended next step for the investor"
+                },
+                "next_step_description": {
+                    "type": "string",
+                    "description": "The description of the recommended next step for the investor"
+                }
+            },
+            "required": ["next_step_id", "next_step_description"],
+        },
     }
+
 ]

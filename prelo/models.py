@@ -84,6 +84,8 @@ class PitchDeckAnalysis(models.Model):
     believe = models.TextField(blank=True, null=True)
     investor_report = models.OneToOneField("InvestorReport", on_delete=models.CASCADE, related_name="analysis",
                                            null=True)
+    founder_summary = models.TextField(blank=True, null=True)
+    founder_contact_info = models.TextField(blank=True, null=True)
     memo = models.OneToOneField("DealMemo", on_delete=models.CASCADE, related_name="analysis", null=True)
 
     def __str__(self):
@@ -194,8 +196,15 @@ class InvestorReport(models.Model):
     matches_thesis = models.BooleanField()
     recommendation_reasons = models.TextField()
     investment_potential_score = models.IntegerField()
+    email = models.CharField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=255, blank=True, null=True)
     firm = models.ForeignKey(InvestmentFirm, on_delete=models.CASCADE, related_name="reports")
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="reports")
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="investor_reports", null=True)
+    summary = models.TextField(blank=True, null=True)
+    executive_summary = models.TextField(blank=True, null=True)
+    uuid = models.CharField(max_length=255, unique=True)
+    recommended_next_steps = models.TextField(blank=True, null=True)
 
 
 class DealMemo(models.Model):
@@ -225,6 +234,3 @@ class ConversationDeckUpload(models.Model):
     deck_uuid = models.CharField(max_length=255)
 
     unique_together = ('conversation_uuid', 'deck_uuid')
-
-
-

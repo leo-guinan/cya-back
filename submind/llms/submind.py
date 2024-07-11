@@ -3,6 +3,7 @@ import threading
 from decouple import config
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
+from langchain_community.llms import Ollama
 
 
 class SubmindModelFactory:
@@ -40,3 +41,7 @@ class SubmindModelFactory:
                                      }
                                  }
                                  )
+
+    @classmethod
+    def get_ollama(cls, request_uuid, step):
+        return Ollama(model="llama3")
