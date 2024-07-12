@@ -513,3 +513,21 @@ step_id:3, step_description: Write a rejection email.
 Pick one step and return the step_id and step_description for that step.
 
 """
+
+REJECTION_EMAIL_PROMPT = """
+You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's the report written about the startup: {report}
+
+Here's the company's score for how well they match the firm's thesis: {score}
+
+Here's the contact info for the founder: {contact}
+
+Based on this, the decision has been made to reject the company.
+
+Draft an email to the founders explaining that the firm isn't interested in investing, and share some feedback on the rejection process.
+
+Make sure to be empathetic while also providing clear, actionable feedback to the founders.
+"""

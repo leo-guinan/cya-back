@@ -444,6 +444,34 @@ functions = [
             },
             "required": ["results"],
         },
+    },
+{
+        "name": "rejection_email",
+        "description": "write an empathetic rejection email from an investor",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the contact extraction",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "description": "The email address of the founder or company",
+                        },
+                        "subject": {
+                            "type": "string",
+                            "description": "The subject of the email",
+                        },
+                        "body": {
+                            "type": "string",
+                            "description": "The body of the email",
+                        }
+                    }
+                },
+            },
+            "required": ["results"],
+        },
     }
 
 ]

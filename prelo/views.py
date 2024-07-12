@@ -18,8 +18,10 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url, upload_uploaded_file_to_s3
 from prelo.chat.history import get_message_history, get_prelo_message_history
-from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport
+from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport, RejectionEmail, \
+    Investor
 from prelo.pitch_deck.generate import create_report_for_deck
+from prelo.pitch_deck.investor.rejection import write_rejection_email
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT, \
     INTERVIEW_SYSTEM_PROMPT_WITH_CUSTOMIZATION, INTERVIEW_SYSTEM_PROMPT_PLAIN
@@ -674,3 +676,20 @@ def get_investor_report(request):
         "scores": score_object,
         "founder_info": "",
     })
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_rejection_email(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]
+    investor_id = body["investor_id"]
+    investor = Investor.objects.filter(lookup_id=investor_id).first()
+    pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
+    rejection_email = RejectionEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
+    if not rejection_email:
+        rejection_email = write_rejection_email(pitch_deck.analysis, investor)
+
+    return Response({"email": rejection_email.email, "content": rejection_email.content, "subject": rejection_email.subject})
+

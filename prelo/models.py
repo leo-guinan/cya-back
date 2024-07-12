@@ -234,3 +234,11 @@ class ConversationDeckUpload(models.Model):
     deck_uuid = models.CharField(max_length=255)
 
     unique_together = ('conversation_uuid', 'deck_uuid')
+
+
+class RejectionEmail(models.Model):
+    deck_uuid = models.CharField(max_length=255)
+    content = models.TextField()
+    email = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="rejections")
