@@ -360,7 +360,6 @@ Given a pitch deck, pull out the email address of the founders, if available.
 Deck: {pitch_deck}
 """
 
-
 TRACTION_PROMPT = """You are an expert at analyzing the traction, team, and TAM of a company for an investor.
 
 Given the information from a pitch deck, provide a summary of the traction, team, and total addressable market (TAM) for the company.
@@ -397,7 +396,6 @@ Here's the pitch deck data: {data}
 
 """
 
-
 RECOMMENDATION_PROMPT = """You are an expert at providing recommendations to investors based on the analysis of a pitch deck.
 Here's the thesis of the investment firm: {firm_thesis}
 
@@ -412,6 +410,12 @@ Here are the top 5 reasons to believe: {believe}
 Here is the traction, TAM, and Team analysis: {traction}
 
 Based on this information, provide an integer score from 1 to 100 for the company's investment potential, and the reasoning for that score, and whether or not the company matches the investment thesis.
+
+"""
+
+USE_VOICE_PROMPT = """
+
+When writing your response, respond in this voice: {voice}
 
 """
 

@@ -231,7 +231,6 @@ def send_founder_chat_message(request):
         "tools": tools_available
     })
 
-    print(path_response)
     chat_history = get_message_history(conversation_uuid)
 
     if path_response['use_tool']:
@@ -578,7 +577,7 @@ def send_interview_chat_message(request):
     )
     basic_runnable_gpt4o = basic_prompt | model
     basic_runnable_claude = basic_prompt | model_claude
-    custom_runnable_claude = custom_prompt | model_claude
+    investor_runnable = custom_prompt | model
 
     basic_gpt40_with_message_history = RunnableWithMessageHistory(
         basic_runnable_gpt4o,
@@ -592,14 +591,14 @@ def send_interview_chat_message(request):
         input_messages_key="input",
         history_messages_key="history",
     )
-    custom_claude_with_message_history = RunnableWithMessageHistory(
-        custom_runnable_claude,
+    investor_message_history = RunnableWithMessageHistory(
+        investor_runnable,
         get_prelo_message_history,
         input_messages_key="input",
         history_messages_key="history",
     )
     submind_document = remember(submind)
-    custom_answer = custom_claude_with_message_history.invoke(
+    investor_answer = investor_message_history.invoke(
         {
             "input": message,
             "mind": submind_document,
@@ -625,10 +624,10 @@ def send_interview_chat_message(request):
         end_time = time.perf_counter()
         print(f"Chat took {end_time - start_time} seconds")
 
-        return Response({"custom_message": custom_answer.content, "gpt4o_message": basic_gpt40_answer.content, "claude_message": basic_claude_answer.content})
+        return Response({"message": investor_answer.content, "gpt4o_message": basic_gpt40_answer.content, "claude_message": basic_claude_answer.content})
     end_time = time.perf_counter()
     print(f"Chat took {end_time - start_time} seconds")
-    return Response({"message": custom_answer.content})
+    return Response({"message": investor_answer.content})
 
 @api_view(('POST',))
 @parser_classes([JSONParser, MultiPartParser])

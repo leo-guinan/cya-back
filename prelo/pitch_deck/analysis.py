@@ -19,7 +19,7 @@ from prelo.pitch_deck.investor.traction import traction_analysis
 from prelo.pitch_deck.reporting import create_updated_risk_report
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, INVESTMENT_SCORE_PROMPT, \
-    IDENTIFY_UPDATES_PROMPT, DID_FOUNDER_ADDRESS_CONCERNS_PROMPT, UPDATE_INVESTMENT_SCORE_PROMPT
+    IDENTIFY_UPDATES_PROMPT, DID_FOUNDER_ADDRESS_CONCERNS_PROMPT, UPDATE_INVESTMENT_SCORE_PROMPT, USE_VOICE_PROMPT
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Submind
@@ -174,12 +174,17 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
 
 
 def analyze_deck_changes(new_deck, old_deck):
+
+    voice_submind_id = config('VOICE_SUBMIND_ID', default=None)
+    if voice_submind_id:
+        voice_submind = Submind.objects.get(id=voice_submind_id)
+        prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT + USE_VOICE_PROMPT)
+
     submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
     submind_document = remember(submind)
 
     model = SubmindModelFactory.get_model(submind.uuid, "identify_updates")
 
-    prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT)
     chain = prompt | model | StrOutputParser()
 
     response = chain.invoke(
