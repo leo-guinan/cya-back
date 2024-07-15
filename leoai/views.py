@@ -1,18 +1,37 @@
 import json
+import time
 import uuid
 
+from decouple import config
 from django.views.decorators.csrf import csrf_exempt
 from langchain.memory import ConversationBufferMemory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
 from rest_framework.decorators import api_view, renderer_classes, permission_classes
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
 from leoai.agent import Agent
+from leoai.content import find_content_for_query
 from leoai.models import Message, Request, Collection, Item, Facts, FactItem
+from leoai.prompts import LEOAI_SYSTEM_PROMPT
 from leoai.serializers import CollectionSerializer, FactsSerializer
 from leoai.tasks import transcribe_youtube_video
 from leoai.tools import Tools
+from submind.llms.submind import SubmindModelFactory
+from submind.memory.memory import remember
+from submind.models import Submind
+from submind.overrides.mongodb import MongoDBChatMessageHistoryOverride
+
+
+def get_leoai_message_history(session_id: str) -> MongoDBChatMessageHistoryOverride:
+    return MongoDBChatMessageHistoryOverride(
+        connection_string=config('MAC_MONGODB_CONNECTION_STRING'),
+        session_id=f'{session_id}_chat',
+        database_name=config("LEOAI_DATABASE_NAME"),
+        collection_name=config("LEOAI_COLLECTION_NAME")
+    )
 
 
 # Create your views here.
@@ -156,3 +175,100 @@ def blog_webhook(request):
     final_output = output['output']
 
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def chat(request):
+    conversation_uuid = request.data.get('uuid')
+    message = request.data.get('message')
+    submind = Submind.objects.get(id=config("LEOAI_SUBMIND_ID"))
+
+    start_time = time.perf_counter()
+    # Needs a submind to chat with. How does this look in practice?
+    # Should have tools to pull data, knowledge to respond from, with LLM backing.
+    model_claude = SubmindModelFactory.get_claude(conversation_uuid, "leoai_chat")
+    # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
+    answer, content = find_content_for_query(message)
+
+    custom_prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                LEOAI_SYSTEM_PROMPT
+            ),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ]
+    )
+
+    custom_runnable_claude = custom_prompt | model_claude
+
+
+    custom_claude_with_message_history = RunnableWithMessageHistory(
+        custom_runnable_claude,
+        get_leoai_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    submind_document = remember(submind)
+    custom_answer = custom_claude_with_message_history.invoke(
+        {
+            "input": message,
+            "submind": submind_document,
+            "answer": answer
+        },
+        config={"configurable": {"session_id": f'custom_claude_{conversation_uuid}'}},
+
+    )
+    end_time = time.perf_counter()
+    print(f"Chat took {end_time - start_time} seconds")
+    return Response({"message": custom_answer.content, "content": content})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def content_lookup(request):
+    conversation_uuid = request.data.get('uuid')
+    message = request.data.get('message')
+    submind = Submind.objects.get(id=config("LEOAI_SUBMIND_ID"))
+
+    start_time = time.perf_counter()
+    # Needs a submind to chat with. How does this look in practice?
+    # Should have tools to pull data, knowledge to respond from, with LLM backing.
+    model_claude = SubmindModelFactory.get_claude(conversation_uuid, "leoai_chat")
+    # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
+
+
+    custom_prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                LEOAI_SYSTEM_PROMPT
+            ),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ]
+    )
+
+    custom_runnable_claude = custom_prompt | model_claude
+
+
+    custom_claude_with_message_history = RunnableWithMessageHistory(
+        custom_runnable_claude,
+        get_leoai_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    submind_document = remember(submind)
+    custom_answer = custom_claude_with_message_history.invoke(
+        {
+            "input": message,
+            "mind": submind_document,
+        },
+        config={"configurable": {"session_id": f'custom_claude_{conversation_uuid}'}},
+
+    )
+    end_time = time.perf_counter()
+    print(f"Chat took {end_time - start_time} seconds")
+    return Response({"message": custom_answer.content})

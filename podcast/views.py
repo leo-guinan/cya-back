@@ -24,7 +24,6 @@ def clip(request):
 
 
 
-@csrf_exempt
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
@@ -40,7 +39,6 @@ def find_podcast_episodes(request):
     print(body)
     return Response({'status': 'Queued', 'query_id': podcast_query.id})
 
-@csrf_exempt
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))

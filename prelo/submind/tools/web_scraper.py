@@ -112,8 +112,8 @@ def scrape(url, submind: Submind = None, what_to_learn=None):
 
 def learn_from_page(content: str, submind: Submind, what_to_learn: str):
     current_knowledge = remember(submind)
-    # model = SubmindModelFactory.get_claude(submind.uuid, "Submind Webpage Learning")
-    model = SubmindModelFactory.get_ollama(submind.uuid, "Submind Webpage Learning")
+    model = SubmindModelFactory.get_claude(submind.uuid, "Submind Webpage Learning")
+    # model = SubmindModelFactory.get_ollama(submind.uuid, "Submind Webpage Learning")
     print("Current submind knowledge")
     print(current_knowledge)
     learning_prompt = ChatPromptTemplate.from_template(LEARN_FROM_TEXT_PROMPT)

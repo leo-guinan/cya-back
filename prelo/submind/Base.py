@@ -56,6 +56,43 @@ class BaseSubmind:
         response = requests.get(url, params=params)
         return response.json()
 
+    def find_links_about_person(self, person_name: str):
+        # Placeholder function
+        # Add your scraping code here
+        # Replace these with your actual API key and CSE ID
+        api_key = config('CUSTOM_SEARCH_API_KEY')
+        cse_id = config('CUSTOM_SEARCH_ENGINE_ID')
+
+        # Investor's name
+
+        # Search queries based on the instructions
+        queries = [
+            f'{person_name} podcast',
+            f'{person_name} blog',
+            f'{person_name} interview',
+            f'{person_name} news',
+        ]
+        session = requests.Session()
+        session.verify = False
+        for query in queries:
+            print(f"Searching for: {query}")
+            results = self.google_search(query, api_key, cse_id)
+            if 'items' in results:
+                for item in results['items']:
+                    print("Crawling...")
+                    self.learn_from_webpage(item['link'], f"create a profile of this investor: {person_name}. learn about who they are, what they value personally, and what they value in the companies they invest in.")
+                    print(f"Title: {item['title']}")
+                    print(f"Link: {item['link']}")
+                    print(f"Snippet: {item['snippet']}")
+                    print()
+            else:
+                print("No results found.")
+            print("=" * 40)
+
+    def learn_about_person(self, person_name: str):
+        self.find_links_about_person(person_name)
+        # podcast_search(person_name, submind)
+
     def learn_from_text(self, text, what_to_learn):
         current_knowledge = remember(self._submind)
         print("Current submind knowledge")
