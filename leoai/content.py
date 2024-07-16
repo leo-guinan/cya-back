@@ -207,7 +207,7 @@ def combine_content(query, yt_answer, youtube_content, ss_answer, substack_conte
 
     combined_content.sort(key=lambda x: x['distance'])
     print(list(map(lambda x: x['distance'], combined_content)))
-    combined_content = combined_content[:10]
+    combined_content = combined_content[:3]
 
     combined_content_text = []
     for content in combined_content:
