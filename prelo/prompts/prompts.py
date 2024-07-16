@@ -511,7 +511,7 @@ Based on that, recommend the next step in the process.
 
 Available next steps: 
 step_id:1, step_description: Contact the founders
-step_id:2, step_description: Learn more about the company
+step_id:2, step_description: Learn more 
 step_id:3, step_description: Write a rejection email.
 
 Pick one step and return the step_id and step_description for that step.
