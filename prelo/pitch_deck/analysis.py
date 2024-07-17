@@ -175,10 +175,13 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
 
 def analyze_deck_changes(new_deck, old_deck):
 
-    voice_submind_id = config('VOICE_SUBMIND_ID', default=None)
-    if voice_submind_id:
-        voice_submind = Submind.objects.get(id=voice_submind_id)
-        prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT + USE_VOICE_PROMPT)
+    # voice_submind_id = config('VOICE_SUBMIND_ID', default=None)
+    # if voice_submind_id:
+    #     voice_submind = Submind.objects.get(id=voice_submind_id)
+    #     prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT + USE_VOICE_PROMPT)
+
+
+    prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT)
 
     submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
     submind_document = remember(submind)
