@@ -10,8 +10,9 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework_api_key.permissions import HasAPIKey
 
-from leoai.content import find_content_for_query
-from leoai.prompts import LEOAI_SYSTEM_PROMPT, LEOAI_CHOOSE_PATH_PROMPT, LEOAI_CONTACT_PROMPT, functions
+from leoai.content import find_content_for_query, find_ev_content
+from leoai.prompts import LEOAI_SYSTEM_PROMPT, LEOAI_CHOOSE_PATH_PROMPT, LEOAI_CONTACT_PROMPT, functions, \
+    EV_SYSTEM_PROMPT
 from leoai.tools.contact_info import get_contact_info_for_leo
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
@@ -122,6 +123,53 @@ def chat(request):
             "answer": answer
         },
         config={"configurable": {"session_id": f'leoai_{conversation_uuid}'}},
+
+    )
+    end_time = time.perf_counter()
+    print(f"Chat took {end_time - start_time} seconds")
+    return Response({"message": answer.content, "content": content})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def chat_ev(request):
+    conversation_uuid = request.data.get('uuid')
+    message = request.data.get('message')
+    submind = Submind.objects.get(id=config("EV_SUBMIND_ID"))
+    model = SubmindModelFactory.get_model(conversation_uuid, "evai_chat")
+    submind_document = remember(submind)
+    start_time = time.perf_counter()
+
+    # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
+    answer, content = find_ev_content(message)
+
+    chat_prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                EV_SYSTEM_PROMPT
+            ),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ]
+    )
+
+    chat_runnable = chat_prompt | model
+
+    chat_with_message_history = RunnableWithMessageHistory(
+        chat_runnable,
+        get_leoai_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    answer = chat_with_message_history.invoke(
+        {
+            "input": message,
+            "submind": submind_document,
+            "answer": answer
+        },
+        config={"configurable": {"session_id": f'evyoutube{conversation_uuid}'}},
 
     )
     end_time = time.perf_counter()

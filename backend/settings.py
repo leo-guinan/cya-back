@@ -52,6 +52,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append('lab.ideanexusventures.com')
     ALLOWED_HOSTS.append('d26r4trmuv7ej3.cloudfront.net')
     ALLOWED_HOSTS.append('chat.leoguinan.ai')
+    ALLOWED_HOSTS.append('demo.leoguinan.ai')
 
 # Application definition
 
