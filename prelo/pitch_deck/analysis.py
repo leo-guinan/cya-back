@@ -95,7 +95,7 @@ def gtm_strategy(pitch_deck_analysis_id, company_id):
     gtm_strategy = chain.invoke(
             {"mind": submind_document,
              "company": deck.analysis.how_to_overcome,
-             "competitors":competitors,
+             "competitors": competitors,
             })
     strategy = GoToMarketStrategy()
     strategy.company = company
