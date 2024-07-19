@@ -144,7 +144,7 @@ def chat_ev(request):
     start_time = time.perf_counter()
 
     # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
-    answer, content = find_ev_content(message)
+    context, content = find_ev_content(message)
 
     chat_prompt = ChatPromptTemplate.from_messages(
         [
@@ -169,7 +169,7 @@ def chat_ev(request):
         {
             "input": message,
             "submind": submind_document,
-            "answer": answer
+            "context": context
         },
         config={"configurable": {"session_id": f'evyoutube{conversation_uuid}'}},
 

@@ -76,7 +76,10 @@ def get_content_and_answer(collection_name: str, query: str, model_name: str) ->
 
 
 def find_ev_content(query: str) -> Tuple[str, List[Dict]]:
-    return get_content_and_answer("evyoutube", query, "Ev Chapman Youtube")
+    answer, content = get_content_and_answer("evyoutube", query, "Ev Chapman Youtube")
+    context = "\n".join(map(lambda x: x['text'], content))
+    return context, content
+
 
 
 def get_youtube_content(query: str) -> Tuple[str, List[Dict]]:
