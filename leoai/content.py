@@ -49,6 +49,7 @@ def query_collection(collection_name: str, query: str, n_results: int = 10) -> L
 
 
 def get_answer_from_context(context: str, query: str, model_name: str) -> str:
+    print(f"Using context: {context}")
     SYSTEM_TEMPLATE = """
     Answer the user's question based on the below context. 
     If the context doesn't contain any relevant information to the question, don't make something up and just say "I don't know":
@@ -98,7 +99,7 @@ def combine_content(query: str, content_list: List[List[Dict]]) -> Tuple[str, Li
     context = "\n".join(map(lambda x: x['text'], top_content))
     answer = get_answer_from_context(context, query, "Idea Supply Chain Youtube")
 
-    return answer, top_content
+    return context, top_content
 
 
 def find_content_for_query(query: str) -> Tuple[str, List[Dict]]:

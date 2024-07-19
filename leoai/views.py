@@ -37,6 +37,7 @@ def chat(request):
     message = request.data.get('message')
     submind = Submind.objects.get(id=config("LEOAI_SUBMIND_ID"))
     model = SubmindModelFactory.get_model(conversation_uuid, "leoai_chat")
+    chat_model = SubmindModelFactory.get_mini(conversation_uuid, "leoai_chat")
 
     start_time = time.perf_counter()
 
@@ -95,7 +96,8 @@ def chat(request):
             return Response({"message": answer.content, })
 
     # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
-    answer, content = find_content_for_query(message)
+    context, content = find_content_for_query(message)
+    print(f"Answer: {context}")
 
     chat_prompt = ChatPromptTemplate.from_messages(
         [
@@ -108,7 +110,7 @@ def chat(request):
         ]
     )
 
-    chat_runnable = chat_prompt | model
+    chat_runnable = chat_prompt | chat_model
 
     chat_with_message_history = RunnableWithMessageHistory(
         chat_runnable,
@@ -120,7 +122,7 @@ def chat(request):
         {
             "input": message,
             "submind": submind_document,
-            "answer": answer
+            "context": context
         },
         config={"configurable": {"session_id": f'leoai_{conversation_uuid}'}},
 
