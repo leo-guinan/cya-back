@@ -478,6 +478,13 @@ def get_investor_deck_report(request):
 
             }
         }
+        score_explanation = {
+            'market': scores.market_reasoning,
+            'team': scores.team_reasoning,
+            'product': scores.product_reasoning,
+            'traction': scores.traction_reasoning,
+
+        }
         founders = analysis.founder_summary
         return Response({
             "concerns": analysis.concerns,
@@ -494,7 +501,8 @@ def get_investor_deck_report(request):
             "amount_raising": amount_raising,
             "scores": score_object,
             "founders": founders,
-            "founders_contact_info": analysis.founder_contact_info
+            "founders_contact_info": analysis.founder_contact_info,
+            "score_explanation": score_explanation
 
 
         })

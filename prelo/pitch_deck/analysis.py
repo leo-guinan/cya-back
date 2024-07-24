@@ -10,16 +10,14 @@ from langchain_openai import ChatOpenAI
 
 from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember, CompanyScores, GoToMarketStrategy, \
     CompetitorStrategy
-from prelo.pitch_deck.investor.believe import believe_analysis
 from prelo.pitch_deck.investor.concerns import concerns_analysis, updated_concerns_analysis
-from prelo.pitch_deck.investor.memo import write_memo
 from prelo.pitch_deck.investor.recommendation import recommendation_analysis, recommended_next_steps
 from prelo.pitch_deck.investor.summary import summarize_deck, summarize_investor_report
 from prelo.pitch_deck.investor.traction import traction_analysis
 from prelo.pitch_deck.reporting import create_updated_risk_report
 from prelo.prompts.functions import functions
-from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, INVESTMENT_SCORE_PROMPT, \
-    IDENTIFY_UPDATES_PROMPT, DID_FOUNDER_ADDRESS_CONCERNS_PROMPT, UPDATE_INVESTMENT_SCORE_PROMPT, USE_VOICE_PROMPT
+from prelo.prompts.prompts import CLEANING_PROMPT, ANALYSIS_PROMPT, EXTRA_ANALYSIS_PROMPT, IDENTIFY_UPDATES_PROMPT, \
+    DID_FOUNDER_ADDRESS_CONCERNS_PROMPT, UPDATE_INVESTMENT_SCORE_PROMPT, CATEGORY_SCORE_PROMPT
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Submind
@@ -73,7 +71,6 @@ def gtm_strategy(pitch_deck_analysis_id, company_id):
          "deck": pitch_deck_analysis.compiled_slides,
          })
 
-
     COMPETITOR_SELECTION = """
     You are a powerful submind for a top early-stage investor.
     
@@ -87,16 +84,15 @@ def gtm_strategy(pitch_deck_analysis_id, company_id):
     """
     model = SubmindModelFactory.get_model(submind.uuid, "competitor_analysis")
 
-
     prompt = ChatPromptTemplate.from_template(COMPETITOR_SELECTION)
     chain = prompt | model.bind(function_call={"name": "create_gtm_strategy"},
                                 functions=functions) | JsonOutputFunctionsParser()
 
     gtm_strategy = chain.invoke(
-            {"mind": submind_document,
-             "company": deck.analysis.how_to_overcome,
-             "competitors": competitors,
-            })
+        {"mind": submind_document,
+         "company": deck.analysis.how_to_overcome,
+         "competitors": competitors,
+         })
     strategy = GoToMarketStrategy()
     strategy.company = company
     strategy.strategy = json.dumps(gtm_strategy['strategy'])
@@ -115,7 +111,8 @@ def initial_analysis(pitch_deck_analysis_id, company_id):
     data = pitch_deck_analysis.compiled_slides
     model = SubmindModelFactory.get_model(company.deck_uuid, "initial_analysis", 0.0)
     prompt = ChatPromptTemplate.from_template(ANALYSIS_PROMPT)
-    chain = prompt | model.bind(function_call={"name": "extract_company_info"}, functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
+    chain = prompt | model.bind(function_call={"name": "extract_company_info"},
+                                functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
     response = chain.invoke({"data": data})
     print(f"After data has been analyzed: {response}")
 
@@ -174,12 +171,10 @@ def analyze_deck(pitch_deck_analysis: PitchDeckAnalysis):
 
 
 def analyze_deck_changes(new_deck, old_deck):
-
     # voice_submind_id = config('VOICE_SUBMIND_ID', default=None)
     # if voice_submind_id:
     #     voice_submind = Submind.objects.get(id=voice_submind_id)
     #     prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT + USE_VOICE_PROMPT)
-
 
     prompt = ChatPromptTemplate.from_template(IDENTIFY_UPDATES_PROMPT)
 
@@ -252,7 +247,6 @@ def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     recommendation_analysis(pitch_deck_analysis)
     print("Recommendation complete")
 
-
     summarize_investor_report(pitch_deck_analysis)
     recommended_next_steps(pitch_deck_analysis)
     end_time = time.perf_counter()
@@ -261,31 +255,123 @@ def investor_analysis(pitch_deck_analysis: PitchDeckAnalysis):
 
 
 def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid: str):
-    model = SubmindModelFactory.get_model(deck_uuid, "score_investment_potential", 0.0)
-    prompt = ChatPromptTemplate.from_template(INVESTMENT_SCORE_PROMPT)
-    chain = prompt | model.bind(function_call={"name": "calculate_company_score"},
+    model = SubmindModelFactory.get_mini(deck_uuid, "score_investment_potential", 0.0)
+    prompt = ChatPromptTemplate.from_template(CATEGORY_SCORE_PROMPT)
+    chain = prompt | model.bind(function_call={"name": "calculate_score_for_category"},
                                 functions=functions) | JsonKeyOutputFunctionsParser(key_name="results")
-    response = chain.invoke(
-        {"data": pitch_deck_analysis.initial_analysis, "analysis": pitch_deck_analysis.extra_analysis})
-    print(f"Scored investment potential: {response}")
+    raw_score_data = {
+        "market": {
+            "total_score": 0,
+            "reasoning": "",
+            "rubric_scoring": ""
+
+        },
+        "team": {
+            "total_score": 0,
+            "reasoning": "",
+            "rubric_scoring": ""
+        },
+        "founder_market_fit": {
+            "total_score": 0,
+            "reasoning": "",
+            "rubric_scoring": ""
+        },
+        "product": {
+            "total_score": 0,
+            "reasoning": "",
+            "rubric_scoring": ""
+        },
+        "traction": {
+            "total_score": 0,
+            "reasoning": "",
+            "rubric_scoring": ""
+        }
+    }
+    categories = [{
+        "key": "market",
+        "name": "Market Opportunity",
+        "rubric": """
+                - Market size and growth potential (0-40 points)
+                - Alignment with megatrends (0-30 points)
+                - Company's competitive advantage/moat (0-30 points)
+        """
+    },
+        {
+            "key": "team",
+            "name": "Team",
+            "rubric": """
+                - Relevant industry experience (0-40 points)
+                - Complementary skill sets (0-30 points)
+                - Track record of success (0-30 points)
+            """
+        },
+        {
+            "key": "founder_market_fit",
+            "name": "Founder/Market Fit",
+            "rubric": """
+                    - Founder's experience in the market (0-35 points)
+                    - Passion for solving the problem (0-35 points)
+                    - Unique insights or advantages (0-30 points)
+                """
+        },
+        {
+            "key": "product",
+            "name": "Product",
+            "rubric": """
+                    - Product uniqueness/innovation (0-40 points)
+                    - Product quality and user experience (0-30 points)
+                    - Scalability and growth potential (0-30 points)
+                """
+        },
+        {
+            "key": "traction",
+            "name": "Traction",
+            "rubric": """
+                - Current revenue or user base (0-40 points)
+                - Growth rate (0-35 points)
+                - Strategic partnerships or pilot programs (0-25 points)
+            """
+        }]
+
+    for category in categories:
+        response = chain.invoke(
+            {"category": category['key'],
+             "rubric": category['rubric'],
+             "data": pitch_deck_analysis.initial_analysis,
+             "analysis": pitch_deck_analysis.extra_analysis
+             })
+        print(f"Scored {category['name']}: {response}")
+        raw_score_data[category['key']]['total_score'] = response['score']
+        raw_score_data[category['key']]['reasoning'] = response['reasoning']
+        raw_score_data[category['key']]['rubric_scoring'] = response['rubric']
+
+
     scores = CompanyScores()
     scores.company = pitch_deck_analysis.deck.company
-    market = response.get("market", {"score": 0, "reasoning": "missing"})
-    scores.market_opportunity = market['score']
-    scores.market_reasoning = market['reasoning']
-    team = response.get("team", {"score": 0, "reasoning": "missing"})
-    scores.team = team['score']
-    scores.team_reasoning = team['reasoning']
-    founder_market_fit = response.get("founder_market_fit", {"score": 0, "reasoning": "missing"})
-    scores.founder_market_fit = founder_market_fit['score']
-    scores.founder_market_reasoning = founder_market_fit['reasoning']
-    product = response.get("product", {"score": 0, "reasoning": "missing"})
-    scores.product = product['score']
-    scores.product_reasoning = product['reasoning']
-    traction = response.get("traction", {"score": 0, "reasoning": "missing"})
-    scores.traction = traction['score']
-    scores.traction_reasoning = traction['reasoning']
-    scores.final_score = mean([market['score'], team['score'], product['score'], traction['score']])
+
+    scores.market_opportunity = raw_score_data['market']['total_score']
+    scores.market_reasoning = raw_score_data['market']['reasoning']
+    scores.market_rubric = raw_score_data['market']['rubric_scoring']
+
+    scores.team = raw_score_data['team']['total_score']
+    scores.team_reasoning =  raw_score_data['team']['reasoning']
+    scores.team_rubric = raw_score_data['team']['rubric_scoring']
+
+    scores.founder_market_fit = raw_score_data['founder_market_fit']['total_score']
+    scores.founder_market_reasoning = raw_score_data['founder_market_fit']['reasoning']
+    scores.founder_market_rubric = raw_score_data['founder_market_fit']['rubric_scoring']
+
+    scores.product = raw_score_data['product']['total_score']
+    scores.product_reasoning = raw_score_data['product']['reasoning']
+    scores.product_rubric = raw_score_data['product']['rubric_scoring']
+
+    scores.traction = raw_score_data['traction']['total_score']
+    scores.traction_reasoning = raw_score_data['traction']['reasoning']
+    scores.traction_rubric = raw_score_data['traction']['rubric_scoring']
+
+    scores.final_score = mean([raw_score_data['market']['total_score'], raw_score_data['team']['total_score'],
+                               raw_score_data['founder_market_fit']['total_score'], raw_score_data['product']['total_score'],
+                               raw_score_data['traction']['total_score']])
     scores.deck = pitch_deck_analysis.deck
     scores.save()
     pitch_deck_analysis.report = response
@@ -294,7 +380,8 @@ def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid
     pitch_deck_analysis.deck.save()
     return response
 
-def update_scores(pitch_deck_analysis: PitchDeckAnalysis, changes: str, thoughts:str, scores:str ):
+
+def update_scores(pitch_deck_analysis: PitchDeckAnalysis, changes: str, thoughts: str, scores: str):
     model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "update_score_investment_potential", 0.0)
     prompt = ChatPromptTemplate.from_template(UPDATE_INVESTMENT_SCORE_PROMPT)
     chain = prompt | model.bind(function_call={"name": "calculate_company_score"},
@@ -303,7 +390,7 @@ def update_scores(pitch_deck_analysis: PitchDeckAnalysis, changes: str, thoughts
         {"changes": changes,
          "thoughts": thoughts,
          "scores": scores
-        })
+         })
     print(f"Scored investment potential: {response}")
     scores = CompanyScores()
     scores.company = pitch_deck_analysis.deck.company

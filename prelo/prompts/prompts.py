@@ -184,11 +184,44 @@ Based on the changes, determine if the de-risking strategies have been addressed
 
 INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 
 Given the information from the pitch deck, provide a score from 1 to 100 for each of the following categories:
-1. Market Opportunity - base this score on the size and growth of the market, the megatrends in the market, and the company moat in the market
-2. Team - base this score on the team's experience, expertise, and track record
-3. Founder/Market Fit - base this score on the founder's experience in the market, their passion for the problem, and their unique insights
-4. Product - base this score on the product's uniqueness, quality, and potential for growth
-5. Traction - base this score on the company's current traction, revenue, and partnerships
+Use this rubric for scoring the deck:
+1. Market Opportunity (0-100 points)
+
+Market size and growth potential (0-40 points)
+Alignment with megatrends (0-30 points)
+Company's competitive advantage/moat (0-30 points)
+
+2. Team (0-100 points)
+
+Relevant industry experience (0-40 points)
+Complementary skill sets (0-30 points)
+Track record of success (0-30 points)
+
+3. Founder/Market Fit (0-100 points)
+
+Founder's experience in the market (0-35 points)
+Passion for solving the problem (0-35 points)
+Unique insights or advantages (0-30 points)
+
+4. Product (0-100 points)
+
+Product uniqueness/innovation (0-40 points)
+Product quality and user experience (0-30 points)
+Scalability and growth potential (0-30 points)
+
+5. Traction (0-100 points)
+
+Current revenue or user base (0-40 points)
+Growth rate (0-35 points)
+Strategic partnerships or pilot programs (0-25 points)
+
+Scoring Guidelines:
+
+0-20: Poor
+21-40: Below Average
+41-60: Average
+61-80: Good
+81-100: Excellent
 
 After scoring each category individually, provide a final score for the company's investment potential and recommendation based on that score.
 
@@ -196,6 +229,19 @@ Here is the data from the pitch deck: {data}
 Here is the analysis: {analysis}
 
 """
+
+CATEGORY_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment. 
+Given the information from the pitch deck, provide a score from 1 to 100 for this category: {category}
+Use this rubric for scoring the deck: {rubric}
+
+Here is the data from the pitch deck: {data}
+Here is the analysis: {analysis}
+
+Give the total score for this category, a brief explanation of your score, and the scoring breakdown according to the rubric.
+
+"""
+
+
 
 UPDATE_INVESTMENT_SCORE_PROMPT = """You are an expert investor who is evaluating a company for potential investment.
 

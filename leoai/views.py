@@ -14,6 +14,7 @@ from leoai.content import find_content_for_query, find_ev_content
 from leoai.prompts import LEOAI_SYSTEM_PROMPT, LEOAI_CHOOSE_PATH_PROMPT, LEOAI_CONTACT_PROMPT, functions, \
     EV_SYSTEM_PROMPT
 from leoai.tools.contact_info import get_contact_info_for_leo
+from leoai.tools.linkedin import write_linkedin_posts
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Submind
@@ -37,8 +38,8 @@ def chat(request):
     message = request.data.get('message')
     submind = Submind.objects.get(id=config("LEOAI_SUBMIND_ID"))
     model = SubmindModelFactory.get_model(conversation_uuid, "leoai_chat")
-    chat_model = SubmindModelFactory.get_mini(conversation_uuid, "leoai_chat")
-
+    # chat_model = SubmindModelFactory.get_mini(conversation_uuid, "leoai_chat")
+    chat_model = SubmindModelFactory.get_ollama(conversation_uuid, "leoai_chat")
     start_time = time.perf_counter()
 
     choose_path_prompt = ChatPromptTemplate.from_template(LEOAI_CHOOSE_PATH_PROMPT)
@@ -177,3 +178,15 @@ def chat_ev(request):
     end_time = time.perf_counter()
     print(f"Chat took {end_time - start_time} seconds")
     return Response({"message": answer.content, "content": content})
+
+
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes([HasAPIKey])
+def write_linkedin_post(request):
+
+    query = request.data.get('query')
+    posts = write_linkedin_posts(query)
+
+    return Response({"posts": posts})
+

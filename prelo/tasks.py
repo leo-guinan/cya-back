@@ -146,6 +146,8 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
             #         report_summary = event["report_summary"]
             #         report_uuid = event["report_uuid"]
             conversation = ConversationDeckUpload.objects.get(deck_uuid=pitch_deck_analysis.deck.uuid)
+            company = Company.objects.filter(deck_uuid=pitch_deck_analysis.deck.uuid).first()
+
             print(f"Conversation UUID: {conversation.conversation_uuid}")
             # need to add the deck report to the conversation history in a way that can rebuild it. save message as JSON blob?
             history = get_prelo_message_history(f'custom_claude_{conversation.conversation_uuid}')
@@ -156,6 +158,7 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
                 "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
                 "report_summary": pitch_deck_analysis.investor_report.summary,
                 "report_uuid": pitch_deck_analysis.investor_report.uuid,
+                "company_name": company.name
             }))
             async_to_sync(channel_layer.group_send)(conversation.conversation_uuid,
                                                     {"type": "deck.analyzed",
@@ -164,6 +167,7 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
                                                         "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
                                                      "report_summary": pitch_deck_analysis.investor_report.summary,
                                                      "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
+                                                     "company_name": company.name,
                                                      })
         except Exception as e:
             print(e)

@@ -70,4 +70,25 @@ functions = [
             "required": ["path"],
         },
     },
+    {
+        "name": "linkedin_posts",
+        "description": "write linkedin posts based on a topic",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "posts": {
+                    "type": "array",
+                    "description": "the linkedin posts",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "thoughts": {
+                    "type": "string",
+                    "description": "your thoughts on the topic and what linkedin posts to write"
+                }
+            },
+            "required": ["posts", "thoughts"],
+        }
+    }
 ]

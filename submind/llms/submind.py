@@ -62,4 +62,4 @@ class SubmindModelFactory:
 
     @classmethod
     def get_ollama(cls, request_uuid, step):
-        return Ollama(model="llama3")
+        return Ollama(model="llama3.1")

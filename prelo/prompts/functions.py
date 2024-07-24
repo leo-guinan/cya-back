@@ -164,6 +164,37 @@ functions = [
         },
     },
     {
+        "name": "calculate_score_for_category",
+        "description": "score a company on a specific category",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of analysis",
+                    "properties": {
+                        "category": {
+                            "type": "string",
+                            "description": "the category being scored",
+                        },
+                        "score": {
+                            "type": "number",
+                            "description": "The score of the company in the category"
+                        },
+                        "reasoning": {
+                            "type": "string",
+                            "description": "The reasoning behind the score"
+                        },
+                        "rubric": {
+                            "type": "string",
+                            "description": "the scoring according to the provided rubric"
+                        }
+                    }
+                },
+            }
+        },
+    },
+    {
         "name": "calculate_company_score",
         "description": "score the company on several categories to determine investment potential",
         "parameters": {
@@ -183,7 +214,7 @@ functions = [
                                 },
                                 "reasoning": {
                                     "type": "string",
-                                    "description": "The reasoning behind the score"
+                                    "description": "The breakdown of the score according to the rubric"
                                 }
                             }
                         },
@@ -198,7 +229,7 @@ functions = [
                                 },
                                 "reasoning": {
                                     "type": "string",
-                                    "description": "The reasoning behind the score"
+                                    "description": "The breakdown of the score according to the rubric"
                                 }
                             }
 
@@ -213,7 +244,7 @@ functions = [
                                 },
                                 "reasoning": {
                                     "type": "string",
-                                    "description": "The reasoning behind the score"
+                                    "description": "The breakdown of the score according to the rubric"
                                 }
                             }
                         },
@@ -228,7 +259,7 @@ functions = [
                                 },
                                 "reasoning": {
                                     "type": "string",
-                                    "description": "The reasoning behind the score"
+                                    "description": "The breakdown of the score according to the rubric"
                                 }
                             }
                         },
