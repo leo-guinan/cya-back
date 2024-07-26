@@ -519,6 +519,21 @@ def get_investor_deck_report(request):
 
 
 @api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_shared_report(request):
+    body = json.loads(request.body)
+    report_uuid = body["report_uuid"]
+    deck_uuid = body["deck_uuid"]
+    investor_report = InvestorReport.objects.get(uuid=report_uuid)
+    company = Company.objects.filter(deck_uuid=deck_uuid).first()
+    company_name = company.name
+    return Response({
+        "company_name": company_name,
+        "executive_summary": investor_report.executive_summary,
+    })
+
+@api_view(('POST',))
 @parser_classes([JSONParser, MultiPartParser])
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
@@ -637,52 +652,6 @@ def send_interview_chat_message(request):
     print(f"Chat took {end_time - start_time} seconds")
     return Response({"message": investor_answer.content})
 
-@api_view(('POST',))
-@parser_classes([JSONParser, MultiPartParser])
-@renderer_classes((JSONRenderer,))
-@permission_classes((HasAPIKey,))
-def get_investor_report(request):
-    body = json.loads(request.body)
-    deck_uuid = body["deck_uuid"]
-    report_uuid = body["report_uuid"]
-    deck = PitchDeck.objects.get(uuid=deck_uuid)
-    report = InvestorReport.objects.get(uuid=report_uuid)
-    scores = deck.scores
-    score_object = {
-        'market': {
-            'score': scores.market_opportunity,
-            'reason': scores.market_reasoning,
-        },
-        'team': {
-            'score': scores.team,
-            'reason': scores.team_reasoning,
-        },
-        'product': {
-            'score': scores.product,
-            'reason': scores.product_reasoning,
-        },
-        'traction': {
-            'score': scores.traction,
-            'reason': scores.traction_reasoning,
-        },
-        'final': {
-            'score': report.investment_potential_score,
-            'reason': report.recommendation_reasons,
-
-        }
-    }
-    return Response({
-        "concerns": deck.analysis.concerns,
-        "believe": deck.analysis.believe,
-        "traction": deck.analysis.traction,
-        "summary": deck.analysis.summary,
-        "executive_summary": report.executive_summary,
-        "recommendation_reasons": report.recommendation_reasons,
-        "investment_potential_score": report.investment_potential_score,
-        "matches_thesis": report.matches_thesis,
-        "scores": score_object,
-        "founder_info": "",
-    })
 
 @api_view(('POST',))
 @parser_classes([JSONParser, MultiPartParser])

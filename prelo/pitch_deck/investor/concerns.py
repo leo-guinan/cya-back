@@ -15,6 +15,7 @@ def concerns_analysis(pitch_deck_analysis: PitchDeckAnalysis):
     chain = prompt | model.bind(function_call={"name": "concerns_analysis"},
                                 functions=functions) | JsonOutputFunctionsParser()
     response = chain.invoke({"data": pitch_deck_analysis.compiled_slides})
+    print(f"Concerns analysis: {response}")
     pitch_deck_analysis.concerns = json.dumps(response)
     pitch_deck_analysis.save()
     return response

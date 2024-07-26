@@ -148,7 +148,6 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
             conversation = ConversationDeckUpload.objects.get(deck_uuid=pitch_deck_analysis.deck.uuid)
             company = Company.objects.filter(deck_uuid=pitch_deck_analysis.deck.uuid).first()
 
-            print(f"Conversation UUID: {conversation.conversation_uuid}")
             # need to add the deck report to the conversation history in a way that can rebuild it. save message as JSON blob?
             history = get_prelo_message_history(f'custom_claude_{conversation.conversation_uuid}')
             history.add_ai_message(json.dumps({
