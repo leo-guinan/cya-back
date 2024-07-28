@@ -503,6 +503,34 @@ functions = [
             },
             "required": ["results"],
         },
+    },
+{
+        "name": "meeting_email",
+        "description": "write an empathetic email from an investor requesting a meeting",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the contact extraction",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "description": "The email address of the founder or company",
+                        },
+                        "subject": {
+                            "type": "string",
+                            "description": "The subject of the email",
+                        },
+                        "body": {
+                            "type": "string",
+                            "description": "The body of the email",
+                        }
+                    }
+                },
+            },
+            "required": ["results"],
+        },
     }
 
 ]

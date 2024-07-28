@@ -247,3 +247,11 @@ class RejectionEmail(models.Model):
     email = models.CharField(max_length=255)
     subject = models.CharField(max_length=255)
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="rejections")
+
+
+class MeetingEmail(models.Model):
+    deck_uuid = models.CharField(max_length=255)
+    content = models.TextField()
+    email = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="meetings")
