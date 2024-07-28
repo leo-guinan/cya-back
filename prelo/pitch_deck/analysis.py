@@ -8,6 +8,7 @@ from langchain_core.output_parsers.openai_functions import JsonKeyOutputFunction
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
+from prelo.events import record_prelo_event
 from prelo.models import PitchDeck, PitchDeckAnalysis, Company, Team, TeamMember, CompanyScores, GoToMarketStrategy, \
     CompetitorStrategy
 from prelo.pitch_deck.investor.concerns import concerns_analysis, updated_concerns_analysis
@@ -346,7 +347,15 @@ def score_investment_potential(pitch_deck_analysis: PitchDeckAnalysis, deck_uuid
         raw_score_data[category['key']]['rubric_scoring'] = response['rubric']
 
 
-    scores = CompanyScores()
+    scores = CompanyScores.objects.filter(deck=pitch_deck_analysis.deck).first()
+    if not scores:
+        scores = CompanyScores()
+    else:
+        print("Updating existing scores")
+        record_prelo_event({
+            "event": "Updating existing scores",
+            "deck_uuid": pitch_deck_analysis.deck.uuid
+        })
     scores.company = pitch_deck_analysis.deck.company
 
     scores.market_opportunity = raw_score_data['market']['total_score']
