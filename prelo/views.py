@@ -2,6 +2,7 @@ import json
 import time
 import uuid
 
+import requests
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from decouple import config
@@ -232,7 +233,10 @@ def send_founder_chat_message(request):
     })
 
     chat_history = get_message_history(conversation_uuid)
-
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": config('TELEMETRY_API_KEY')
+    }
     if path_response['use_tool']:
         if path_response['tool_id'] == '1':
             if credits < 2:
@@ -244,6 +248,19 @@ def send_founder_chat_message(request):
             end_time = time.perf_counter()
             print(f"Chat with lookup took {end_time - start_time} seconds")
 
+            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
+                                     headers=headers,
+                                     json={
+                                         "data": {
+                                             "event": "chat_message",
+                                             "type": "investor_lookup",
+                                             "conversation": conversation_uuid,
+                                             "duration": end_time - start_time,
+                                         },
+                                         "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
+                                     }
+                                     )
+
             return Response({"message": response, "credits_used": 2})
         elif path_response['tool_id'] == '2':
             if credits < 5:
@@ -251,7 +268,18 @@ def send_founder_chat_message(request):
             response = write_cold_outreach_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
             print(f"Chat with cold email writing took {end_time - start_time} seconds")
-
+            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
+                                               headers=headers,
+                                               json={
+                                                   "data": {
+                                                       "event": "chat_message",
+                                                       "type": "cold_outreach",
+                                                       "conversation": conversation_uuid,
+                                                       "duration": end_time - start_time,
+                                                   },
+                                                   "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
+                                               }
+                                               )
             return Response({"message": response, "credits_used": 5})
         elif path_response['tool_id'] == '3':
             if credits < 5:
@@ -259,7 +287,18 @@ def send_founder_chat_message(request):
             response = write_forwardable_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
             print(f"Chat with forwardable email writing took {end_time - start_time} seconds")
-
+            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
+                                               headers=headers,
+                                               json={
+                                                   "data": {
+                                                       "event": "chat_message",
+                                                       "type": "forwardable_email",
+                                                       "conversation": conversation_uuid,
+                                                       "duration": end_time - start_time,
+                                                   },
+                                                   "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
+                                               }
+                                               )
             return Response({"message": response, "credits_used": 5})
     if credits < 1:
         return Response({"message": "Not enough credits remaining. Please add credits to continue.", "credits_used": 0})
@@ -299,8 +338,18 @@ def send_founder_chat_message(request):
     end_time = time.perf_counter()
     print(f"Chat took {end_time - start_time} seconds")
 
-    print(answer.content)
-
+    telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
+                                       headers=headers,
+                                       json={
+                                           "data": {
+                                               "event": "chat_message",
+                                               "type": "chat",
+                                               "conversation": conversation_uuid,
+                                               "duration": end_time - start_time,
+                                           },
+                                           "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
+                                       }
+                                       )
     return Response({"message": answer.content, "credits_used": 1})
 
 
@@ -441,9 +490,7 @@ def get_investor_deck_report(request):
     try:
         body = json.loads(request.body)
         deck_uuid = body["deck_uuid"]
-        report_uuid = body["report_uuid"]
         deck = PitchDeck.objects.get(uuid=deck_uuid)
-        investor_report = InvestorReport.objects.get(uuid=report_uuid)
         analysis = deck.analysis
         if analysis.investor_report.investment_potential_score > 70:
             recommendation = "contact"
@@ -502,7 +549,8 @@ def get_investor_deck_report(request):
             "scores": score_object,
             "founders": founders,
             "founders_contact_info": analysis.founder_contact_info,
-            "score_explanation": score_explanation
+            "score_explanation": score_explanation,
+            "report_uuid": analysis.investor_report.uuid
 
 
         })
@@ -517,6 +565,24 @@ def get_investor_deck_report(request):
             "recommendation_reasons": "",
         })
 
+@api_view(('POST',))
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_investor_deck_status(request):
+    try:
+        body = json.loads(request.body)
+        deck_uuid = body["deck_uuid"]
+        deck = PitchDeck.objects.get(uuid=deck_uuid)
+        investor_report = deck.analysis.investor_report
+        return Response({
+            "report_uuid": investor_report.uuid,
+            "status": "complete"
+        })
+    except Exception as e:
+        print(e)
+        return Response({
+            "status": "processing"
+        })
 
 @api_view(('POST',))
 @renderer_classes((JSONRenderer,))
@@ -543,10 +609,14 @@ def send_interview_chat_message(request):
     submind_id = request.data.get('submind_id')
     submind = Submind.objects.get(id=submind_id)
     comparison_view = request.data.get('comparison_view', False)
+    start_time = time.perf_counter()
 
     # Access optional file uploads
     optional_file = request.data.get('file', None)
-
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": config('TELEMETRY_API_KEY')
+    }
     # Add your logic here to handle the optional file if present
     if optional_file:
         client = request.data.get('client')
@@ -570,24 +640,24 @@ def send_interview_chat_message(request):
         history = get_prelo_message_history(f'custom_claude_{conversation_uuid}')
         history.add_user_message(f"Uploaded pitch deck {optional_file.name}")
         history.add_ai_message("Deck has been uploaded and I'm analyzing it now.")
+        end_time = time.perf_counter()
+        telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
+                                           headers=headers,
+                                           json={
+                                               "data": {
+                                                   "event": "chat_message",
+                                                   "type": "deck_upload",
+                                                   "conversation": conversation_uuid,
+                                                   "duration": end_time - start_time,
+                                               },
+                                               "table": config('PRELO_TELEMETRY_TABLE')
+                                           }
+                                           )
         return Response({"message": "Deck has been uploaded and I'm analyzing it now.", "type": "deck_uploaded"})
-    start_time = time.perf_counter()
     # Needs a submind to chat with. How does this look in practice?
     # Should have tools to pull data, knowledge to respond from, with LLM backing.
     model = SubmindModelFactory.get_model(conversation_uuid, "interview_chat", 0.0)
-    model_claude = SubmindModelFactory.get_claude(conversation_uuid, "interview_chat")
-    # should it use the submind at the point of the initial conversation? Or auto upgrade as the mind learns more?
 
-    basic_prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                INTERVIEW_SYSTEM_PROMPT_PLAIN
-            ),
-            MessagesPlaceholder(variable_name="history"),
-            ("human", "{input}"),
-        ]
-    )
     custom_prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -598,22 +668,9 @@ def send_interview_chat_message(request):
             ("human", "{input}"),
         ]
     )
-    basic_runnable_gpt4o = basic_prompt | model
-    basic_runnable_claude = basic_prompt | model_claude
     investor_runnable = custom_prompt | model
 
-    basic_gpt40_with_message_history = RunnableWithMessageHistory(
-        basic_runnable_gpt4o,
-        get_prelo_message_history,
-        input_messages_key="input",
-        history_messages_key="history",
-    )
-    basic_claude_with_message_history = RunnableWithMessageHistory(
-        basic_runnable_claude,
-        get_prelo_message_history,
-        input_messages_key="input",
-        history_messages_key="history",
-    )
+
     investor_message_history = RunnableWithMessageHistory(
         investor_runnable,
         get_prelo_message_history,
@@ -629,27 +686,21 @@ def send_interview_chat_message(request):
         config={"configurable": {"session_id": f'custom_claude_{conversation_uuid}'}},
 
     )
-    if comparison_view:
-        basic_gpt40_answer = basic_gpt40_with_message_history.invoke(
-            {
-                "input": message,
-            },
-            config={"configurable": {"session_id": f'basic_gpt4o_{conversation_uuid}'}},
 
-        )
-        basic_claude_answer = basic_claude_with_message_history.invoke(
-            {
-                "input": message,
-            },
-            config={"configurable": {"session_id": f'basic_claude_{conversation_uuid}'}},
-
-        )
-        end_time = time.perf_counter()
-        print(f"Chat took {end_time - start_time} seconds")
-
-        return Response({"message": investor_answer.content, "gpt4o_message": basic_gpt40_answer.content, "claude_message": basic_claude_answer.content})
     end_time = time.perf_counter()
     print(f"Chat took {end_time - start_time} seconds")
+    telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
+                                       headers=headers,
+                                       json={
+                                           "data": {
+                                               "event": "chat_message",
+                                               "type": "investor_chat",
+                                               "conversation": conversation_uuid,
+                                               "duration": end_time - start_time,
+                                           },
+                                           "table": config('PRELO_TELEMETRY_TABLE')
+                                       }
+                                       )
     return Response({"message": investor_answer.content})
 
 
