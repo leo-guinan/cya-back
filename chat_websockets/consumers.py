@@ -136,6 +136,7 @@ class ChatConsumer(WebsocketConsumer):
         recommended_next_steps = event["recommended_next_steps"]
         report_summary = event["report_summary"]
         report_uuid = event["report_uuid"]
+        company_name = event["company_name"]
         self.send(text_data=json.dumps({
             "deck_uuid": deck_uuid,
             "status": "analyzed",
@@ -143,4 +144,5 @@ class ChatConsumer(WebsocketConsumer):
             "recommended_next_steps": recommended_next_steps,
             "report_summary": report_summary,
             "report_uuid": report_uuid,
+            "company_name": company_name
         }))
