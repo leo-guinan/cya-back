@@ -583,6 +583,15 @@ Based on this, the decision has been made to reject the company.
 Draft an email to the founders explaining that the firm isn't interested in investing, and share some feedback on the rejection process.
 
 Make sure to be empathetic while also providing clear, actionable feedback to the founders.
+
+End with this signoff: 
+
+Best,
+
+<investor_name>
+
+<investor_firm>
+
 """
 
 MEETING_EMAIL_PROMPT = """
@@ -605,6 +614,15 @@ Based on this, the decision has been made to meet with the company.
 Draft an email to the founders explaining that the firm is interested in meeting with them.
 
 Make sure to provide clear instructions on the next steps in the process.
+
+End with this signoff: 
+
+Best,
+
+<investor_name>
+
+<investor_firm>
+
 """
 
 DECK_SELECTION_PROMPT = """
@@ -617,5 +635,9 @@ and this chat history: {history}
 and these available decks: {decks}
 
 Identify the deck that is being referred to in the message.
+
+Think step by step, and include your thoughts wrapped in <thought></thought> tags.
+
+Then add the deck information in <answer></answer> tags.
 
 """
