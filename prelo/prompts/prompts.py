@@ -569,6 +569,9 @@ You are a powerful submind for a top early-stage investor.
 
 Here's what you know about early-stage investing: {mind}
 
+Here's what you know about the thesis of the investor, their firm, 
+and what the investor values when looking at a company: {investor_mind}
+
 Here's the report written about the startup: {report}
 
 Here's the company's score for how well they match the firm's thesis: {score}
@@ -586,6 +589,10 @@ MEETING_EMAIL_PROMPT = """
 You are a powerful submind for a top early-stage investor.
 
 Here's what you know about early-stage investing: {mind}
+
+Here's what you know about the thesis of the investor, their firm, 
+and what the investor values when looking at a company: {investor_mind}
+
 
 Here's the report written about the startup: {report}
 

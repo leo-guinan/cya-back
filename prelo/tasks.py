@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage
 
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
-from prelo.events import record_prelo_event
+from prelo.events import record_prelo_event, record_smd_event
 from prelo.investor.analysis import check_deck_against_thesis
 from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload, \
     PitchDeckAnalysisError
@@ -132,6 +132,7 @@ def populate_company_data(company_id, pitch_deck_analysis_id):
 @app.task(name="prelo.tasks.analyze_deck")
 def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
     print(f"ANALYZING DECK WITH COMPANY ID: {company_id}")
+    start_time = time.perf_counter()
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.ANALYZING
     pitch_deck_analysis.deck.save()
@@ -145,6 +146,12 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
             analyze_deck(pitch_deck_analysis)
             step = "Investor Analysis"
             investor_analysis(pitch_deck_analysis)
+            end_time = time.perf_counter()
+            record_prelo_event({
+                "deck_uuid": pitch_deck_analysis.deck.uuid,
+                "event": "Deck Analyzed",
+                "processing_time": end_time - start_time
+            })
             try:
                 channel_layer = get_channel_layer()
                 # deck_uuid = event["deck_uuid"]
@@ -187,6 +194,12 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
                 step = "Compare Deck to Previous Version"
                 top_concern, objections, how_to_overcome, analysis, previous_scores, updated_scores = compare_deck_to_previous_version(
                     pitch_deck_analysis)
+                end_time = time.perf_counter()
+                record_smd_event({
+                    "deck_uuid": pitch_deck_analysis.deck.uuid,
+                    "event": "Deck Compared To Previous Version",
+                    "processing_time": end_time - start_time
+                })
                 print(f"Top Concern: {top_concern}")
                 try:
                     scores = pitch_deck_analysis.deck.scores
@@ -237,6 +250,12 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
                 top_concern, objections, how_to_overcome = create_risk_report(pitch_deck_analysis)
                 step = "Concerns Analysis"
                 analysis = concerns_analysis(pitch_deck_analysis)
+                end_time = time.perf_counter()
+                record_smd_event({
+                    "deck_uuid": pitch_deck_analysis.deck.uuid,
+                    "event": "Deck Analyzed",
+                    "processing_time": end_time - start_time
+                })
                 try:
                     scores = pitch_deck_analysis.deck.scores
                     score_object = {

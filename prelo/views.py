@@ -679,7 +679,7 @@ def send_interview_chat_message(request):
                 pitch_deck = PitchDeck.objects.get(uuid=deck.uuid)
                 rejection_email = RejectionEmail.objects.filter(deck_uuid=deck.uuid, investor=investor).first()
                 if not rejection_email:
-                    rejection_email = write_rejection_email(pitch_deck.analysis, investor)
+                    rejection_email = write_rejection_email(pitch_deck.analysis, investor, submind)
 
                 # return Response({"email": rejection_email.email, "content": rejection_email.content,
                 #                  "subject": rejection_email.subject})
@@ -701,7 +701,7 @@ def send_interview_chat_message(request):
                 pitch_deck = PitchDeck.objects.get(uuid=deck.uuid)
                 meeting_email = MeetingEmail.objects.filter(deck_uuid=deck.uuid, investor=investor).first()
                 if not meeting_email:
-                    meeting_email = write_meeting_email(pitch_deck.analysis, investor)
+                    meeting_email = write_meeting_email(pitch_deck.analysis, investor, submind)
                 # return Response({"email": rejection_email.email, "content": rejection_email.content,
                 #                  "subject": rejection_email.subject})
                 chat_history.add_user_message(message)
@@ -776,11 +776,13 @@ def get_rejection_email(request):
     body = json.loads(request.body)
     deck_uuid = body["deck_uuid"]
     investor_id = body["investor_id"]
+    submind_id = body["submind_id"]
+    submind = Submind.objects.get(id=submind_id)
     investor = Investor.objects.filter(lookup_id=investor_id).first()
     pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
     rejection_email = RejectionEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
     if not rejection_email:
-        rejection_email = write_rejection_email(pitch_deck.analysis, investor)
+        rejection_email = write_rejection_email(pitch_deck.analysis, investor, submind)
 
     return Response({"email": rejection_email.email, "content": rejection_email.content, "subject": rejection_email.subject})
 
@@ -792,11 +794,13 @@ def get_meeting_email(request):
     body = json.loads(request.body)
     deck_uuid = body["deck_uuid"]
     investor_id = body["investor_id"]
+    submind_id = body["submind_id"]
+    submind = Submind.objects.get(id=submind_id)
     investor = Investor.objects.filter(lookup_id=investor_id).first()
     pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
     meeting_email = MeetingEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
     if not meeting_email:
-        meeting_email = write_meeting_email(pitch_deck.analysis, investor)
+        meeting_email = write_meeting_email(pitch_deck.analysis, investor, submind)
 
     return Response({"email": meeting_email.email, "content": meeting_email.content, "subject": meeting_email.subject})
 
