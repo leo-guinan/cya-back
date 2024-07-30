@@ -599,3 +599,16 @@ Draft an email to the founders explaining that the firm is interested in meeting
 
 Make sure to provide clear instructions on the next steps in the process.
 """
+
+DECK_SELECTION_PROMPT = """
+You are a pitch deck identification system.
+
+Based on this message: {message}
+
+and this chat history: {history}
+
+and these available decks: {decks}
+
+Identify the deck that is being referred to in the message.
+
+"""

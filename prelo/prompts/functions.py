@@ -531,6 +531,31 @@ functions = [
             },
             "required": ["results"],
         },
+    },
+{
+        "name": "deck_select",
+        "description": "identify the pitch deck to use",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "object",
+                    "description": "the results of the contact extraction",
+                    "properties": {
+                        "deck_uuid": {
+                            "type": "string",
+                            "description": "The uuid of the pitch deck to use",
+                        },
+                        "deck_name": {
+                            "type": "string",
+                            "description": "The title of the deck",
+                        }
+
+                    }
+                },
+            },
+            "required": ["result"],
+        },
     }
 
 ]

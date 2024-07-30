@@ -92,6 +92,12 @@ class PitchDeckAnalysis(models.Model):
         return self.deck.name
 
 
+class PitchDeckAnalysisError(models.Model):
+    analysis = models.ForeignKey(PitchDeckAnalysis, on_delete=models.CASCADE, related_name="errors")
+    error = models.TextField()
+    step = models.CharField(max_length=255)
+
+
 class Company(models.Model):
     name = models.CharField(max_length=255, blank=True, null=True)
     industry = models.CharField(max_length=255, blank=True, null=True)

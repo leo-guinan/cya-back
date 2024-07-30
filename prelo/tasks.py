@@ -10,8 +10,10 @@ from langchain_core.messages import HumanMessage
 
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
+from prelo.events import record_prelo_event
 from prelo.investor.analysis import check_deck_against_thesis
-from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload
+from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload, \
+    PitchDeckAnalysisError
 from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version, \
     initial_analysis, gtm_strategy
 from prelo.pitch_deck.investor.concerns import concerns_analysis
@@ -133,134 +135,159 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
     pitch_deck_analysis = PitchDeckAnalysis.objects.get(id=pitch_deck_analysis_id)
     pitch_deck_analysis.deck.status = PitchDeck.ANALYZING
     pitch_deck_analysis.deck.save()
-    if "prelovc" in pitch_deck_analysis.deck.s3_path:
-        initial_analysis(pitch_deck_analysis_id, company_id)
-        extract_founder_info(pitch_deck_analysis)
-        analyze_deck(pitch_deck_analysis)
-        investor_analysis(pitch_deck_analysis)
-        try:
-            channel_layer = get_channel_layer()
-            # deck_uuid = event["deck_uuid"]
-            #         deck_score = event["deck_score"]
-            #         recommended_next_steps = event["recommended_next_steps"]
-            #         report_summary = event["report_summary"]
-            #         report_uuid = event["report_uuid"]
-            conversation = ConversationDeckUpload.objects.get(deck_uuid=pitch_deck_analysis.deck.uuid)
-            company = Company.objects.filter(deck_uuid=pitch_deck_analysis.deck.uuid).first()
-
-            # need to add the deck report to the conversation history in a way that can rebuild it. save message as JSON blob?
-            history = get_prelo_message_history(f'custom_claude_{conversation.conversation_uuid}')
-            history.add_ai_message(json.dumps({
-                "deck_uuid": pitch_deck_analysis.deck.uuid,
-                "status": "analyzed",
-                "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
-                "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
-                "report_summary": pitch_deck_analysis.investor_report.summary,
-                "report_uuid": pitch_deck_analysis.investor_report.uuid,
-                "company_name": company.name
-            }))
-            async_to_sync(channel_layer.group_send)(conversation.conversation_uuid,
-                                                    {"type": "deck.analyzed",
-                                                        "deck_uuid": pitch_deck_analysis.deck.uuid,
-                                                        "report_uuid": pitch_deck_analysis.investor_report.uuid,
-                                                        "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
-                                                     "report_summary": pitch_deck_analysis.investor_report.summary,
-                                                     "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
-                                                     "company_name": company.name,
-                                                     })
-        except Exception as e:
-            print(e)
-            # not vital, just try to return response to chat if possible.
-    else:
-        if pitch_deck_analysis.deck.version > 1:
-            print("Checking updated version")
-            # need to compare new version results to old version
-            top_concern, objections, how_to_overcome, analysis, previous_scores, updated_scores = compare_deck_to_previous_version(
-                pitch_deck_analysis)
-            print(f"Top Concern: {top_concern}")
+    step = "Initial Analysis"
+    try:
+        if "prelovc" in pitch_deck_analysis.deck.s3_path:
+            initial_analysis(pitch_deck_analysis_id, company_id)
+            step = "Extract Founder Info"
+            extract_founder_info(pitch_deck_analysis)
+            step = "Analyze Deck"
+            analyze_deck(pitch_deck_analysis)
+            step = "Investor Analysis"
+            investor_analysis(pitch_deck_analysis)
             try:
-                scores = pitch_deck_analysis.deck.scores
-                print(f"Scores: {scores}")
-                score_object = {
-                    'market': {
-                        'score': scores.market_opportunity,
-                        'reason': scores.market_reasoning,
-                        'delta': updated_scores.market_opportunity - previous_scores.market_opportunity
-                    },
-                    'team': {
-                        'score': updated_scores.team,
-                        'reason': updated_scores.team_reasoning,
-                        'delta': updated_scores.team - previous_scores.team
-
-                    },
-                    'product': {
-                        'score': updated_scores.product,
-                        'reason': updated_scores.product_reasoning,
-                        'delta': updated_scores.product - previous_scores.product
-                    },
-                    'traction': {
-                        'score': updated_scores.traction,
-                        'reason': updated_scores.traction_reasoning,
-                        'delta': updated_scores.traction - previous_scores.traction
-                    },
-                    'final': {
-                        'score': updated_scores.final_score,
-                        'reason': updated_scores.final_reasoning,
-                        'delta': updated_scores.final_score - previous_scores.final_score
-                    }
-                }
                 channel_layer = get_channel_layer()
+                # deck_uuid = event["deck_uuid"]
+                #         deck_score = event["deck_score"]
+                #         recommended_next_steps = event["recommended_next_steps"]
+                #         report_summary = event["report_summary"]
+                #         report_uuid = event["report_uuid"]
+                conversation = ConversationDeckUpload.objects.get(deck_uuid=pitch_deck_analysis.deck.uuid)
+                company = Company.objects.filter(deck_uuid=pitch_deck_analysis.deck.uuid).first()
 
-                async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                        {"type": "deck.report.update",
-                                                         "top_concern": top_concern, "objections": objections,
-                                                         "how_to_overcome": how_to_overcome,
-                                                         'pitch_deck_analysis': analysis,
-                                                         "scores": score_object})
+                # need to add the deck report to the conversation history in a way that can rebuild it. save message as JSON blob?
+                history = get_prelo_message_history(f'custom_claude_{conversation.conversation_uuid}')
+                history.add_ai_message(json.dumps({
+                    "deck_uuid": pitch_deck_analysis.deck.uuid,
+                    "status": "analyzed",
+                    "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
+                    "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
+                    "report_summary": pitch_deck_analysis.investor_report.summary,
+                    "report_uuid": pitch_deck_analysis.investor_report.uuid,
+                    "company_name": company.name
+                }))
+                async_to_sync(channel_layer.group_send)(conversation.conversation_uuid,
+                                                        {"type": "deck.analyzed",
+                                                            "deck_uuid": pitch_deck_analysis.deck.uuid,
+                                                            "report_uuid": pitch_deck_analysis.investor_report.uuid,
+                                                            "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
+                                                         "report_summary": pitch_deck_analysis.investor_report.summary,
+                                                         "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
+                                                         "company_name": company.name,
+                                                         })
+                return
             except Exception as e:
                 print(e)
                 return
-        else:
-            analyze_deck(pitch_deck_analysis)
-            top_concern, objections, how_to_overcome = create_risk_report(pitch_deck_analysis)
-            analysis = concerns_analysis(pitch_deck_analysis)
-            try:
-                scores = pitch_deck_analysis.deck.scores
-                score_object = {
-                    'market': {
-                        'score': scores.market_opportunity,
-                        'reason': scores.market_reasoning
-                    },
-                    'team': {
-                        'score': scores.team,
-                        'reason': scores.team_reasoning
-                    },
-                    'product': {
-                        'score': scores.product,
-                        'reason': scores.product_reasoning
-                    },
-                    'traction': {
-                        'score': scores.traction,
-                        'reason': scores.traction_reasoning
-                    },
-                    'final': {
-                        'score': scores.final_score,
-                        'reason': scores.final_reasoning
-                    }
-                }
-                channel_layer = get_channel_layer()
-
-                async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
-                                                        {"type": "deck.report.update",
-                                                         "top_concern": top_concern, "objections": objections,
-                                                         "how_to_overcome": how_to_overcome,
-                                                         'pitch_deck_analysis': analysis,
-                                                         "scores": score_object})
-            except Exception as e:
-                print(e)
                 # not vital, just try to return response to chat if possible.
-            if company_id is not None:
-                populate_company_data.delay(company_id, pitch_deck_analysis_id)
+        else:
+            if pitch_deck_analysis.deck.version > 1:
+                print("Checking updated version")
+                # need to compare new version results to old version
+                step = "Compare Deck to Previous Version"
+                top_concern, objections, how_to_overcome, analysis, previous_scores, updated_scores = compare_deck_to_previous_version(
+                    pitch_deck_analysis)
+                print(f"Top Concern: {top_concern}")
+                try:
+                    scores = pitch_deck_analysis.deck.scores
+                    print(f"Scores: {scores}")
+                    score_object = {
+                        'market': {
+                            'score': scores.market_opportunity,
+                            'reason': scores.market_reasoning,
+                            'delta': updated_scores.market_opportunity - previous_scores.market_opportunity
+                        },
+                        'team': {
+                            'score': updated_scores.team,
+                            'reason': updated_scores.team_reasoning,
+                            'delta': updated_scores.team - previous_scores.team
+
+                        },
+                        'product': {
+                            'score': updated_scores.product,
+                            'reason': updated_scores.product_reasoning,
+                            'delta': updated_scores.product - previous_scores.product
+                        },
+                        'traction': {
+                            'score': updated_scores.traction,
+                            'reason': updated_scores.traction_reasoning,
+                            'delta': updated_scores.traction - previous_scores.traction
+                        },
+                        'final': {
+                            'score': updated_scores.final_score,
+                            'reason': updated_scores.final_reasoning,
+                            'delta': updated_scores.final_score - previous_scores.final_score
+                        }
+                    }
+                    channel_layer = get_channel_layer()
+
+                    async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
+                                                            {"type": "deck.report.update",
+                                                             "top_concern": top_concern, "objections": objections,
+                                                             "how_to_overcome": how_to_overcome,
+                                                             'pitch_deck_analysis': analysis,
+                                                             "scores": score_object})
+                except Exception as e:
+                    print(e)
+                    return
+            else:
+                step = "Initial Analysis"
+                analyze_deck(pitch_deck_analysis)
+                step = "Risk Report"
+                top_concern, objections, how_to_overcome = create_risk_report(pitch_deck_analysis)
+                step = "Concerns Analysis"
+                analysis = concerns_analysis(pitch_deck_analysis)
+                try:
+                    scores = pitch_deck_analysis.deck.scores
+                    score_object = {
+                        'market': {
+                            'score': scores.market_opportunity,
+                            'reason': scores.market_reasoning
+                        },
+                        'team': {
+                            'score': scores.team,
+                            'reason': scores.team_reasoning
+                        },
+                        'product': {
+                            'score': scores.product,
+                            'reason': scores.product_reasoning
+                        },
+                        'traction': {
+                            'score': scores.traction,
+                            'reason': scores.traction_reasoning
+                        },
+                        'final': {
+                            'score': scores.final_score,
+                            'reason': scores.final_reasoning
+                        }
+                    }
+                    channel_layer = get_channel_layer()
+
+                    async_to_sync(channel_layer.group_send)(pitch_deck_analysis.deck.uuid,
+                                                            {"type": "deck.report.update",
+                                                             "top_concern": top_concern, "objections": objections,
+                                                             "how_to_overcome": how_to_overcome,
+                                                             'pitch_deck_analysis': analysis,
+                                                             "scores": score_object})
+                except Exception as e:
+                    print(e)
+                    # not vital, just try to return response to chat if possible.
+                if company_id is not None:
+                    populate_company_data.delay(company_id, pitch_deck_analysis_id)
+    except Exception as e:
+        print(e)
+        error = PitchDeckAnalysisError.objects.create(
+            analysis=pitch_deck_analysis,
+            step=step,
+            error=str(e)
+        )
+        record_prelo_event({
+            "error": str(e),
+            "step": step,
+            "deck_uuid": pitch_deck_analysis.deck.uuid
+        })
+        analyze_deck_task.retry(countdown=60, max_retries=5, args=[pitch_deck_analysis_id, company_id])
+        # how to record error and attempt retry?
 
 
 @app.task(name="process_slide")

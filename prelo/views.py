@@ -19,9 +19,11 @@ from rest_framework_api_key.permissions import HasAPIKey
 
 from prelo.aws.s3_utils import create_presigned_url, upload_uploaded_file_to_s3
 from prelo.chat.history import get_message_history, get_prelo_message_history
+from prelo.events import record_prelo_event, record_smd_event
 from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport, RejectionEmail, \
     Investor, MeetingEmail
 from prelo.pitch_deck.generate import create_report_for_deck
+from prelo.pitch_deck.investor.deck_select import identify_pitch_deck_to_use
 from prelo.pitch_deck.investor.meeting import write_meeting_email
 from prelo.pitch_deck.investor.rejection import write_rejection_email
 from prelo.prompts.functions import functions
@@ -249,19 +251,13 @@ def send_founder_chat_message(request):
             end_time = time.perf_counter()
             print(f"Chat with lookup took {end_time - start_time} seconds")
 
-            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
-                                     headers=headers,
-                                     json={
-                                         "data": {
-                                             "event": "chat_message",
-                                             "type": "investor_lookup",
-                                             "conversation": conversation_uuid,
-                                             "duration": end_time - start_time,
-                                         },
-                                         "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
-                                     }
-                                     )
-
+            record_smd_event({
+                "event": "chat_message",
+                "type": "investor_lookup",
+                "conversation": conversation_uuid,
+                "duration": end_time - start_time,
+                "credits_used": 2
+            })
             return Response({"message": response, "credits_used": 2})
         elif path_response['tool_id'] == '2':
             if credits < 5:
@@ -269,18 +265,15 @@ def send_founder_chat_message(request):
             response = write_cold_outreach_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
             print(f"Chat with cold email writing took {end_time - start_time} seconds")
-            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
-                                               headers=headers,
-                                               json={
-                                                   "data": {
-                                                       "event": "chat_message",
-                                                       "type": "cold_outreach",
-                                                       "conversation": conversation_uuid,
-                                                       "duration": end_time - start_time,
-                                                   },
-                                                   "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
-                                               }
-                                               )
+            record_smd_event({
+                "event": "chat_message",
+                "type": "cold_outreach",
+                "conversation": conversation_uuid,
+                "duration": end_time - start_time,
+                "credits_used": 5
+            })
+
+
             return Response({"message": response, "credits_used": 5})
         elif path_response['tool_id'] == '3':
             if credits < 5:
@@ -288,18 +281,14 @@ def send_founder_chat_message(request):
             response = write_forwardable_message(message, conversation_uuid, submind)
             end_time = time.perf_counter()
             print(f"Chat with forwardable email writing took {end_time - start_time} seconds")
-            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
-                                               headers=headers,
-                                               json={
-                                                   "data": {
-                                                       "event": "chat_message",
-                                                       "type": "forwardable_email",
-                                                       "conversation": conversation_uuid,
-                                                       "duration": end_time - start_time,
-                                                   },
-                                                   "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
-                                               }
-                                               )
+            record_smd_event({
+                "event": "chat_message",
+                "type": "forwardable_email",
+                "conversation": conversation_uuid,
+                "duration": end_time - start_time,
+                "credits_used": 5
+            })
+
             return Response({"message": response, "credits_used": 5})
     if credits < 1:
         return Response({"message": "Not enough credits remaining. Please add credits to continue.", "credits_used": 0})
@@ -338,19 +327,13 @@ def send_founder_chat_message(request):
     )
     end_time = time.perf_counter()
     print(f"Chat took {end_time - start_time} seconds")
+    record_smd_event({
+        "event": "chat_message",
+        "type": "chat",
+        "conversation": conversation_uuid,
+        "duration": end_time - start_time,
+    })
 
-    telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
-                                       headers=headers,
-                                       json={
-                                           "data": {
-                                               "event": "chat_message",
-                                               "type": "chat",
-                                               "conversation": conversation_uuid,
-                                               "duration": end_time - start_time,
-                                           },
-                                           "table": config('SCORE_MY_DECK_TELEMETRY_TABLE')
-                                       }
-                                       )
     return Response({"message": answer.content, "credits_used": 1})
 
 
@@ -605,105 +588,185 @@ def get_shared_report(request):
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
 def send_interview_chat_message(request):
-    conversation_uuid = request.data.get('uuid')
-    message = request.data.get('message')
-    submind_id = request.data.get('submind_id')
-    submind = Submind.objects.get(id=submind_id)
-    comparison_view = request.data.get('comparison_view', False)
-    start_time = time.perf_counter()
-
-    # Access optional file uploads
-    optional_file = request.data.get('file', None)
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": config('TELEMETRY_API_KEY')
-    }
-    # Add your logic here to handle the optional file if present
-    if optional_file:
-        client = request.data.get('client')
+    try:
+        conversation_uuid = request.data.get('uuid')
+        message = request.data.get('message')
+        submind_id = request.data.get('submind_id')
+        submind = Submind.objects.get(id=submind_id)
+        comparison_view = request.data.get('comparison_view', False)
+        start_time = time.perf_counter()
         investor_id = request.data.get('investor_id')
-        firm_id = request.data.get('firm_id')
-        object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{optional_file.name}'
-        upload_uploaded_file_to_s3(object_name, optional_file)
-        Company.objects.create(user_id=investor_id, deck_uuid=conversation_uuid)
-        print(f'Uploaded to: {object_name}')
-        deck_uuid = str(uuid.uuid4())
-        pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=optional_file.name, uuid=deck_uuid,
-                                              user_id=investor_id)
-        Company.objects.create(user_id=investor_id, deck_uuid=deck_uuid)
-        ConversationDeckUpload.objects.create(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid)
-        check_for_decks.delay()
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(conversation_uuid,
-                                                {"type": "deck.received",
-                                                 "deck_uuid": deck_uuid
-                                                 })
-        history = get_prelo_message_history(f'custom_claude_{conversation_uuid}')
-        history.add_user_message(f"Uploaded pitch deck {optional_file.name}")
-        history.add_ai_message("Deck has been uploaded and I'm analyzing it now.")
+
+        # Access optional file uploads
+        optional_file = request.data.get('file', None)
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": config('TELEMETRY_API_KEY')
+        }
+        # Add your logic here to handle the optional file if present
+        if optional_file:
+            client = request.data.get('client')
+            firm_id = request.data.get('firm_id')
+            object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{optional_file.name}'
+            upload_uploaded_file_to_s3(object_name, optional_file)
+            Company.objects.create(user_id=investor_id, deck_uuid=conversation_uuid)
+            print(f'Uploaded to: {object_name}')
+            deck_uuid = str(uuid.uuid4())
+            pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=optional_file.name, uuid=deck_uuid,
+                                                  user_id=investor_id)
+            Company.objects.create(user_id=investor_id, deck_uuid=deck_uuid)
+            ConversationDeckUpload.objects.create(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid)
+            check_for_decks.delay()
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(conversation_uuid,
+                                                    {"type": "deck.received",
+                                                     "deck_uuid": deck_uuid
+                                                     })
+            history = get_prelo_message_history(f'custom_claude_{conversation_uuid}')
+            history.add_user_message(f"Uploaded pitch deck {optional_file.name}")
+            history.add_ai_message("Deck has been uploaded and I'm analyzing it now.")
+            end_time = time.perf_counter()
+            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
+                                               headers=headers,
+                                               json={
+                                                   "data": {
+                                                       "event": "chat_message",
+                                                       "type": "deck_upload",
+                                                       "conversation": conversation_uuid,
+                                                       "duration": end_time - start_time,
+                                                   },
+                                                   "table": config('PRELO_TELEMETRY_TABLE')
+                                               }
+                                               )
+            return Response({"message": "Deck has been uploaded and I'm analyzing it now.", "type": "deck_uploaded"})
+        # Needs a submind to chat with. How does this look in practice?
+        # Should have tools to pull data, knowledge to respond from, with LLM backing.
+
+
+        choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
+
+        model = SubmindModelFactory.get_model(conversation_uuid, "interview_chat", 0.0)
+
+        path = choose_path_prompt | model.bind(function_call={"name": "choose_path"},
+                                               functions=functions) | JsonOutputFunctionsParser()
+
+        tools_available = """
+            Id: 1, Name: Write Rejection Email, Description: Write an empathetic rejection email
+            Id: 2, Name: Write Meeting Request Email, Description: Write an email requesting a meeting
+            """
+
+        path_response = path.invoke({
+            "message": message,
+            "tools": tools_available
+        })
+
+        chat_history = get_message_history(f'custom_claude_{conversation_uuid}')
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": config('TELEMETRY_API_KEY')
+        }
+        investor = Investor.objects.filter(lookup_id=investor_id).first()
+
+        if path_response['use_tool']:
+            # step 1: have to identify the deck to pick.
+            deck = identify_pitch_deck_to_use(investor_id, conversation_uuid, message)
+
+            if not deck:
+                return Response({"message": "No pitch deck found. Please upload a pitch deck first."})
+
+
+            if path_response['tool_id'] == '1':
+                pitch_deck = PitchDeck.objects.get(uuid=deck.uuid)
+                rejection_email = RejectionEmail.objects.filter(deck_uuid=deck.uuid, investor=investor).first()
+                if not rejection_email:
+                    rejection_email = write_rejection_email(pitch_deck.analysis, investor)
+
+                # return Response({"email": rejection_email.email, "content": rejection_email.content,
+                #                  "subject": rejection_email.subject})
+                chat_history.add_user_message(message)
+
+                chat_history.add_ai_message(rejection_email.content)
+                end_time = time.perf_counter()
+                record_prelo_event({
+                    "event": "chat_message",
+                    "type": "rejection_email",
+                    "conversation": conversation_uuid,
+                    "duration": end_time - start_time,
+                    "deck_uuid": deck.uuid,
+                })
+
+                return Response({"message": rejection_email.content})
+
+            elif path_response['tool_id'] == '2':
+                pitch_deck = PitchDeck.objects.get(uuid=deck.uuid)
+                meeting_email = MeetingEmail.objects.filter(deck_uuid=deck.uuid, investor=investor).first()
+                if not meeting_email:
+                    meeting_email = write_meeting_email(pitch_deck.analysis, investor)
+                # return Response({"email": rejection_email.email, "content": rejection_email.content,
+                #                  "subject": rejection_email.subject})
+                chat_history.add_user_message(message)
+
+                chat_history.add_ai_message(meeting_email.content)
+                end_time = time.perf_counter()
+                record_prelo_event({
+                    "event": "chat_message",
+                    "type": "meeting_email",
+                    "conversation": conversation_uuid,
+                    "duration": end_time - start_time,
+                    "deck_uuid": deck.uuid,
+                })
+
+                return Response({"message": meeting_email.content})
+
+
+        custom_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    INTERVIEW_SYSTEM_PROMPT_WITH_CUSTOMIZATION
+                ),
+                MessagesPlaceholder(variable_name="history"),
+                ("human", "{input}"),
+            ]
+        )
+        investor_runnable = custom_prompt | model
+
+
+        investor_message_history = RunnableWithMessageHistory(
+            investor_runnable,
+            get_prelo_message_history,
+            input_messages_key="input",
+            history_messages_key="history",
+        )
+        submind_document = remember(submind)
+        investor_answer = investor_message_history.invoke(
+            {
+                "input": message,
+                "mind": submind_document,
+            },
+            config={"configurable": {"session_id": f'custom_claude_{conversation_uuid}'}},
+
+        )
+
         end_time = time.perf_counter()
-        telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
-                                           headers=headers,
-                                           json={
-                                               "data": {
-                                                   "event": "chat_message",
-                                                   "type": "deck_upload",
-                                                   "conversation": conversation_uuid,
-                                                   "duration": end_time - start_time,
-                                               },
-                                               "table": config('PRELO_TELEMETRY_TABLE')
-                                           }
-                                           )
-        return Response({"message": "Deck has been uploaded and I'm analyzing it now.", "type": "deck_uploaded"})
-    # Needs a submind to chat with. How does this look in practice?
-    # Should have tools to pull data, knowledge to respond from, with LLM backing.
-    model = SubmindModelFactory.get_model(conversation_uuid, "interview_chat", 0.0)
+        record_prelo_event({
+            "event": "chat_message",
+            "type": "investor_chat",
+            "conversation": conversation_uuid,
+            "duration": end_time - start_time,
 
-    custom_prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                INTERVIEW_SYSTEM_PROMPT_WITH_CUSTOMIZATION
-            ),
-            MessagesPlaceholder(variable_name="history"),
-            ("human", "{input}"),
-        ]
-    )
-    investor_runnable = custom_prompt | model
-
-
-    investor_message_history = RunnableWithMessageHistory(
-        investor_runnable,
-        get_prelo_message_history,
-        input_messages_key="input",
-        history_messages_key="history",
-    )
-    submind_document = remember(submind)
-    investor_answer = investor_message_history.invoke(
-        {
-            "input": message,
-            "mind": submind_document,
-        },
-        config={"configurable": {"session_id": f'custom_claude_{conversation_uuid}'}},
-
-    )
-
-    end_time = time.perf_counter()
-    print(f"Chat took {end_time - start_time} seconds")
-    telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
-                                       headers=headers,
-                                       json={
-                                           "data": {
-                                               "event": "chat_message",
-                                               "type": "investor_chat",
-                                               "conversation": conversation_uuid,
-                                               "duration": end_time - start_time,
-                                           },
-                                           "table": config('PRELO_TELEMETRY_TABLE')
-                                       }
-                                       )
-    return Response({"message": investor_answer.content})
-
+        })
+        return Response({"message": investor_answer.content})
+    except Exception as e:
+        conversation_uuid = request.data.get('uuid')
+        print(f"Error: {e}")
+        record_prelo_event({
+            "event": "chat_message",
+            "type": "error",
+            "conversation": conversation_uuid,
+            "error": str(e)
+        })
+        return Response({"message": "Sorry, an error occurred. Please try again. If the error persists, please contact support."})
 
 @api_view(('POST',))
 @parser_classes([JSONParser, MultiPartParser])
