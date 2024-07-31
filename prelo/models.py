@@ -261,3 +261,17 @@ class MeetingEmail(models.Model):
     email = models.CharField(max_length=255)
     subject = models.CharField(max_length=255)
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="meetings")
+
+class RequestInfoEmail(models.Model):
+    deck_uuid = models.CharField(max_length=255)
+    content = models.TextField()
+    email = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="requested_info")
+
+class InviteCoinvestorEmail(models.Model):
+    deck_uuid = models.CharField(max_length=255)
+    content = models.TextField()
+    email = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="coinvestors")

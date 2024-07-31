@@ -564,6 +564,45 @@ Pick one step and return the step_id and step_description for that step.
 
 """
 
+REQUEST_MORE_INFO_EMAIL_PROMPT = """
+You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's what you know about the thesis of the investor, their firm, 
+and what the investor values when looking at a company: {investor_mind}
+
+Here's the report written about the startup: {report}
+
+Here's the company's score for how well they match the firm's thesis: {score}
+
+Here's the contact info for the founder: {contact}
+
+Based on this, the decision has been made to request more information from the company.
+
+Draft an email to the founders explaining that the firm is interested in learning more about the company.
+
+Use the report to determine what info is needed.
+
+Use this email template:
+
+Hi [Founder Name],
+
+Thanks for sharing your deck. After reviewing it, we have some questions and would like to learn more about your company.
+
+[Questions]
+
+Looking forward to hearing from you.
+
+
+Best,
+
+[investor_name]
+
+[investor_firm]
+
+"""
+
 REJECTION_EMAIL_PROMPT = """
 You are a powerful submind for a top early-stage investor.
 
@@ -584,13 +623,24 @@ Draft an email to the founders explaining that the firm isn't interested in inve
 
 Make sure to be empathetic while also providing clear, actionable feedback to the founders.
 
-End with this signoff: 
+Use this email template:
+
+Hi [Founder Name],
+
+Thanks for sharing your deck. After reviewing it, we've decided not to move forward with an investment at this time.
+
+[Empathetic feedback]
+
+[Actionable feedback]
+
+Looking forward to hearing from you.
+
 
 Best,
 
-<investor_name>
+[investor_name]
 
-<investor_firm>
+[investor_firm]
 
 """
 
@@ -615,15 +665,64 @@ Draft an email to the founders explaining that the firm is interested in meeting
 
 Make sure to provide clear instructions on the next steps in the process.
 
-End with this signoff: 
+Use this email template:
+
+Hi [Founder Name],
+
+Thanks for sharing your deck. After reviewing it, we'd like to meet with you to learn more about your company.
+
+[Highlights from the report]
+
+[Instructions for scheduling the meeting]
+
+
+Looking forward to hearing from you.
+
 
 Best,
 
-<investor_name>
+[investor_name]
 
-<investor_firm>
+[investor_firm]
 
 """
+
+INVITE_COINVESTOR_EMAIL_PROMPT = """
+You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's what you know about the thesis of the investor, their firm, 
+and what the investor values when looking at a company: {investor_mind}
+
+
+Here's the report written about the startup: {report}
+
+Here's the company's score for how well they match the firm's thesis: {score}
+
+Here's the contact info for the founder: {contact}
+
+Based on this, you want to send an email to another investor inviting them to co-invest with you.
+Use this email template:
+
+Hi [Investor Name],
+
+I wanted to introduce you to [Founder Name] and their company, [Company Name]. After reviewing their deck, we're interested in moving forward with an investment.
+
+
+[Highlights from the report]
+
+Here's where you can learn more about their company: {share_link}
+
+
+Best,
+
+[investor_name]
+
+[investor_firm]
+
+"""
+
 
 DECK_SELECTION_PROMPT = """
 You are a pitch deck identification system.

@@ -21,10 +21,11 @@ from prelo.aws.s3_utils import create_presigned_url, upload_uploaded_file_to_s3
 from prelo.chat.history import get_message_history, get_prelo_message_history
 from prelo.events import record_prelo_event, record_smd_event
 from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport, RejectionEmail, \
-    Investor, MeetingEmail
+    Investor, MeetingEmail, RequestInfoEmail, InviteCoinvestorEmail
 from prelo.pitch_deck.generate import create_report_for_deck
 from prelo.pitch_deck.investor.deck_select import identify_pitch_deck_to_use
 from prelo.pitch_deck.investor.meeting import write_meeting_email
+from prelo.pitch_deck.investor.more_info import request_more_info
 from prelo.pitch_deck.investor.rejection import write_rejection_email
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT, \
@@ -560,7 +561,8 @@ def get_investor_deck_status(request):
         investor_report = deck.analysis.investor_report
         return Response({
             "report_uuid": investor_report.uuid,
-            "status": "complete"
+            "status": "complete",
+            "match_score": investor_report.investment_potential_score
         })
     except Exception as e:
         print(e)
@@ -653,6 +655,8 @@ def send_interview_chat_message(request):
         tools_available = """
             Id: 1, Name: Write Rejection Email, Description: Write an empathetic rejection email
             Id: 2, Name: Write Meeting Request Email, Description: Write an email requesting a meeting
+            Id: 3, Name: Write Request More Info Email, Description: Write an email requesting more information
+            Id: 4, Name: Write Invite Coinvestor Email, Description: Write an email inviting a coinvestor to invest
             """
 
         path_response = path.invoke({
@@ -717,6 +721,44 @@ def send_interview_chat_message(request):
                 })
 
                 return Response({"message": meeting_email.content})
+            elif path_response['tool_id'] == '3':
+                pitch_deck = PitchDeck.objects.get(uuid=deck.uuid)
+                request_info_email = RequestInfoEmail.objects.filter(deck_uuid=deck.uuid, investor=investor).first()
+                if not request_info_email:
+                    request_info_email = request_more_info(pitch_deck.analysis, investor, submind)
+
+                chat_history.add_user_message(message)
+
+                chat_history.add_ai_message(request_info_email.content)
+                end_time = time.perf_counter()
+                record_prelo_event({
+                    "event": "chat_message",
+                    "type": "request_info_email",
+                    "conversation": conversation_uuid,
+                    "duration": end_time - start_time,
+                    "deck_uuid": deck.uuid,
+                })
+
+                return Response({"message": request_info_email.content})
+            elif path_response['tool_id'] == '4':
+                pitch_deck = PitchDeck.objects.get(uuid=deck.uuid)
+                invite_coinvestor_email = InviteCoinvestorEmail.objects.filter(deck_uuid=deck.uuid, investor=investor).first()
+                if not invite_coinvestor_email:
+                    invite_coinvestor_email = invite_coinvestor(pitch_deck.analysis, investor, submind)
+                chat_history.add_user_message(message)
+
+                chat_history.add_ai_message(invite_coinvestor_email.content)
+                end_time = time.perf_counter()
+                record_prelo_event({
+                    "event": "chat_message",
+                    "type": "invite_coinvestor_email",
+                    "conversation": conversation_uuid,
+                    "duration": end_time - start_time,
+                    "deck_uuid": deck.uuid,
+                })
+
+                return Response({"message": invite_coinvestor_email.content})
+
 
 
         custom_prompt = ChatPromptTemplate.from_messages(
@@ -803,4 +845,40 @@ def get_meeting_email(request):
         meeting_email = write_meeting_email(pitch_deck.analysis, investor, submind)
 
     return Response({"email": meeting_email.email, "content": meeting_email.content, "subject": meeting_email.subject})
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_more_info_email(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]
+    investor_id = body["investor_id"]
+    submind_id = body["submind_id"]
+    submind = Submind.objects.get(id=submind_id)
+    investor = Investor.objects.filter(lookup_id=investor_id).first()
+    pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
+    request_info_email = RequestInfoEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
+    if not request_info_email:
+        request_info_email = request_more_info(pitch_deck.analysis, investor, submind)
+
+    return Response({"email": request_info_email.email, "content": request_info_email.content, "subject": request_info_email.subject})
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def invite_coinvestor(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]
+    investor_id = body["investor_id"]
+    submind_id = body["submind_id"]
+    submind = Submind.objects.get(id=submind_id)
+    investor = Investor.objects.filter(lookup_id=investor_id).first()
+    pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
+    invite_coinvestor_email = InviteCoinvestorEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
+    if not invite_coinvestor_email:
+        invite_coinvestor_email = invite_coinvestor(pitch_deck.analysis, investor, submind)
+    return Response({"email": invite_coinvestor_email.email, "content": invite_coinvestor_email.content, "subject": invite_coinvestor_email.subject})
+
 

@@ -476,7 +476,7 @@ functions = [
             "required": ["results"],
         },
     },
-{
+    {
         "name": "rejection_email",
         "description": "write an empathetic rejection email from an investor",
         "parameters": {
@@ -504,7 +504,35 @@ functions = [
             "required": ["results"],
         },
     },
-{
+    {
+        "name": "write_email",
+        "description": "write an email from an investor",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "description": "the results of the contact extraction",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "description": "The email address of the founder or company",
+                        },
+                        "subject": {
+                            "type": "string",
+                            "description": "The subject of the email",
+                        },
+                        "body": {
+                            "type": "string",
+                            "description": "The body of the email",
+                        }
+                    }
+                },
+            },
+            "required": ["results"],
+        },
+    },
+    {
         "name": "meeting_email",
         "description": "write an empathetic email from an investor requesting a meeting",
         "parameters": {
@@ -532,7 +560,7 @@ functions = [
             "required": ["results"],
         },
     },
-{
+    {
         "name": "deck_select",
         "description": "identify the pitch deck to use",
         "parameters": {
