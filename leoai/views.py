@@ -38,8 +38,8 @@ def chat(request):
     message = request.data.get('message')
     submind = Submind.objects.get(id=config("LEOAI_SUBMIND_ID"))
     model = SubmindModelFactory.get_model(conversation_uuid, "leoai_chat")
-    # chat_model = SubmindModelFactory.get_mini(conversation_uuid, "leoai_chat")
-    chat_model = SubmindModelFactory.get_ollama(conversation_uuid, "leoai_chat")
+    chat_model = SubmindModelFactory.get_mini(conversation_uuid, "leoai_chat")
+    # chat_model = SubmindModelFactory.get_ollama(conversation_uuid, "leoai_chat")
     start_time = time.perf_counter()
 
     choose_path_prompt = ChatPromptTemplate.from_template(LEOAI_CHOOSE_PATH_PROMPT)
