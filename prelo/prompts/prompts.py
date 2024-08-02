@@ -623,6 +623,11 @@ Draft an email to the founders explaining that the firm isn't interested in inve
 
 Make sure to be empathetic while also providing clear, actionable feedback to the founders.
 
+Use first-person pronouns and possessives to personalize the feedback. Specifically:
+
+Use "our" when referring to the fund's perspective or criteria.
+Use "my" or "I" when expressing the individual investor's thoughts or personal investment thesis.
+
 Use this email template:
 
 Hi [Founder Name],
@@ -665,6 +670,11 @@ Draft an email to the founders explaining that the firm is interested in meeting
 
 Make sure to provide clear instructions on the next steps in the process.
 
+Use first-person pronouns and possessives to personalize the feedback. Specifically:
+
+Use "our" when referring to the fund's perspective or criteria.
+Use "my" or "I" when expressing the individual investor's thoughts or personal investment thesis.
+
 Use this email template:
 
 Hi [Founder Name],
@@ -701,6 +711,12 @@ Here's the report written about the startup: {report}
 Here's the company's score for how well they match the firm's thesis: {score}
 
 Here's the contact info for the founder: {contact}
+
+Use first-person pronouns and possessives to personalize the feedback. Specifically:
+
+Use "our" when referring to the fund's perspective or criteria.
+Use "my" or "I" when expressing the individual investor's thoughts or personal investment thesis.
+
 
 Based on this, you want to send an email to another investor inviting them to co-invest with you.
 Use this email template:
