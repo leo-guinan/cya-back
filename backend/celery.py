@@ -40,5 +40,9 @@ app.conf.beat_schedule = {
         'task': 'prelo.tasks.check_for_decks',
         'schedule': crontab(minute='*/1'),
     },
+    'check-messages-1-minute': {
+        'task': 'prelo.tasks.resend_messages',
+        'schedule': crontab(minute='*/1'),
+    },
 
 }
