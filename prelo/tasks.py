@@ -10,10 +10,11 @@ from langchain_core.messages import HumanMessage
 
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
+from prelo.chat.history import get_prelo_message_history
 from prelo.events import record_prelo_event, record_smd_event
 from prelo.investor.analysis import check_deck_against_thesis
 from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload, \
-    PitchDeckAnalysisError
+    PitchDeckAnalysisError, MessageToConfirm
 from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version, \
     initial_analysis, gtm_strategy
 from prelo.pitch_deck.investor.concerns import concerns_analysis
@@ -22,7 +23,7 @@ from prelo.pitch_deck.processing import pdf_to_images, encode_image, cleanup_loc
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
 from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
 from submind.llms.submind import SubmindModelFactory
-from prelo.chat.history import get_prelo_message_history
+
 
 @app.task(name="prelo.tasks.check_for_decks")
 def check_for_decks():
@@ -175,9 +176,9 @@ def analyze_deck_task(pitch_deck_analysis_id: int, company_id=None):
                 }))
                 async_to_sync(channel_layer.group_send)(conversation.conversation_uuid,
                                                         {"type": "deck.analyzed",
-                                                            "deck_uuid": pitch_deck_analysis.deck.uuid,
-                                                            "report_uuid": pitch_deck_analysis.investor_report.uuid,
-                                                            "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
+                                                         "deck_uuid": pitch_deck_analysis.deck.uuid,
+                                                         "report_uuid": pitch_deck_analysis.investor_report.uuid,
+                                                         "deck_score": pitch_deck_analysis.investor_report.investment_potential_score,
                                                          "report_summary": pitch_deck_analysis.investor_report.summary,
                                                          "recommended_next_steps": pitch_deck_analysis.investor_report.recommended_next_steps,
                                                          "company_name": company.name,
@@ -430,3 +431,44 @@ def lookup_investors(message: str, session_uuid: str):
                                             {"type": "chat.message",
                                              "message": "",
                                              "id": ""})
+
+
+@app.task(name="prelo.tasks.acknowledge_received")
+def acknowledge_received(conversation_uuid: str, deck_uuid: str):
+    # look up message
+    # delete from db
+    print("ACKNOWLEDGING RECEIVED")
+    message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid,
+                                              type="deck_received").first()
+    if message:
+        message.acknowledged = True
+        message.save()
+
+
+@app.task(name="prelo.tasks.acknowledged_analyzed")
+def acknowledged_analyzed(conversation_uuid:str, deck_uuid:str, report_uuid:str):
+    print("ACKNOWLEDGING ANALYZED")
+    # look up message
+    # delete from db
+    message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid, report_uuid=report_uuid, type="deck_analyzed").first()
+    if message:
+        message.acknowledged = True
+        message.save()
+
+
+@app.task(name="prelo.tasks.resend_messages")
+def resend_unacknowledged_messages():
+    # get unacknowledged messages
+    # resend message
+    channel_layer = get_channel_layer()
+
+    messages = MessageToConfirm.objects.filter(acknowledged=False).all()
+    for message in messages:
+        if message.type == "deck_analyzed":
+            async_to_sync(channel_layer.group_send)(message.conversation_uuid,
+                                                    {"type": "deck.analyzed"}.update(json.loads(message.message)))
+
+        elif message.type == "deck_received":
+            async_to_sync(channel_layer.group_send)(message.conversation_uuid,
+                                                    {"type": "deck.received"}.update(json.loads(message.message)))
+

@@ -48,18 +48,24 @@ def recommendation_analysis(pitch_deck_analysis: PitchDeckAnalysis):
 
 
 def recommended_next_steps(pitch_deck_analysis: PitchDeckAnalysis):
-    model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "concerns")
-    prompt = ChatPromptTemplate.from_template(RECOMMEND_NEXT_STEPS_PROMPT)
-    chain = prompt | model.bind(function_call={"name": "recommended_next_step"}, functions=functions) | JsonOutputFunctionsParser()
-    submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
-    submind_document = remember(submind)
-    response = chain.invoke({
-        "mind": submind_document,
-        "report": pitch_deck_analysis.investor_report.recommendation_reasons,
-        "score": pitch_deck_analysis.investor_report.investment_potential_score,
-    })
-
-    print(f"Recommended next step: {json.dumps(response)}")
+    # step_id:1, step_description: Contact the founders
+    # step_id:2, step_description: Learn more
+    # step_id:3, step_description: Write a rejection email.
+    if pitch_deck_analysis.investor_report.investment_potential_score < 75:
+        response = {
+            "next_step_id": 3,
+            "next_step_description": "Write a rejection email."
+        }
+    elif pitch_deck_analysis.investor_report.investment_potential_score < 85:
+        response = {
+            "next_step_id": 2,
+            "next_step_description": "Learn more"
+        }
+    else:
+        response = {
+            "next_step_id": 1,
+            "next_step_description": "Contact the founders"
+        }
     pitch_deck_analysis.investor_report.recommended_next_steps = json.dumps(response)
     pitch_deck_analysis.investor_report.save()
 

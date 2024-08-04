@@ -2,14 +2,14 @@ import json
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
-from channels.layers import get_channel_layer
 
 from agi.tasks import respond_to_agi_message
 from cli.tasks import run_command
 from coach.tasks import respond_to_chat_message
 from cofounder.tasks import respond_to_cofounder_message
+from prelo.models import MessageToConfirm
 from toolkit.tasks import youtube_to_blog, idea_collider
-
+from prelo.tasks import acknowledge_received, acknowledged_analyzed
 
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
@@ -43,10 +43,10 @@ class ChatConsumer(WebsocketConsumer):
         elif self.app == 'cli':
             run_command.delay(message, self.session)
         elif self.app == 'prelo':
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(self.session,
-                                                    {"type": "chat.message", "message": "message received",
-                                                     "id": "state"})
+            if text_data_json['type'] == 'acknowledged_analyzed':
+                acknowledged_analyzed.delay(self.session, text_data_json['deck_uuid'], text_data_json['report_uuid'])
+            elif text_data_json['type'] == 'acknowledge_received':
+                acknowledge_received.delay(self.session, text_data_json['deck_uuid'])
         elif self.app == 'toolkit':
             print(f"toolkit received: {text_data}")
             if text_data_json["type"] == "idea_collider":
@@ -98,7 +98,6 @@ class ChatConsumer(WebsocketConsumer):
                                         "recommendation": recommendation,
                                         "recommendation_reasons": recommendation_reasons}))
 
-
     def deck_score_update(self, event):
         message = event["message"]
         message_id = event["id"]
@@ -124,11 +123,14 @@ class ChatConsumer(WebsocketConsumer):
 
     def idea_collider(self, event):
         result = event["result"]
-        self.send(text_data=json.dumps({"result": result,}))
+        self.send(text_data=json.dumps({"result": result, }))
 
     def deck_received(self, event):
         deck_uuid = event["deck_uuid"]
-        self.send(text_data=json.dumps({"deck_uuid": deck_uuid, "status": "received"}))
+        message_content = json.dumps({"deck_uuid": deck_uuid, "status": "received"})
+        MessageToConfirm.objects.create(message=json.dumps(event), type="deck_received",
+                                        conversation_uuid=self.session, deck_uuid=deck_uuid)
+        self.send(text_data=message_content)
 
     def deck_analyzed(self, event):
         deck_uuid = event["deck_uuid"]
@@ -137,7 +139,7 @@ class ChatConsumer(WebsocketConsumer):
         report_summary = event["report_summary"]
         report_uuid = event["report_uuid"]
         company_name = event["company_name"]
-        self.send(text_data=json.dumps({
+        message_content = json.dumps({
             "deck_uuid": deck_uuid,
             "status": "analyzed",
             "deck_score": deck_score,
@@ -145,4 +147,8 @@ class ChatConsumer(WebsocketConsumer):
             "report_summary": report_summary,
             "report_uuid": report_uuid,
             "company_name": company_name
-        }))
+        })
+        MessageToConfirm.objects.create(message=json.dumps(event), type="deck_analyzed",
+                                        conversation_uuid=self.session,
+                                        deck_uuid=deck_uuid, report_uuid=report_uuid)
+        self.send(text_data=message_content)

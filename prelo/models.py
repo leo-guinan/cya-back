@@ -275,3 +275,14 @@ class InviteCoinvestorEmail(models.Model):
     email = models.CharField(max_length=255)
     subject = models.CharField(max_length=255)
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name="coinvestors")
+
+class MessageToConfirm(models.Model):
+    message = models.TextField()
+    type = models.TextField()
+    deck_uuid = models.CharField(max_length=255, blank=True, null=True)
+    report_uuid = models.CharField(max_length=255, blank=True, null=True)
+    acknowledged = models.BooleanField(default=False)
+    unique_together = ('deck_uuid', 'report_uuid', 'type')
+    conversation_uuid = models.CharField(max_length=255, blank=True, null=True)
+    def __str__(self):
+        return self.message
