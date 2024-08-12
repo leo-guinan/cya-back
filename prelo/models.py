@@ -284,5 +284,6 @@ class MessageToConfirm(models.Model):
     acknowledged = models.BooleanField(default=False)
     unique_together = ('deck_uuid', 'report_uuid', 'type')
     conversation_uuid = models.CharField(max_length=255, blank=True, null=True)
+    error = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.message

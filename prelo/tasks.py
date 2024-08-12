@@ -472,12 +472,25 @@ def resend_unacknowledged_messages():
     channel_layer = get_channel_layer()
 
     messages = MessageToConfirm.objects.filter(acknowledged=False).all()
-    for message in messages:
-        if message.type == "deck_analyzed":
-            async_to_sync(channel_layer.group_send)(message.conversation_uuid,
-                                                    {"type": "deck.analyzed"}.update(json.loads(message.message)))
 
-        elif message.type == "deck_received":
-            async_to_sync(channel_layer.group_send)(message.conversation_uuid,
+    for message in messages:
+        try:
+            if message.type == "deck_analyzed":
+                async_to_sync(channel_layer.group_send)(message.conversation_uuid,
+                                                        {"type": "deck.analyzed"}.update(json.loads(message.message)))
+
+            elif message.type == "deck_received":
+                async_to_sync(channel_layer.group_send)(message.conversation_uuid,
                                                     {"type": "deck.received"}.update(json.loads(message.message)))
+        except Exception as e:
+            record_prelo_event({
+                "event": "Error Resending Message",
+                "message_id": message.id,
+                "error": str(e),
+                "message": message.message
+            })
+            #acknowledge message and save error message
+            message.acknowledged = True
+            message.error = str(e)
+            message.save()
 
