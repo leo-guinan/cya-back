@@ -32,6 +32,8 @@ ANALYSIS_PROMPT = """
 
 
         Here's the pitch deck data: {data}
+        
+        Make sure the company's name is spelled correctly.
 
 """
 
