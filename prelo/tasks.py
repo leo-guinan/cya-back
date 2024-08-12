@@ -351,10 +351,19 @@ def processing_callback(results, deck_id, start_time, company_id=None):
     # cleaned_data = clean_data(raw_slides)
     combined = "\n".join([f"Page: {slide.order}\n{slide.content}" for slide in deck.slides.all()])
     print("Data ingested. Starting analysis")
-    analysis = PitchDeckAnalysis.objects.create(
-        deck=deck,
-        compiled_slides=combined
-    )
+    analysis = PitchDeckAnalysis.objects.filter(deck=deck).first()
+    if analysis:
+        analysis.compiled_slides = combined
+        analysis.save()
+        record_prelo_event({
+            "deck_uuid": deck.uuid,
+            "event": "Updating Deck Compiled Slides",
+        })
+    else:
+        analysis = PitchDeckAnalysis.objects.create(
+            deck=deck,
+            compiled_slides=combined
+        )
 
     deck.status = PitchDeck.READY_FOR_ANALYSIS
     deck.save()
