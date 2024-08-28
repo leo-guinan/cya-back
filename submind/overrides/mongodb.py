@@ -34,10 +34,7 @@ class MongoDBChatMessageHistoryOverride(BaseChatMessageHistory):
         database_name: str = DEFAULT_DBNAME,
         collection_name: str = DEFAULT_COLLECTION_NAME,
     ):
-        print(f'connection_string: {connection_string}')
-        print(f'session_id: {session_id}')
-        print(f'database_name: {database_name}')
-        print(f'collection_name: {collection_name}')
+      
         self.connection_string = connection_string
         self.session_id = session_id
         self.database_name = database_name

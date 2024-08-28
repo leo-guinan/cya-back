@@ -50,6 +50,7 @@ def extract_founder_info(pitch_deck_analysis: PitchDeckAnalysis):
             twitter_query = f"{member.name} founder {company.name} twitter"
             linkedin_results = google_search(linkedin_query)
             twitter_results = google_search(twitter_query)
+            print(twitter_results)
 
             linkedin_response = linkedin_chain.invoke({
                 "founder": member.name,

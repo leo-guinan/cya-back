@@ -559,10 +559,13 @@ def get_investor_deck_status(request):
         deck_uuid = body["deck_uuid"]
         deck = PitchDeck.objects.get(uuid=deck_uuid)
         investor_report = deck.analysis.investor_report
+        company = Company.objects.filter(deck_uuid=deck_uuid).first()
+        company_name = company.name
         return Response({
             "report_uuid": investor_report.uuid,
             "status": "complete",
-            "match_score": investor_report.investment_potential_score
+            "match_score": investor_report.investment_potential_score,
+            "company_name": company_name
         })
     except Exception as e:
         print(e)
