@@ -3,7 +3,7 @@ from django.urls import path, re_path
 from prelo.views import ask, details, check_for_answer, create_client, get_upload_url, get_scores, \
     send_founder_chat_message, get_deck_name, check_decks, get_deck_report, send_investor_chat_message, \
     get_investor_deck_report, download_deck_report, send_interview_chat_message, get_rejection_email, get_shared_report, \
-    get_investor_deck_status, get_meeting_email, get_more_info_email, invite_coinvestor
+    get_investor_deck_status, get_meeting_email, get_more_info_email, invite_coinvestor, send_mini_chat_message
 
 urlpatterns = [
     path('ask/', ask),
@@ -21,6 +21,7 @@ urlpatterns = [
     path('deck/report/download/', download_deck_report),
     path('deck/investor/report/', get_investor_deck_report),
     path('deck/investor/report/status/', get_investor_deck_status),
+    path('deck/investor/report/mini_chat/', send_mini_chat_message),
     path('deck/shared/report/', get_shared_report),
     path('deck/investor/reject/', get_rejection_email),
     path('deck/investor/more_info/', get_more_info_email),

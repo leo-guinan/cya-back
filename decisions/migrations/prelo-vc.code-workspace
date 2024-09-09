@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../../extensions/prelo-vc"
+		},
+		{
+			"path": "../../../prelo-vc"
+		},
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {}
+}

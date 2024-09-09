@@ -38,6 +38,13 @@ from submind.memory.memory import remember
 from submind.models import Goal, SubmindClient, Submind
 from submind.tasks import think
 
+from bs4 import BeautifulSoup
+import tweepy
+# import linkedin_api
+from langchain.tools import DuckDuckGoSearchRun
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
 
 # Create your views here.
 @api_view(('POST',))
@@ -588,6 +595,169 @@ def get_shared_report(request):
         "executive_summary": investor_report.executive_summary,
     })
 
+def get_competitor_report(deck_uuid):
+    deck = PitchDeck.objects.get(uuid=deck_uuid)
+    analysis = deck.analysis
+
+    # Extract features from deck info
+    features_prompt = PromptTemplate(
+        input_variables=["deck_info"],
+        template="Extract a list of key features from this deck information:\n{deck_info}\nList of features:"
+    )
+    llm = ChatOpenAI(temperature=0)
+    features_chain = LLMChain(llm=llm, prompt=features_prompt)
+    features = features_chain.run(deck_info=analysis.compiled_slides)
+
+    # Generate search queries
+    search_prompt = PromptTemplate(
+        input_variables=["company_name", "features"],
+        template="Generate 3 search queries to find competitors for {company_name} with these features:\n{features}\nQueries:"
+    )
+    search_chain = LLMChain(llm=llm, prompt=search_prompt)
+    queries = search_chain.run(company_name=deck.company.name, features=features)
+
+    # Search for competitors
+    search = DuckDuckGoSearchRun()
+    competitors = []
+    for query in queries.split('\n'):
+        results = search.run(query)
+        competitors.extend(results.split('\n')[:3])  # Take top 3 results from each query
+
+    # Scrape competitor websites and analyze
+    competitor_info = []
+    for competitor in competitors:
+        try:
+            response = requests.get(competitor)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            content = soup.get_text()
+
+            analyze_prompt = PromptTemplate(
+                input_variables=["content", "features"],
+                template="Analyze this website content for a competitor:\n{content}\n\nIdentify which of these features they have:\n{features}\n\nCompetitor analysis:"
+            )
+            analyze_chain = LLMChain(llm=llm, prompt=analyze_prompt)
+            analysis = analyze_chain.run(content=content, features=features)
+
+            competitor_info.append({
+                "name": competitor,
+                "url": competitor,
+                "analysis": analysis
+            })
+        except Exception as e:
+            print(f"Error scraping {competitor}: {e}")
+
+    return competitor_info
+
+# def get_founder_research(deck_uuid):
+#     deck = PitchDeck.objects.get(uuid=deck_uuid)
+#     founders = json.loads(deck.analysis.founder_contact_info)
+
+#     # Set up API clients (you'll need to add your API keys to your environment variables)
+#     twitter_auth = tweepy.OAuthHandler(config('TWITTER_API_KEY'), config('TWITTER_API_SECRET'))
+#     twitter_auth.set_access_token(config('TWITTER_ACCESS_TOKEN'), config('TWITTER_ACCESS_TOKEN_SECRET'))
+#     twitter_api = tweepy.API(twitter_auth)
+
+#     linkedin_api = linkedin_api.Linkedin(config('LINKEDIN_USERNAME'), config('LINKEDIN_PASSWORD'))
+
+#     llm = ChatOpenAI(temperature=0)
+#     founder_reports = []
+
+#     for founder in founders:
+#         twitter_posts = []
+#         linkedin_posts = []
+
+#         # Get Twitter posts
+#         if 'twitter' in founder:
+#             try:
+#                 tweets = twitter_api.user_timeline(screen_name=founder['twitter'], count=10)
+#                 twitter_posts = [tweet.text for tweet in tweets]
+#             except Exception as e:
+#                 print(f"Error fetching Twitter posts for {founder['name']}: {e}")
+
+#         # Get LinkedIn posts
+#         if 'linkedin' in founder:
+#             try:
+#                 profile = linkedin_api.get_profile(founder['linkedin'])
+#                 posts = linkedin_api.get_profile_posts(profile['public_id'], limit=10)
+#                 linkedin_posts = [post['commentary'] for post in posts if 'commentary' in post]
+#             except Exception as e:
+#                 print(f"Error fetching LinkedIn posts for {founder['name']}: {e}")
+
+#         # Analyze posts
+#         analyze_prompt = PromptTemplate(
+#             input_variables=["name", "twitter_posts", "linkedin_posts"],
+#             template="Analyze these social media posts for {name}:\n\nTwitter:\n{twitter_posts}\n\nLinkedIn:\n{linkedin_posts}\n\nFounder analysis:"
+#         )
+#         analyze_chain = LLMChain(llm=llm, prompt=analyze_prompt)
+#         analysis = analyze_chain.run(name=founder['name'], twitter_posts='\n'.join(twitter_posts), linkedin_posts='\n'.join(linkedin_posts))
+
+#         founder_reports.append({
+#             "name": founder['name'],
+#             "analysis": analysis
+#         })
+
+#     # Compress findings
+#     compress_prompt = PromptTemplate(
+#         input_variables=["founder_reports"],
+#         template="Compress these founder reports into a coherent summary:\n{founder_reports}\n\nCompressed summary:"
+#     )
+#     compress_chain = LLMChain(llm=llm, prompt=compress_prompt)
+#     compressed_report = compress_chain.run(founder_reports=json.dumps(founder_reports))
+
+#     return compressed_report
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def send_mini_chat_message(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]
+    report_uuid = body["report_uuid"]
+    message = body["message"]
+    investor_id = body["investor_id"]
+    submind_id = body["submind_id"]
+    chat_history = get_prelo_message_history(f'deck_{deck_uuid}_report_{report_uuid}')
+    deck = PitchDeck.objects.get(uuid=deck_uuid)
+    analysis = deck.analysis
+    investor_report = InvestorReport.objects.get(uuid=report_uuid)
+    investor = Investor.objects.filter(lookup_id=investor_id).first()
+    submind = Submind.objects.get(id=submind_id)
+
+    if (message == "email_the_founder"):
+        if investor_report.investment_potential_score < 75:
+            rejection_email = RejectionEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
+            if not rejection_email:
+                rejection_email = write_rejection_email(analysis, investor, submind)
+            return Response({"email": rejection_email.email, "content": rejection_email.content, "subject": rejection_email.subject})
+        elif investor_report.investment_potential_score < 85:
+            request_info_email = RequestInfoEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
+            if not request_info_email:
+                request_info_email = request_more_info(analysis, investor, submind)
+            chat_history.add_user_message("Email the founder and request a meeting.")
+            chat_history.add_ai_message(request_info_email.content)
+            return Response({"email": request_info_email.email, "content": request_info_email.content, "subject": request_info_email.subject})
+        else:
+            meeting_email = MeetingEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
+            if not meeting_email:
+                meeting_email = write_meeting_email(analysis, investor, submind)
+            return Response({"email": meeting_email.email, "content": meeting_email.content, "subject": meeting_email.subject})
+    elif (message == "top_concerns"):
+        return Response({"concerns": analysis.concerns})
+    elif (message == "main_competitors"):
+        competitor_report = get_competitor_report(deck_uuid)
+        return Response({"competitors": competitor_report})
+    elif (message == "founder_research"):
+        #founder_report = get_founder_research(deck_uuid)
+        #return Response({"founder_research": founder_report})
+        return Response({"founder_research": "test"})
+    elif (message == "key_questions"):
+        return Response({"questions": analysis.objections.split('\n')})
+    elif (message == "deal_memo"):
+        return Response({"memo": investor_report.executive_summary})
+    else:
+        return Response({"message": "Invalid message"})
+
 @api_view(('POST',))
 @parser_classes([JSONParser, MultiPartParser])
 @renderer_classes((JSONRenderer,))
@@ -883,5 +1053,4 @@ def invite_coinvestor(request):
     if not invite_coinvestor_email:
         invite_coinvestor_email = invite_coinvestor(pitch_deck.analysis, investor, submind)
     return Response({"email": invite_coinvestor_email.email, "content": invite_coinvestor_email.content, "subject": invite_coinvestor_email.subject})
-
-
+    
