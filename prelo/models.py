@@ -247,6 +247,12 @@ class ConversationDeckUpload(models.Model):
     unique_together = ('conversation_uuid', 'deck_uuid')
 
 
+class SourceDeckUpload(models.Model):
+    deck_uuid = models.CharField(max_length=255)
+    source = models.CharField(max_length=255)
+    user_ip = models.CharField(max_length=255)
+
+
 class RejectionEmail(models.Model):
     deck_uuid = models.CharField(max_length=255)
     content = models.TextField()

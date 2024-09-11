@@ -21,14 +21,14 @@ from prelo.aws.s3_utils import create_presigned_url, upload_uploaded_file_to_s3
 from prelo.chat.history import get_message_history, get_prelo_message_history
 from prelo.events import record_prelo_event, record_smd_event
 from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport, RejectionEmail, \
-    Investor, MeetingEmail, RequestInfoEmail, InviteCoinvestorEmail
+    Investor, MeetingEmail, RequestInfoEmail, InviteCoinvestorEmail, SourceDeckUpload
 from prelo.pitch_deck.generate import create_report_for_deck
 from prelo.pitch_deck.investor.deck_select import identify_pitch_deck_to_use
 from prelo.pitch_deck.investor.meeting import write_meeting_email
 from prelo.pitch_deck.investor.more_info import request_more_info
 from prelo.pitch_deck.investor.rejection import write_rejection_email
 from prelo.prompts.functions import functions
-from prelo.prompts.prompts import CHAT_WITH_DECK_SYSTEM_PROMPT, CHOOSE_PATH_PROMPT, \
+from prelo.prompts.prompts import CHAT_WITH_DECK_PROMPT_SOURCE_NOT_READY, CHAT_WITH_DECK_SYSTEM_PROMPT, CHAT_WITH_DECK_SYSTEM_PROMPT_AT_SOURCE, CHOOSE_PATH_PROMPT, \
     INTERVIEW_SYSTEM_PROMPT_WITH_CUSTOMIZATION, INTERVIEW_SYSTEM_PROMPT_PLAIN
 from prelo.tasks import check_for_decks
 from prelo.tools.company import lookup_investors
@@ -373,8 +373,6 @@ def send_investor_chat_message(request):
         "message": message,
         "tools": tools_available
     })
-
-    print(path_response)
 
     if path_response['use_tool']:
         if path_response['tool_id'] == '1':
@@ -1054,3 +1052,217 @@ def invite_coinvestor(request):
         invite_coinvestor_email = invite_coinvestor(pitch_deck.analysis, investor, submind)
     return Response({"email": invite_coinvestor_email.email, "content": invite_coinvestor_email.content, "subject": invite_coinvestor_email.subject})
     
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def upload_deck_from_source(request):
+    start_time = time.perf_counter()
+    investor_id = request.data.get('investor_id')
+    source = request.data.get('source')
+    # Access optional file uploads
+    deck_uuid = str(uuid.uuid4())
+    deck_file = request.data.get('file', None)
+    user_ip = request.data.get('user_ip', None)
+    if not deck_file:
+        return Response({"message": "No file uploaded"})
+    # Add your logic here to handle the optional file if present
+    client = request.data.get('client')
+    firm_id = request.data.get('firm_id')
+    object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{deck_file.name}'
+    upload_uploaded_file_to_s3(object_name, deck_file)
+    Company.objects.create(user_id=investor_id, deck_uuid=deck_uuid)    
+    pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=deck_file.name, uuid=deck_uuid,
+                                            user_id=investor_id)
+    Company.objects.create(user_id=investor_id, deck_uuid=deck_uuid)
+    SourceDeckUpload.objects.create(deck_uuid=deck_uuid, source=source, user_ip=user_ip)
+    check_for_decks.delay()
+
+    end_time = time.perf_counter()
+    record_prelo_event({
+        "event": "deck_upload",
+        "type": "source_deck_upload",
+        "source": source,
+        "duration": end_time - start_time,
+    })
+    message = f"Deck has been uploaded and I'm analyzing it now. This may take a few minutes. In the meantime, feel free to share why you think I'd be a good investor for your company or ask me questions about what I look for in a company."    
+    conversation_uuid = f'{source}_{deck_uuid}'
+    message_history = get_prelo_message_history(conversation_uuid)
+    message_history.add_ai_message(message)
+
+
+    return Response({
+        "message": message, 
+        "type": "deck_uploaded", 
+        "deck_uuid": deck_uuid,
+        "file_name": deck_file.name
+    })
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def chat_with_deck_at_source(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]
+    investor_id = body["investor_id"]
+    submind_id = body["submind_id"]
+    source = body["source"]
+    submind = Submind.objects.get(id=submind_id)
+    investor = Investor.objects.filter(lookup_id=investor_id).first()
+    log_data = {
+        "deck_uuid": deck_uuid,
+        "investor_id": investor_id,
+        "submind_id": submind_id,
+        "source": source,
+        "message": body["message"]
+    }
+    print(f"Logging data: {log_data}")
+    pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
+    conversation_uuid = f'{source}_{deck_uuid}'
+    message = body["message"]
+    start_time = time.perf_counter()
+    
+    model = SubmindModelFactory.get_model(conversation_uuid, "chat", 0.0)
+
+    try:
+        print(f"Pitch deck status: {pitch_deck.status}")
+
+        if pitch_deck.status == PitchDeck.READY_FOR_REPORTING:        
+
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        CHAT_WITH_DECK_SYSTEM_PROMPT_AT_SOURCE
+                    ),
+                    MessagesPlaceholder(variable_name="history"),
+                    ("human", "{input}"),
+                ]
+            )
+            runnable = prompt | model
+
+            with_message_history = RunnableWithMessageHistory(
+                runnable,
+                get_message_history,
+                input_messages_key="input",
+                history_messages_key="history",
+            )
+            submind_document = remember(submind)
+            answer = with_message_history.invoke(
+                {
+                    "input": message,
+                    "mind": submind_document,
+                    "deck": pitch_deck.analysis.compiled_slides,
+                    "analysis": pitch_deck.analysis.extra_analysis
+                
+                },
+                config={"configurable": {"session_id": conversation_uuid}},
+
+            )
+            end_time = time.perf_counter()
+            print(f"Chat took {end_time - start_time} seconds")
+
+            print(answer.content)
+            record_prelo_event({
+                "event": "chat_message",
+                "type": "source_chat",
+                "conversation": conversation_uuid,
+                "duration": end_time - start_time,
+                "deck_uuid": deck_uuid,
+                "status": "Ready",
+                "source": source
+            })
+
+            return Response({"message": answer.content})
+        else:
+            prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    CHAT_WITH_DECK_PROMPT_SOURCE_NOT_READY
+                ),
+                MessagesPlaceholder(variable_name="history"),
+                ("human", "{input}"),
+            ]
+        )
+            runnable = prompt | model
+
+            with_message_history = RunnableWithMessageHistory(
+                runnable,
+                get_message_history,
+                input_messages_key="input",
+                history_messages_key="history",
+            )
+            submind_document = remember(submind)
+            answer = with_message_history.invoke(
+                {
+                    "input": message,
+                    "mind": submind_document,
+                },
+                config={"configurable": {"session_id": conversation_uuid}},
+            )
+            end_time = time.perf_counter()
+            record_prelo_event({
+                "event": "chat_message",
+                "type": "source_chat",
+                "conversation": conversation_uuid,
+                "duration": end_time - start_time,
+                "deck_uuid": deck_uuid,
+                "status": "Not Ready",
+                "source": source
+            })
+            return Response({"message": answer.content})
+    except Exception as e:
+        # if analysis not found, throws error, so just go the else route.
+        print(f"Error: {e}")
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    CHAT_WITH_DECK_PROMPT_SOURCE_NOT_READY
+                ),
+                MessagesPlaceholder(variable_name="history"),
+                ("human", "{input}"),
+            ]
+        )
+        runnable = prompt | model
+
+        with_message_history = RunnableWithMessageHistory(
+            runnable,
+            get_message_history,
+            input_messages_key="input",
+            history_messages_key="history",
+        )
+        submind_document = remember(submind)
+        answer = with_message_history.invoke(
+            {
+                "input": message,
+                "mind": submind_document,
+            },
+            config={"configurable": {"session_id": conversation_uuid}},
+        )
+        end_time = time.perf_counter()
+        record_prelo_event({
+            "event": "chat_message",
+            "type": "source_chat_error",
+            "conversation": conversation_uuid,
+            "duration": end_time - start_time,
+            "deck_uuid": deck_uuid,
+            "status": "Not Ready",
+            "source": source,
+            "error": str(e)
+        })
+        return Response({"message": answer.content})
+    
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def get_source_chat_messages(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]    
+    source = body["source"]
+    message_history = get_prelo_message_history(f"{source}_{deck_uuid}")
+    return Response({"messages": message_history.messages})
