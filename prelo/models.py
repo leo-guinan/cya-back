@@ -39,6 +39,9 @@ class PitchDeck(models.Model):
     company = models.ForeignKey("Company", on_delete=models.CASCADE, related_name="decks", null=True)
     version = models.IntegerField(default=1, null=True)
     user_id = models.CharField(max_length=255, blank=True, null=True)
+    feature_matrix = models.TextField(blank=True, null=True)
+    company_features = models.TextField(blank=True, null=True)
+
 
     def __str__(self):
         return self.s3_path
@@ -293,3 +296,15 @@ class MessageToConfirm(models.Model):
     error = models.TextField(blank=True, null=True)
     def __str__(self):
         return self.message
+    
+
+class Competitor(models.Model):
+    name = models.TextField()
+    description = models.TextField()
+    competitor_report = models.TextField()
+    deck = models.ForeignKey(PitchDeck, on_delete=models.CASCADE, related_name="competitors")
+    funding_report = models.TextField()
+    benefit_report = models.TextField()
+    price_report = models.TextField()
+    market_share_report = models.TextField()
+    

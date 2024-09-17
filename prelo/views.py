@@ -22,7 +22,9 @@ from prelo.chat.history import get_message_history, get_prelo_message_history
 from prelo.events import record_prelo_event, record_smd_event
 from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport, RejectionEmail, \
     Investor, MeetingEmail, RequestInfoEmail, InviteCoinvestorEmail, SourceDeckUpload
+from prelo.pitch_deck.analysis import score_investment_potential
 from prelo.pitch_deck.generate import create_report_for_deck
+from prelo.pitch_deck.investor.chat import handle_quick_chat
 from prelo.pitch_deck.investor.deck_select import identify_pitch_deck_to_use
 from prelo.pitch_deck.investor.meeting import write_meeting_email
 from prelo.pitch_deck.investor.more_info import request_more_info
@@ -30,9 +32,11 @@ from prelo.pitch_deck.investor.rejection import write_rejection_email
 from prelo.prompts.functions import functions
 from prelo.prompts.prompts import CHAT_WITH_DECK_PROMPT_SOURCE_NOT_READY, CHAT_WITH_DECK_SYSTEM_PROMPT, CHAT_WITH_DECK_SYSTEM_PROMPT_AT_SOURCE, CHOOSE_PATH_PROMPT, \
     INTERVIEW_SYSTEM_PROMPT_WITH_CUSTOMIZATION, INTERVIEW_SYSTEM_PROMPT_PLAIN
+from prelo.submind.Investor import InvestorSubmind
 from prelo.tasks import check_for_decks
 from prelo.tools.company import lookup_investors
 from prelo.tools.emails import write_cold_outreach_message, write_forwardable_message
+from prelo.pitch_deck.investor.invite_coinvestor import write_invite_coinvestor
 from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Goal, SubmindClient, Submind
@@ -477,9 +481,10 @@ def get_deck_report(request):
 @renderer_classes((JSONRenderer,))
 @permission_classes((HasAPIKey,))
 def get_investor_deck_report(request):
+    body = json.loads(request.body)
+    deck_uuid = body["deck_uuid"]
     try:
-        body = json.loads(request.body)
-        deck_uuid = body["deck_uuid"]
+       
         deck = PitchDeck.objects.get(uuid=deck_uuid)
         analysis = deck.analysis
         if analysis.investor_report.investment_potential_score > 70:
@@ -489,9 +494,21 @@ def get_investor_deck_report(request):
         else:
             recommendation = "pass"
         company = Company.objects.filter(deck_uuid=deck_uuid).first()
+        print(f"Found company: {company} for report")
         company_name = company.name
         amount_raising = company.funding_amount
-        scores = deck.scores
+        try:
+            scores = deck.scores
+        except Exception as e:
+            record_prelo_event({
+                "event": "get_investor_deck_report",
+                "type": "error",
+                "deck_uuid": deck_uuid,
+                "error": str(e),
+                "message": "No scores found, attempting to fix"
+            })
+            score_investment_potential(analysis, deck_uuid)
+            scores = deck.scores
         score_object = {
             'market': {
                 'score': scores.market_opportunity,
@@ -545,14 +562,33 @@ def get_investor_deck_report(request):
 
         })
     except Exception as e:
-        print(e)
+        
+        record_prelo_event({
+            "event": "get_investor_deck_report",
+            "type": "error",
+            "deck_uuid": deck_uuid,
+            "error": str(e)
+        })
         return Response({
-            "concerns": "",
+             "concerns": "",
             "believe": "",
             "traction": "",
             "summary": "",
+            "executive_summary": "",
             "recommendation": "",
             "recommendation_reasons": "",
+            "investment_potential_score": "",
+            "recommendation_summary": "",
+            "recommended_next_steps": {},
+            "company_name": "",
+            "amount_raising": "",
+            "scores": "",
+            "founders": {},
+            "founders_contact_info": "",
+            "score_explanation": "",
+            "report_uuid": ""
+
+
         })
 
 @api_view(('POST',))
@@ -769,7 +805,7 @@ def send_interview_chat_message(request):
         comparison_view = request.data.get('comparison_view', False)
         start_time = time.perf_counter()
         investor_id = request.data.get('investor_id')
-
+        current_deck_uuid = request.data.get('deck_uuid', None)
         # Access optional file uploads
         optional_file = request.data.get('file', None)
         headers = {
@@ -814,7 +850,26 @@ def send_interview_chat_message(request):
             return Response({"message": "Deck has been uploaded and I'm analyzing it now.", "type": "deck_uploaded"})
         # Needs a submind to chat with. How does this look in practice?
         # Should have tools to pull data, knowledge to respond from, with LLM backing.
+        if current_deck_uuid:
+            deck = PitchDeck.objects.get(uuid=current_deck_uuid)
+        else:
+            deck = identify_pitch_deck_to_use(investor_id, conversation_uuid, message)
+        chat_history = get_message_history(f'custom_claude_{conversation_uuid}')
 
+        check_quick = handle_quick_chat(message, deck)
+        if check_quick:
+            chat_history.add_user_message(message)
+            chat_history.add_ai_message(check_quick)
+            end_time = time.perf_counter()
+            record_prelo_event({
+                "event": "chat_message",
+                "type": "quick_chat",
+                "conversation": conversation_uuid,
+                "duration": end_time - start_time,
+                "message": message,
+                "deck_uuid": deck.uuid if deck else None
+            })
+            return Response({"message": check_quick})
 
         choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
 
@@ -835,16 +890,14 @@ def send_interview_chat_message(request):
             "tools": tools_available
         })
 
-        chat_history = get_message_history(f'custom_claude_{conversation_uuid}')
         headers = {
             "Content-Type": "application/json",
             "Authorization": config('TELEMETRY_API_KEY')
         }
         investor = Investor.objects.filter(lookup_id=investor_id).first()
-
+        print(f"Path response: {path_response}")
         if path_response['use_tool']:
             # step 1: have to identify the deck to pick.
-            deck = identify_pitch_deck_to_use(investor_id, conversation_uuid, message)
 
             if not deck:
                 return Response({"message": "No pitch deck found. Please upload a pitch deck first."})
@@ -915,7 +968,7 @@ def send_interview_chat_message(request):
                 pitch_deck = PitchDeck.objects.get(uuid=deck.uuid)
                 invite_coinvestor_email = InviteCoinvestorEmail.objects.filter(deck_uuid=deck.uuid, investor=investor).first()
                 if not invite_coinvestor_email:
-                    invite_coinvestor_email = invite_coinvestor(pitch_deck.analysis, investor, submind)
+                    invite_coinvestor_email = write_invite_coinvestor(pitch_deck.analysis, investor, submind)
                 chat_history.add_user_message(message)
 
                 chat_history.add_ai_message(invite_coinvestor_email.content)
@@ -1049,7 +1102,7 @@ def invite_coinvestor(request):
     pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
     invite_coinvestor_email = InviteCoinvestorEmail.objects.filter(deck_uuid=deck_uuid, investor=investor).first()
     if not invite_coinvestor_email:
-        invite_coinvestor_email = invite_coinvestor(pitch_deck.analysis, investor, submind)
+        invite_coinvestor_email = write_invite_coinvestor(pitch_deck.analysis, investor, submind)
     return Response({"email": invite_coinvestor_email.email, "content": invite_coinvestor_email.content, "subject": invite_coinvestor_email.subject})
     
 
@@ -1086,7 +1139,7 @@ def upload_deck_from_source(request):
         "source": source,
         "duration": end_time - start_time,
     })
-    message = f"Deck has been uploaded and I'm analyzing it now. This may take a few minutes. In the meantime, feel free to share why you think I'd be a good investor for your company or ask me questions about what I look for in a company."    
+    message = f"Your deck has been uploaded and I'm reviewing it now. This may take a few minutes. In the mean time I'd love to learn more about you and your business. Are you ready?"    
     conversation_uuid = f'{source}_{deck_uuid}'
     message_history = get_prelo_message_history(conversation_uuid)
     message_history.add_ai_message(message)
@@ -1145,7 +1198,7 @@ def chat_with_deck_at_source(request):
 
             with_message_history = RunnableWithMessageHistory(
                 runnable,
-                get_message_history,
+                get_prelo_message_history,
                 input_messages_key="input",
                 history_messages_key="history",
             )
@@ -1265,4 +1318,22 @@ def get_source_chat_messages(request):
     deck_uuid = body["deck_uuid"]    
     source = body["source"]
     message_history = get_prelo_message_history(f"{source}_{deck_uuid}")
+    print(f"Message history: {message_history.messages}")
     return Response({"messages": message_history.messages})
+
+
+@api_view(('POST',))
+@parser_classes([JSONParser, MultiPartParser])
+@renderer_classes((JSONRenderer,))
+@permission_classes((HasAPIKey,))
+def create_new_investor(request):
+    body = json.loads(request.body)
+    user_id = body["user_id"]
+    firm_id = body["firm_id"]
+    investor_name = body["investor_name"]
+    investor_email = body["investor_email"]
+    firm_name = body["firm_name"]
+    firm_url = body["firm_url"]
+    investor_submind = InvestorSubmind.create_submind_for_investor(investor_name, firm_name, firm_url)
+    investor_submind.learn_about_person(investor_name)
+    return Response({"message": "Investor created"})

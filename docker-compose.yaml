@@ -56,3 +56,62 @@ services:
         - action: sync
           path: ./
           target: /usr/src/app
+  
+  airflow-webserver:
+    build:
+      context: /Users/leoguinan/airflow/
+      dockerfile: Dockerfile
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://myuser:mypassword@db/mydatabase
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://myuser:mypassword@db/mydatabase
+      AIRFLOW__WEBSERVER__RBAC: "True"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "airflow"
+      AIRFLOW__WEBSERVER__BASE_URL: "http://localhost:8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - redis
+    command: webserver
+    volumes:
+      - /Users/leoguinan/airflow/dags:/opt/airflow/dags
+
+  airflow-scheduler:
+    build:
+      context: /Users/leoguinan/airflow/
+      dockerfile: Dockerfile
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://myuser:mypassword@db/mydatabase
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://myuser:mypassword@db/mydatabase
+      AIRFLOW__WEBSERVER__RBAC: "True"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "airflow"
+      AIRFLOW__WEBSERVER__BASE_URL: "http://localhost:8080"
+    depends_on:
+      - db
+      - redis
+    command: scheduler
+    volumes:
+      - /Users/leoguinan/airflow/dags:/opt/airflow/dags
+
+  airflow-worker:
+    build: 
+      context: /Users/leoguinan/airflow/
+      dockerfile: Dockerfile
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://myuser:mypassword@db/mydatabase
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://myuser:mypassword@db/mydatabase
+      AIRFLOW__WEBSERVER__RBAC: "True"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "airflow"
+      AIRFLOW__WEBSERVER__BASE_URL: "http://localhost:8080"
+    depends_on:
+      - db
+      - redis
+    command: celery worker
+    volumes:
+      - /Users/leoguinan/airflow/dags:/opt/airflow/dags

@@ -143,6 +143,7 @@ def initial_analysis(pitch_deck_analysis_id, company_id):
     company.partnerships = response.get('partnerships', '')
     company.founder_market_fit = response.get('founder_market_fit', '')
     company.save()
+    return company
 
 
 def extra_analysis(data, deck_uuid):

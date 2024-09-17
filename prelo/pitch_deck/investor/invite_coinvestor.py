@@ -11,7 +11,7 @@ from submind.memory.memory import remember
 from submind.models import Submind
 
 
-def invite_coinvestor(pitch_deck_analysis: PitchDeckAnalysis, investor: Investor, investor_submind: Submind):
+def write_invite_coinvestor(pitch_deck_analysis: PitchDeckAnalysis, investor: Investor, investor_submind: Submind):
     model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "request_more_info")
     prompt = ChatPromptTemplate.from_template(INVITE_COINVESTOR_EMAIL_PROMPT)
     chain = prompt | model.bind(function_call={"name": "write_email"},
