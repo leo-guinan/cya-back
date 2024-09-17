@@ -1163,7 +1163,6 @@ def chat_with_deck_at_source(request):
     submind_id = body["submind_id"]
     source = body["source"]
     submind = Submind.objects.get(id=submind_id)
-    investor = Investor.objects.filter(lookup_id=investor_id).first()
     log_data = {
         "deck_uuid": deck_uuid,
         "investor_id": investor_id,
@@ -1172,142 +1171,56 @@ def chat_with_deck_at_source(request):
         "message": body["message"]
     }
     print(f"Logging data: {log_data}")
-    pitch_deck = PitchDeck.objects.get(uuid=deck_uuid)
     conversation_uuid = f'{source}_{deck_uuid}'
     message = body["message"]
     start_time = time.perf_counter()
     
     model = SubmindModelFactory.get_model(conversation_uuid, "chat", 0.0)
 
-    try:
-        print(f"Pitch deck status: {pitch_deck.status}")
 
-        if pitch_deck.status == PitchDeck.READY_FOR_REPORTING:        
+   
 
-            prompt = ChatPromptTemplate.from_messages(
-                [
-                    (
-                        "system",
-                        CHAT_WITH_DECK_SYSTEM_PROMPT_AT_SOURCE
-                    ),
-                    MessagesPlaceholder(variable_name="history"),
-                    ("human", "{input}"),
-                ]
-            )
-            runnable = prompt | model
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                CHAT_WITH_DECK_SYSTEM_PROMPT_AT_SOURCE
+            ),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ]
+    )
+    runnable = prompt | model
 
-            with_message_history = RunnableWithMessageHistory(
-                runnable,
-                get_prelo_message_history,
-                input_messages_key="input",
-                history_messages_key="history",
-            )
-            submind_document = remember(submind)
-            answer = with_message_history.invoke(
-                {
-                    "input": message,
-                    "mind": submind_document,
-                    "deck": pitch_deck.analysis.compiled_slides,
-                    "analysis": pitch_deck.analysis.extra_analysis
-                
-                },
-                config={"configurable": {"session_id": conversation_uuid}},
+    with_message_history = RunnableWithMessageHistory(
+        runnable,
+        get_prelo_message_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+    submind_document = remember(submind)
+    answer = with_message_history.invoke(
+        {
+            "input": message,
+            "mind": submind_document,            
+        
+        },
+        config={"configurable": {"session_id": conversation_uuid}},
 
-            )
-            end_time = time.perf_counter()
-            print(f"Chat took {end_time - start_time} seconds")
+    )
+    end_time = time.perf_counter()   
+    record_prelo_event({
+        "event": "chat_message",
+        "type": "source_chat",
+        "conversation": conversation_uuid,
+        "duration": end_time - start_time,
+        "deck_uuid": deck_uuid,
+        "status": "Ready",
+        "source": source
+    })
 
-            print(answer.content)
-            record_prelo_event({
-                "event": "chat_message",
-                "type": "source_chat",
-                "conversation": conversation_uuid,
-                "duration": end_time - start_time,
-                "deck_uuid": deck_uuid,
-                "status": "Ready",
-                "source": source
-            })
-
-            return Response({"message": answer.content})
-        else:
-            prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    CHAT_WITH_DECK_PROMPT_SOURCE_NOT_READY
-                ),
-                MessagesPlaceholder(variable_name="history"),
-                ("human", "{input}"),
-            ]
-        )
-            runnable = prompt | model
-
-            with_message_history = RunnableWithMessageHistory(
-                runnable,
-                get_message_history,
-                input_messages_key="input",
-                history_messages_key="history",
-            )
-            submind_document = remember(submind)
-            answer = with_message_history.invoke(
-                {
-                    "input": message,
-                    "mind": submind_document,
-                },
-                config={"configurable": {"session_id": conversation_uuid}},
-            )
-            end_time = time.perf_counter()
-            record_prelo_event({
-                "event": "chat_message",
-                "type": "source_chat",
-                "conversation": conversation_uuid,
-                "duration": end_time - start_time,
-                "deck_uuid": deck_uuid,
-                "status": "Not Ready",
-                "source": source
-            })
-            return Response({"message": answer.content})
-    except Exception as e:
-        # if analysis not found, throws error, so just go the else route.
-        print(f"Error: {e}")
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    CHAT_WITH_DECK_PROMPT_SOURCE_NOT_READY
-                ),
-                MessagesPlaceholder(variable_name="history"),
-                ("human", "{input}"),
-            ]
-        )
-        runnable = prompt | model
-
-        with_message_history = RunnableWithMessageHistory(
-            runnable,
-            get_message_history,
-            input_messages_key="input",
-            history_messages_key="history",
-        )
-        submind_document = remember(submind)
-        answer = with_message_history.invoke(
-            {
-                "input": message,
-                "mind": submind_document,
-            },
-            config={"configurable": {"session_id": conversation_uuid}},
-        )
-        end_time = time.perf_counter()
-        record_prelo_event({
-            "event": "chat_message",
-            "type": "source_chat_error",
-            "conversation": conversation_uuid,
-            "duration": end_time - start_time,
-            "deck_uuid": deck_uuid,
-            "status": "Not Ready",
-            "source": source,
-            "error": str(e)
-        })
-        return Response({"message": answer.content})
+    return Response({"message": answer.content})
+    
     
 @api_view(('POST',))
 @parser_classes([JSONParser, MultiPartParser])
