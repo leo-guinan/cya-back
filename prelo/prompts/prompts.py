@@ -729,6 +729,50 @@ Best,
 
 """
 
+FOLLOWUP_EMAIL_PROMPT = """
+You are a powerful submind for a top early-stage investor.
+
+Here's what you know about early-stage investing: {mind}
+
+Here's what you know about the thesis of the investor, their firm, 
+and what the investor values when looking at a company: {investor_mind}
+
+Here's the report written about the startup: {report}
+
+Here's the company's score for how well they match the firm's thesis: {score}
+
+Here's the contact info for the founder: {contact}
+
+Based on this, the decision has been made to follow up with the company.
+
+Draft an email to the founders explaining that the firm is interested in following up with them.
+
+Use first-person pronouns and possessives to personalize the feedback. Specifically:
+
+Use "our" when referring to the fund's perspective or criteria.
+Use "my" or "I" when expressing the individual investor's thoughts or personal investment thesis.
+
+Use this email template:
+
+Hi [Founder Name],
+
+Thanks for sharing your deck. After reviewing it, we'd like to follow up with you to learn more about your company.
+
+[Highlights from the report]
+
+[Instructions for scheduling the meeting]
+
+Looking forward to hearing from you.
+
+Best,
+
+[investor_name]
+
+[investor_firm]
+
+"""
+
+
 INVITE_COINVESTOR_EMAIL_PROMPT = """
 You are a powerful submind for a top early-stage investor.
 

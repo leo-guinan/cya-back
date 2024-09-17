@@ -856,7 +856,7 @@ def send_interview_chat_message(request):
             deck = identify_pitch_deck_to_use(investor_id, conversation_uuid, message)
         chat_history = get_message_history(f'custom_claude_{conversation_uuid}')
 
-        check_quick = handle_quick_chat(message, deck)
+        check_quick = handle_quick_chat(message, deck, investor, submind)
         if check_quick:
             chat_history.add_user_message(message)
             chat_history.add_ai_message(check_quick)
