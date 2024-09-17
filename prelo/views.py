@@ -808,18 +808,16 @@ def send_interview_chat_message(request):
         current_deck_uuid = request.data.get('deck_uuid', None)
         # Access optional file uploads
         optional_file = request.data.get('file', None)
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": config('TELEMETRY_API_KEY')
-        }
+    
+        investor = Investor.objects.filter(lookup_id=investor_id).first()
+
         # Add your logic here to handle the optional file if present
         if optional_file:
             client = request.data.get('client')
             firm_id = request.data.get('firm_id')
             object_name = f'pitch_decks/{client}/{firm_id}/{investor_id}/{optional_file.name}'
             upload_uploaded_file_to_s3(object_name, optional_file)
-            Company.objects.create(user_id=investor_id, deck_uuid=conversation_uuid)
-            print(f'Uploaded to: {object_name}')
+            Company.objects.create(user_id=investor_id, deck_uuid=conversation_uuid)            
             deck_uuid = str(uuid.uuid4())
             pitch_deck = PitchDeck.objects.create(s3_path=object_name, name=optional_file.name, uuid=deck_uuid,
                                                   user_id=investor_id)
@@ -835,18 +833,12 @@ def send_interview_chat_message(request):
             history.add_user_message(f"Uploaded pitch deck {optional_file.name}")
             history.add_ai_message("Deck has been uploaded and I'm analyzing it now.")
             end_time = time.perf_counter()
-            telemetry_response = requests.post(f"{config('TELEMETRY_BASE_URL')}/log",
-                                               headers=headers,
-                                               json={
-                                                   "data": {
-                                                       "event": "chat_message",
-                                                       "type": "deck_upload",
-                                                       "conversation": conversation_uuid,
-                                                       "duration": end_time - start_time,
-                                                   },
-                                                   "table": config('PRELO_TELEMETRY_TABLE')
-                                               }
-                                               )
+            record_prelo_event({
+                "event": "chat_message",
+                "type": "deck_upload",
+                "conversation": conversation_uuid,
+                "duration": end_time - start_time,
+            })
             return Response({"message": "Deck has been uploaded and I'm analyzing it now.", "type": "deck_uploaded"})
         # Needs a submind to chat with. How does this look in practice?
         # Should have tools to pull data, knowledge to respond from, with LLM backing.
@@ -894,7 +886,6 @@ def send_interview_chat_message(request):
             "Content-Type": "application/json",
             "Authorization": config('TELEMETRY_API_KEY')
         }
-        investor = Investor.objects.filter(lookup_id=investor_id).first()
         print(f"Path response: {path_response}")
         if path_response['use_tool']:
             # step 1: have to identify the deck to pick.
