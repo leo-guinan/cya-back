@@ -330,9 +330,64 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             You have read the pitch deck for the company and you know their investment ask and their vision.
             Write a deal memo that you will be proud to share with co-investors. Ban generic deal memos,
             but follow a standard deal memo structure and make it specific to the company.  
-        """
-        
-       
+        """,
+        "list_competitors_competitor_matrix": """
+            You are an investor submind whose goal is to    
+            think the same way as the investor you have studied.
+
+            Here's what you know about the thesis of the investor, their firm, 
+            and what the investor values when looking at a company: {mind}
+            You are a specialist in writing product reviews and creating competitive analysis matrix. 
+            Create a competitor analysis table comparing the best features and benefits of [company] 
+            against the 5 competitors. List the 5 major benefits and features that exists for [company] 
+            but does not exist in all the other competitors. Make column 1 the benefits, 
+            Make column 2 for [company] Allocate the other columns to the other 5 competitors.
+
+            Here's the pitch deck:
+            {pitch_deck}
+        """,
+        "list_competitors_key_differentiator": """
+            You are an investor submind whose goal is to    
+            think the same way as the investor you have studied.
+
+            Here's what you know about the thesis of the investor, their firm, 
+            and what the investor values when looking at a company: {mind}
+            You are a specialist in writing product reviews and creating competitive analysis matrix. 
+            Articulate the key differentiator for [company] comparing it against the 5 top competitors. 
+            try to find a similar feature for each of the other products. 
+            Make column headers include [company] and the names of the competitors and key differentiator 
+            rows under each column header stating why [company] is better than each competitor. 
+            Ban generic features, focus on [company].
+
+            Here's the pitch deck:
+            {pitch_deck}
+        """,
+        "list_competitors_how_much_they_raised": """
+            You are an investor submind whose goal is to    
+            think the same way as the investor you have studied.
+
+            Here's what you know about the thesis of the investor, their firm, 
+            and what the investor values when looking at a company: {mind}
+            You are a specialist in writing fundraising comparison reviews and creating competitive analysis matrix. 
+            Create a competitor analysis table comparing the amount of funds raised by the 5 top competitors. 
+            List the funding raised and stage for each competitor. 
+            Make column headers the names of the competitors and make the rows under each column header the 
+            Amount raised at each stage of each competitor's funding round.
+    
+        """,
+        "list_competitors_competitor_market_share": """
+            You are an investor submind whose goal is to    
+            think the same way as the investor you have studied.
+
+            Here's what you know about the thesis of the investor, their firm, 
+            and what the investor values when looking at a company: {mind}
+            You are a specialist in writing market share reviews and creating competitive analysis matrix. 
+            Create a competitor analysis table comparing the market share of the 5 top competitors. 
+            List the market share for each product as a percentage. 
+            Make column headers the names of the competitors and market the rows under each column header the
+            percentage market share of each competitor.
+
+        """,
     }
     prompt = ChatPromptTemplate.from_template(prompts[prompt_name])
     chain = prompt | model | StrOutputParser()
@@ -417,19 +472,19 @@ def list_competitors_competitor_matrix(deck: PitchDeck) -> tuple[str, str]:
     return get_competitor_analysis(deck, "benefit")
 
 def list_competitors_key_differentiator(deck: PitchDeck) -> tuple[str, str]:
-    return "Here are the key differentiators between you and your competitors.", "message"
+    return generate_prompt("list_competitors_key_differentiator", deck.analysis, deck.submind)
 
 def list_competitors_how_much_they_raised(deck: PitchDeck) -> tuple[str, str]:
-    return get_competitor_analysis(deck, "funding")
+    return generate_prompt("list_competitors_how_much_they_raised", deck.analysis, deck.submind)
 
 def list_competitors_competitor_market_share(deck: PitchDeck) -> tuple[str, str]:
-    return get_competitor_analysis(deck, "market_share")
+    return generate_prompt("list_competitors_competitor_market_share", deck.analysis, deck.submind)
 
 def list_competitors_competitor_prices(deck: PitchDeck) -> tuple[str, str]:
-    return get_competitor_analysis(deck, "pricing")
+    return generate_prompt("list_competitors_competitor_prices", deck.analysis, deck.submind)
 
 def list_competitors_target_market(deck: PitchDeck) -> tuple[str, str]:
-    return get_competitor_analysis(deck, "target_market")
+    return generate_prompt("list_competitors_target_market", deck.analysis, deck.submind)
 
 def prepare_questions_competition_questions(deck: PitchDeck) -> tuple[str, str]:
     return generate_prompt("prepare_competition_questions", deck.analysis, deck.submind)
