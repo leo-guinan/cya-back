@@ -94,15 +94,15 @@ def get_competitor_analysis(deck: PitchDeck, analysis_type: ANALYSIS_TYPE):
     
     if analysis_type == "funding":
         print("Performing funding analysis...")
-        return "\n".join(list(map(lambda x: f"{x.name}: {x.funding_report}", competitors)))
+        return "\n".join(list(map(lambda x: f"{x.name}: {x.funding_report}", competitors))), "message"
     elif analysis_type == "benefit":
-        return create_feature_matrix(deck)
+        return create_feature_matrix(deck), "message"
     elif analysis_type == "price":
         print("Performing price analysis...")
-        return "\n".join(list(map(lambda x: f"{x.name}: {x.price_report}", competitors)))
+        return "\n".join(list(map(lambda x: f"{x.name}: {x.price_report}", competitors))), "message"
     elif analysis_type == "market_share":
         print("Performing market share analysis...")
-        return "\n".join(list(map(lambda x: f"{x.name}: {x.market_share_report}", competitors)))
+        return "\n".join(list(map(lambda x: f"{x.name}: {x.market_share_report}", competitors))), "message"
 
 
 def get_competitors(deck: PitchDeck):

@@ -37,4 +37,4 @@ def write_rejection_email(pitch_deck_analysis: PitchDeckAnalysis, investor: Inve
                                           )
 
 
-    return email
+    return email, "email"

@@ -37,4 +37,4 @@ def write_invite_coinvestor(pitch_deck_analysis: PitchDeckAnalysis, investor: In
                                           )
 
 
-    return email
+    return email, "email"

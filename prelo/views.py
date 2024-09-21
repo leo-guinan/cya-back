@@ -848,10 +848,13 @@ def send_interview_chat_message(request):
             deck = identify_pitch_deck_to_use(investor_id, conversation_uuid, message)
         chat_history = get_message_history(f'custom_claude_{conversation_uuid}')
 
-        check_quick = handle_quick_chat(message, deck, investor, submind)
+        check_quick, message_type = handle_quick_chat(message, deck, investor, submind)
         if check_quick:
-            chat_history.add_user_message(message)
-            chat_history.add_ai_message(check_quick)
+            if message_type == "email":
+                return Response({"type": "email", "email": check_quick.email, "content": check_quick.content, "subject": check_quick.subject})
+            else:
+                chat_history.add_user_message(message)
+                chat_history.add_ai_message(check_quick)
             end_time = time.perf_counter()
             record_prelo_event({
                 "event": "chat_message",
@@ -861,7 +864,7 @@ def send_interview_chat_message(request):
                 "message": message,
                 "deck_uuid": deck.uuid if deck else None
             })
-            return Response({"message": check_quick})
+            return Response({"message": check_quick, "type": "message"})
 
         choose_path_prompt = ChatPromptTemplate.from_template(CHOOSE_PATH_PROMPT)
 

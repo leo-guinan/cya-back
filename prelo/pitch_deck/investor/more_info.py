@@ -36,4 +36,4 @@ def request_more_info(pitch_deck_analysis: PitchDeckAnalysis, investor: Investor
                                           )
 
 
-    return email
+    return email, "email"

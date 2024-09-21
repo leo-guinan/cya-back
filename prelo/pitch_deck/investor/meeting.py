@@ -35,4 +35,4 @@ def write_meeting_email(pitch_deck_analysis: PitchDeckAnalysis, investor: Invest
                                           email=response['results']['email'],
                                           )
 
-    return email
+    return email, "email"
