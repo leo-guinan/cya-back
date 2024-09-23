@@ -330,6 +330,9 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             You have read the pitch deck for the company and you know their investment ask and their vision.
             Write a deal memo that you will be proud to share with co-investors. Ban generic deal memos,
             but follow a standard deal memo structure and make it specific to the company.  
+
+            Here's the pitch deck:
+            {pitch_deck}
         """,
         "list_competitors_competitor_matrix": """
             You are an investor submind whose goal is to    
@@ -373,7 +376,9 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             List the funding raised and stage for each competitor. 
             Make column headers the names of the competitors and make the rows under each column header the 
             Amount raised at each stage of each competitor's funding round.
-    
+
+            Here's the pitch deck:
+            {pitch_deck}
         """,
         "list_competitors_competitor_market_share": """
             You are an investor submind whose goal is to    
@@ -387,6 +392,23 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             Make column headers the names of the competitors and market the rows under each column header the
             percentage market share of each competitor.
 
+            Here's the pitch deck:
+            {pitch_deck}
+        """,
+        "list_competitors_target_market": """
+            You are an investor submind whose goal is to    
+            think the same way as the investor you have studied.
+
+            Here's what you know about the thesis of the investor, their firm, 
+            and what the investor values when looking at a company: {mind}
+            You are a specialist in writing market share reviews and creating competitive analysis matrix. 
+            Create a competitor analysis table comparing the target markets of the 5 top competitors. 
+            List the target markets for each competitor. 
+            Make column headers the names of the competitors and target market the rows under each column header the
+            target market of each competitor.
+
+            Here's the pitch deck:
+            {pitch_deck}
         """,
     }
     prompt = ChatPromptTemplate.from_template(prompts[prompt_name])
@@ -448,7 +470,7 @@ def handle_quick_chat(message: str, deck: PitchDeck, investor: Investor, submind
         return research_founders_why_we_rate_the_founder(deck.analysis, submind)
     elif message == "Generate Deal Memo - Standard Deal Memo":
         return generate_deal_memo_standard_deal_memo(deck.analysis, submind)
-    return False
+    return False, "error"
 
 def share_concerns_traction_concerns(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
     return generate_prompt("share_traction_concerns", analysis, submind)

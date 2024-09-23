@@ -22,7 +22,7 @@ from prelo.chat.history import get_message_history, get_prelo_message_history
 from prelo.events import record_prelo_event, record_smd_event
 from prelo.models import PitchDeck, Company, DeckReport, ConversationDeckUpload, InvestorReport, RejectionEmail, \
     Investor, MeetingEmail, RequestInfoEmail, InviteCoinvestorEmail, SourceDeckUpload
-from prelo.pitch_deck.analysis import score_investment_potential
+from prelo.pitch_deck.analysis import initial_analysis, score_investment_potential
 from prelo.pitch_deck.generate import create_report_for_deck
 from prelo.pitch_deck.investor.chat import handle_quick_chat
 from prelo.pitch_deck.investor.deck_select import identify_pitch_deck_to_use
@@ -493,7 +493,12 @@ def get_investor_deck_report(request):
             recommendation = "maybe"
         else:
             recommendation = "pass"
+        all_companies = Company.objects.filter(deck_uuid=deck_uuid).all()
+        print(f"Found {len(all_companies)} companies for report. Should be 1")
         company = Company.objects.filter(deck_uuid=deck_uuid).first()
+        if not company.name:
+            print("Company not populated, populating company...")
+            company = initial_analysis(deck.analysis.id, company.id)
         print(f"Found company: {company} for report")
         company_name = company.name
         amount_raising = company.funding_amount
