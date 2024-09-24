@@ -499,7 +499,7 @@ def get_investor_deck_report(request):
         if not company.name:
             print("Company not populated, populating company...")
             company = initial_analysis(deck.analysis.id, company.id)
-        print(f"Found company: {company} for report")
+        print(f"Found company: {company.name} for report")
         company_name = company.name
         amount_raising = company.funding_amount
         try:
