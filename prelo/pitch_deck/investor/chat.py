@@ -13,7 +13,7 @@ from submind.memory.memory import remember
 from submind.models import Submind
 
 
-def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Submind) -> str:
+def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Submind, **kwargs) -> str:
     model = SubmindModelFactory.get_mini(f"{prompt_name}_{analysis.deck.uuid}", prompt_name, temperature=0.0)
     mind = remember(submind)
     prompts = {
@@ -233,7 +233,8 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             Can you share a short summary about each founder and include their LinkedIn and Twitter details. 
             Create a table Founder Social Media with the Founder names as column headers. Add rows for social media links 
             and short summaries.
-
+            Here are the known social media links for the founders:
+            {social_media}
 
             Here's the pitch deck:
             {pitch_deck}
@@ -248,7 +249,8 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             you've also read the pitch deck and deeply understand the founders' backgrounds. 
             Share a short summary bio of each of the founders and articulate specifically how their 
             experiences will directly translate to the success of their startup.
-
+            Here are the known social media links for the founders:
+            {social_media}
             Here's the pitch deck:
             {pitch_deck}
         """,
@@ -266,6 +268,9 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             Create a table with the founder names as the headers and the 3 main rows as the founder expertise
             and social media links as the others.
 
+            Here are the known social media links for the founders:
+            {social_media}
+
             Here's the pitch deck:
             {pitch_deck}
         """,
@@ -281,6 +286,9 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             Include their social media links. 
             Create a table with the founder names as the headers and the 2 main rows as the founder impact 
             (%) and social media links as the others.
+
+            Here are the known social media links for the founders:
+            {social_media}
 
             Here's the pitch deck:
             {pitch_deck}
@@ -334,6 +342,21 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             Here's the pitch deck:
             {pitch_deck}
         """,
+        "list_competitors_competitor_prices": """
+            You are an investor submind whose goal is to    
+            think the same way as the investor you have studied.
+
+            Here's what you know about the thesis of the investor, their firm, 
+            and what the investor values when looking at a company: {mind}
+            You are a specialist in writing product reviews and creating competitive analysis matrix. 
+            Create a competitor analysis table comparing the prices of the 5 top competitors. 
+            List the prices for each product. 
+            Make column headers the names of the competitors and price the rows under each column header the
+            price of each competitor. Center the header and row values.
+
+            Here's the pitch deck:
+            {pitch_deck}
+        """,
         "list_competitors_competitor_matrix": """
             You are an investor submind whose goal is to    
             think the same way as the investor you have studied.
@@ -345,7 +368,8 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             against the 5 competitors. List the 5 major benefits and features that exists for [company] 
             but does not exist in all the other competitors. Make column 1 the benefits, 
             Make column 2 for [company] Allocate the other columns to the other 5 competitors.
-
+            Center the header and row values.
+            
             Here's the pitch deck:
             {pitch_deck}
         """,
@@ -360,7 +384,7 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             try to find a similar feature for each of the other products. 
             Make column headers include [company] and the names of the competitors and key differentiator 
             rows under each column header stating why [company] is better than each competitor. 
-            Ban generic features, focus on [company].
+            Ban generic features, focus on [company]. Center the header and row values.
 
             Here's the pitch deck:
             {pitch_deck}
@@ -376,6 +400,7 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             List the funding raised and stage for each competitor. 
             Make column headers the names of the competitors and make the rows under each column header the 
             Amount raised at each stage of each competitor's funding round.
+            Center the header and row values.
 
             Here's the pitch deck:
             {pitch_deck}
@@ -391,6 +416,7 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             List the market share for each product as a percentage. 
             Make column headers the names of the competitors and market the rows under each column header the
             percentage market share of each competitor.
+            Center the header and row values.
 
             Here's the pitch deck:
             {pitch_deck}
@@ -405,7 +431,7 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             Create a competitor analysis table comparing the target markets of the 5 top competitors. 
             List the target markets for each competitor. 
             Make column headers the names of the competitors and target market the rows under each column header the
-            target market of each competitor.
+            target market of each competitor. Center the header and row values.
 
             Here's the pitch deck:
             {pitch_deck}
@@ -413,7 +439,7 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
     }
     prompt = ChatPromptTemplate.from_template(prompts[prompt_name])
     chain = prompt | model | StrOutputParser()
-    return chain.invoke({"pitch_deck": analysis.compiled_slides, "mind": mind}), "message"
+    return chain.invoke({"pitch_deck": analysis.compiled_slides, "mind": mind, **kwargs}), "message"
 
 def handle_quick_chat(message: str, deck: PitchDeck, investor: Investor, submind: Submind) -> str:
     if message == "Email Founders - Rejection Email":
@@ -461,13 +487,13 @@ def handle_quick_chat(message: str, deck: PitchDeck, investor: Investor, submind
     elif message == "Prepare questions - Moat Questions":
         return prepare_questions_moat_questions(deck.analysis, submind)
     elif message == "Research Founders - Founder Social Media":
-        return research_founders_founder_social_media(deck.analysis, submind)
+        return research_founders_founder_social_media(deck.analysis, submind, social_media=deck.analysis.founder_summary)
     elif message == "Research Founders - Founder Summary/Bio":
-        return research_founders_founder_summary_bio(deck.analysis, submind)
+        return research_founders_founder_summary_bio(deck.analysis, submind, social_media=deck.analysis.founder_summary)
     elif message == "Research Founders - Founder Domain Experience":
-        return research_founders_founder_domain_experience(deck.analysis, submind)
+        return research_founders_founder_domain_experience(deck.analysis, submind, social_media=deck.analysis.founder_summary)
     elif message == "Research Founders - Why we rate the founder?":
-        return research_founders_why_we_rate_the_founder(deck.analysis, submind)
+        return research_founders_why_we_rate_the_founder(deck.analysis, submind, social_media=deck.analysis.founder_summary)
     elif message == "Generate Deal Memo - Standard Deal Memo":
         return generate_deal_memo_standard_deal_memo(deck.analysis, submind)
     return False, "error"
