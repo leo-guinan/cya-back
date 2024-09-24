@@ -369,7 +369,7 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             but does not exist in all the other competitors. Make column 1 the benefits, 
             Make column 2 for [company] Allocate the other columns to the other 5 competitors.
             Center the header and row values.
-            
+
             Here's the pitch deck:
             {pitch_deck}
         """,
@@ -552,20 +552,17 @@ def prepare_questions_shuffle_questions(analysis: PitchDeckAnalysis, submind: Su
 def prepare_questions_moat_questions(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
     return generate_prompt("prepare_moat_questions", analysis, submind)
 
-def research_founders_founder_social_media(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("research_founder_social_media", analysis, submind)
+def research_founders_founder_social_media(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
+    return generate_prompt("research_founder_social_media", analysis, submind, social_media=social_media)
 
-def research_founders_founder_summary_bio(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("research_founder_summary_bio", analysis, submind)
+def research_founders_founder_summary_bio(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
+    return generate_prompt("research_founder_summary_bio", analysis, submind, social_media=social_media)
 
-def research_founders_due_dilligence(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("research_founder_due_diligence", analysis, submind)
+def research_founders_founder_domain_experience(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
+    return generate_prompt("research_founder_domain_experience", analysis, submind, social_media=social_media)
 
-def research_founders_founder_domain_experience(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("research_founder_domain_experience", analysis, submind)
-
-def research_founders_why_we_rate_the_founder(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("research_founder_rating", analysis, submind)
+def research_founders_why_we_rate_the_founder(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
+    return generate_prompt("research_founder_rating", analysis, submind, social_media=social_media)
 
 def generate_deal_memo_standard_deal_memo(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
     return generate_prompt("generate_standard_deal_memo", analysis, submind)
