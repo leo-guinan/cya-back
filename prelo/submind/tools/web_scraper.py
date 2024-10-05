@@ -16,6 +16,7 @@ from submind.llms.submind import SubmindModelFactory
 from submind.memory.memory import remember
 from submind.models import Submind
 
+import ssl
 
 def url_to_filename(url):
     safe_name = re.sub(r"[^\w\-_]", "_", url)
@@ -101,13 +102,24 @@ def scrape(url, submind: Submind = None, what_to_learn=None):
     headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1'}
     session = requests.Session()
     session.verify = False
-    response = session.get(url, headers=headers)
+    
+    try:
+        response = session.get(url, headers=headers)
+        
+        if response.status_code != 200:
+            print(f"Skipping {url} due to non-200 status code: {response.status_code}")
+            return
 
-    if response.status_code != 200:
-        return
-
-    soup = BeautifulSoup(response.content, 'html.parser')
-    process_page(soup, url, submind, what_to_learn)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        process_page(soup, url, submind, what_to_learn)
+    
+    except requests.exceptions.SSLError as e:
+        if "UNSAFE_LEGACY_RENEGOTIATION_DISABLED" in str(e):
+            print(f"Skipping {url} due to unsafe legacy SSL configuration")
+        else:
+            print(f"Skipping {url} due to SSL error: {e}")
+    except Exception as e:
+        print(f"Error crawling {url}: {e}")
 
 
 def learn_from_page(content: str, submind: Submind, what_to_learn: str):

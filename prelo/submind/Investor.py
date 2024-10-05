@@ -7,7 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from prelo.submind.Base import BaseSubmind
-from prelo.submind.prompts import COMPRESS_INVESTOR_KNOWLEDGE_PROMPT
+from prelo.submind.prompts import ASK_SUBMIND_ABOUT_SELF_PROMPT, COMPRESS_INVESTOR_KNOWLEDGE_PROMPT
 from submind.memory.memory import remember
 from submind.models import Submind
 
@@ -90,6 +90,16 @@ class InvestorSubmind(BaseSubmind):
             "$set": {"content": compressed_knowledge, "previousVersion": historical_uuid,
                      "updatedAt": datetime.now()}},
                                      upsert=True)
+        
+    def ask(self, question: str):
+        current_knowledge = remember(self._submind)
+        ask_prompt = ChatPromptTemplate.from_template(ASK_SUBMIND_ABOUT_SELF_PROMPT)
+        ask_chain = ask_prompt | self.model | StrOutputParser()
+        answer = ask_chain.invoke({
+            "knowledge_base": current_knowledge,
+            "question": question
+        })
+        return answer
 
 
     @classmethod

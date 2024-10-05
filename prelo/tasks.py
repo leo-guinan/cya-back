@@ -13,7 +13,7 @@ from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_fro
 from prelo.chat.history import get_prelo_message_history
 from prelo.events import record_prelo_event, record_smd_event
 from prelo.investor.analysis import check_deck_against_thesis
-from prelo.models import PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload, \
+from prelo.models import InvestmentFirm, PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload, \
     PitchDeckAnalysisError, MessageToConfirm
 from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version, \
     initial_analysis, gtm_strategy
@@ -22,6 +22,7 @@ from prelo.pitch_deck.investor.founders import extract_founder_info
 from prelo.pitch_deck.processing import pdf_to_images, encode_image, cleanup_local_file
 from prelo.pitch_deck.reporting import combine_into_report, create_risk_report
 from prelo.prompts.prompts import PITCH_DECK_SLIDE_PROMPT
+from prelo.submind.Investor import InvestorSubmind
 from submind.llms.submind import SubmindModelFactory
 
 
@@ -446,7 +447,6 @@ def lookup_investors(message: str, session_uuid: str):
 def acknowledge_received(conversation_uuid: str, deck_uuid: str):
     # look up message
     # delete from db
-    print("ACKNOWLEDGING RECEIVED")
     message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid,
                                               type="deck_received").first()
     if message:
@@ -456,7 +456,6 @@ def acknowledge_received(conversation_uuid: str, deck_uuid: str):
 
 @app.task(name="prelo.tasks.acknowledged_analyzed")
 def acknowledged_analyzed(conversation_uuid:str, deck_uuid:str, report_uuid:str):
-    print("ACKNOWLEDGING ANALYZED")
     # look up message
     # delete from db
     message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, deck_uuid=deck_uuid, report_uuid=report_uuid, type="deck_analyzed").first()
@@ -464,24 +463,35 @@ def acknowledged_analyzed(conversation_uuid:str, deck_uuid:str, report_uuid:str)
         message.acknowledged = True
         message.save()
 
+@app.task(name="prelo.tasks.acknowledged_created")
+def acknowledged_created(conversation_uuid:str):
+    # look up message
+    # delete from db
+    message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, type="submind_created").first()
+    if message:
+        message.acknowledged = True
+        message.save()
+
 
 @app.task(name="prelo.tasks.resend_messages")
 def resend_unacknowledged_messages():
-    # get unacknowledged messages
-    # resend message
     channel_layer = get_channel_layer()
-
     messages = MessageToConfirm.objects.filter(acknowledged=False).all()
 
     for message in messages:
         try:
-            if message.type == "deck_analyzed":
-                async_to_sync(channel_layer.group_send)(message.conversation_uuid,
-                                                        {"type": "deck.analyzed"}.update(json.loads(message.message)))
+            print(f"Resending message: {message.type}")
+            print(f"Message: {message.message}")
+            print(f"Conversation UUID: {message.conversation_uuid}")
+            
+            message_data = {"type": message.type.replace("_", ".")}
+            message_data.update(json.loads(message.message))
 
-            elif message.type == "deck_received":
-                async_to_sync(channel_layer.group_send)(message.conversation_uuid,
-                                                    {"type": "deck.received"}.update(json.loads(message.message)))
+            async_to_sync(channel_layer.group_send)(
+                message.conversation_uuid,
+                message_data
+            )
+
         except Exception as e:
             record_prelo_event({
                 "event": "Error Resending Message",
@@ -489,8 +499,58 @@ def resend_unacknowledged_messages():
                 "error": str(e),
                 "message": message.message
             })
-            #acknowledge message and save error message
+            print(f"Error resending message: {e}")
             message.acknowledged = True
             message.error = str(e)
             message.save()
 
+
+@app.task(name="prelo.tasks.create_submind_for_investor")
+def create_submind_for_investor(investor_name: str, user_id: str, organization_id: int, firm_name: str, firm_url: str, conversation_uuid: str, slug: str):
+    start_time = time.perf_counter()
+    investor = Investor.objects.create(name=investor_name, lookup_id=user_id)
+    investor_submind = InvestorSubmind.create_submind_for_investor(investor_name, firm_name, firm_url)
+    investor_submind.learn_about_person(investor_name)
+    investor_submind = InvestorSubmind.create_submind_for_investor(investor_name, firm_name, firm_url)
+    investor_submind.learn_about_person(investor_name)
+    investor_submind.compress_knowledge()
+    passion = investor_submind.ask("What is your passion?")
+    thesis = investor_submind.ask("What is your thesis?")
+    check_size = investor_submind.ask("What is your preferred check size?")
+    industries = investor_submind.ask("What industries do you invest in?")
+    investor.slug = slug
+    investor.passion = passion
+    investor.thesis = thesis
+    investor.check_size = check_size
+    investor.industries = industries
+    investor.save()
+    investment_firm = InvestmentFirm.objects.create(name=firm_name, website=firm_url, lookup_id=organization_id, thesis=thesis)
+    investment_firm.save()
+    investment_firm.investors.add(investor)
+    end_time = time.perf_counter()
+    record_prelo_event({
+        "event": "Submind Created",
+        "investor_id": investor.id,
+        "firm_id": investment_firm.id,
+        "processing_time": end_time - start_time
+    })
+
+    print(f"Submind created for investor: {investor.id}, processing time: {end_time - start_time} seconds.")
+    channel_layer = get_channel_layer()
+
+    async_to_sync(channel_layer.group_send)(conversation_uuid,
+                                                            {"type": "submind.created",
+                                                             "submind_id": investor_submind._submind.id,
+                                                             "investor_id": investor.id,
+                                                             "firm_id": investment_firm.id,
+                                                             "thesis": thesis,
+                                                             "passion": passion,
+                                                             "check_size": check_size,
+                                                             "industries": industries,
+                                                             "status": "configured",
+                                                             "slug": slug,
+                                                             "company": investment_firm.name,
+                                                             "name": investor.name
+                                                             })
+
+    

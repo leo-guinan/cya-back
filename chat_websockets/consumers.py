@@ -9,7 +9,7 @@ from coach.tasks import respond_to_chat_message
 from cofounder.tasks import respond_to_cofounder_message
 from prelo.models import MessageToConfirm
 from toolkit.tasks import youtube_to_blog, idea_collider
-from prelo.tasks import acknowledge_received, acknowledged_analyzed
+from prelo.tasks import acknowledge_received, acknowledged_analyzed, acknowledged_created
 
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
@@ -47,6 +47,8 @@ class ChatConsumer(WebsocketConsumer):
                 acknowledged_analyzed.delay(self.session, text_data_json['deck_uuid'], text_data_json['report_uuid'])
             elif text_data_json['type'] == 'acknowledge_received':
                 acknowledge_received.delay(self.session, text_data_json['deck_uuid'])
+            elif text_data_json['type'] == 'acknowledge_created':
+                acknowledged_created.delay(self.session)
         elif self.app == 'toolkit':
             print(f"toolkit received: {text_data}")
             if text_data_json["type"] == "idea_collider":
@@ -151,4 +153,32 @@ class ChatConsumer(WebsocketConsumer):
         MessageToConfirm.objects.create(message=json.dumps(event), type="deck_analyzed",
                                         conversation_uuid=self.session,
                                         deck_uuid=deck_uuid, report_uuid=report_uuid)
+        self.send(text_data=message_content)
+
+    def submind_created(self, event):
+        submind_id = event["submind_id"]
+        investor_id = event["investor_id"]
+        firm_id = event["firm_id"]
+        thesis = event["thesis"]
+        passion = event["passion"]
+        check_size = event["check_size"]
+        industries = event["industries"]
+        slug = event["slug"]
+        company = event["company"]
+        name = event["name"]
+        message_content = json.dumps({
+            "submind_id": submind_id,
+            "investor_id": investor_id,
+            "firm_id": firm_id,
+            "status": "configured",
+            "thesis": thesis,
+            "passion": passion,
+            "check_size": check_size,
+            "industries": industries,
+            "slug": slug,
+            "company": company,
+            "name": name
+        })
+        MessageToConfirm.objects.create(message=json.dumps(event), type="submind_created",
+                                        conversation_uuid=self.session)
         self.send(text_data=message_content)

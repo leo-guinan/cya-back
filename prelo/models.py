@@ -188,18 +188,20 @@ class CompanyScores(models.Model):
 
 
 class Investor(models.Model):
-    thesis = models.TextField()
-    location = models.TextField()
-    website = models.TextField()
+    thesis = models.TextField(blank=True, null=True)
     name = models.TextField()
-    personal_notes = models.TextField()  # anything about the investor as a person that might be relevant
+    personal_notes = models.TextField(blank=True, null=True)  # anything about the investor as a person that might be relevant
     lookup_id = models.CharField(max_length=255, unique=True)
+    passion = models.TextField(blank=True, null=True)
+    slug = models.TextField(blank=True, null=True)
+    check_size = models.TextField(blank=True, null=True)
+    industries = models.TextField(blank=True, null=True)
+
 
 
 class InvestmentFirm(models.Model):
-    name = models.TextField
-    location = models.TextField
-    website = models.TextField
+    name = models.TextField(blank=True, null=True)
+    website = models.TextField(blank=True, null=True)
     investors = models.ManyToManyField(Investor, related_name="firms")
     thesis = models.TextField()
     portfolio_companies = models.ManyToManyField(Company, related_name="investors")
@@ -307,4 +309,5 @@ class Competitor(models.Model):
     benefit_report = models.TextField()
     price_report = models.TextField()
     market_share_report = models.TextField()
-    
+
+
