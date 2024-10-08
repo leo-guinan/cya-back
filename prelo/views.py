@@ -1454,8 +1454,9 @@ def create_new_investor(request):
     organization_id = body["organization_id"]
     conversation_uuid = body["conversation_uuid"]
     slug = body["slug"]
+    email = body["email"]
     create_submind_for_investor.delay(
-        name, user_id, organization_id, firm_name, firm_url, conversation_uuid, slug
+        name, user_id, organization_id, firm_name, firm_url, conversation_uuid, slug, email
     )
     return Response({"message": "Investor created"})
 
@@ -1474,7 +1475,7 @@ def get_submind_status(request):
     investor_submind = (
         Submind.objects.filter(name=investor.name).order_by("-created_at").first()
     )
-    
+
     if not investor_submind:
         return Response({"status": "not_configured"})
     investment_firm = investor.firms.first()

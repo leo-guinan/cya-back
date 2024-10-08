@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q, UniqueConstraint
 
 
 # Create your models here.
@@ -190,13 +191,24 @@ class CompanyScores(models.Model):
 class Investor(models.Model):
     thesis = models.TextField(blank=True, null=True)
     name = models.TextField()
-    personal_notes = models.TextField(blank=True, null=True)  # anything about the investor as a person that might be relevant
+    first_name = models.TextField(blank=True, null=True)
+    last_name = models.TextField(blank=True, null=True)
+    personal_notes = models.TextField(blank=True, null=True)
     lookup_id = models.CharField(max_length=255, unique=True)
     passion = models.TextField(blank=True, null=True)
     slug = models.TextField(blank=True, null=True)
     check_size = models.TextField(blank=True, null=True)
     industries = models.TextField(blank=True, null=True)
+    email = models.TextField(blank=True, null=True)
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['email'],
+                condition=Q(email__isnull=False),
+                name='unique_email_if_not_null'
+            )
+        ]
 
 
 class InvestmentFirm(models.Model):
@@ -293,7 +305,7 @@ class MessageToConfirm(models.Model):
     deck_uuid = models.CharField(max_length=255, blank=True, null=True)
     report_uuid = models.CharField(max_length=255, blank=True, null=True)
     acknowledged = models.BooleanField(default=False)
-    unique_together = ('deck_uuid', 'report_uuid', 'type')
+    unique_together = ('deck_uuid', 'report_uuid', 'type', 'conversation_uuid')
     conversation_uuid = models.CharField(max_length=255, blank=True, null=True)
     error = models.TextField(blank=True, null=True)
     def __str__(self):

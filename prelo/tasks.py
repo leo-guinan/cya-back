@@ -15,6 +15,7 @@ from prelo.events import record_prelo_event, record_smd_event
 from prelo.investor.analysis import check_deck_against_thesis
 from prelo.models import InvestmentFirm, PitchDeck, PitchDeckAnalysis, PitchDeckSlide, Investor, Company, ConversationDeckUpload, \
     PitchDeckAnalysisError, MessageToConfirm
+from prelo.notifications.investor import investor_created
 from prelo.pitch_deck.analysis import analyze_deck, investor_analysis, compare_deck_to_previous_version, \
     initial_analysis, gtm_strategy
 from prelo.pitch_deck.investor.concerns import concerns_analysis
@@ -506,13 +507,12 @@ def resend_unacknowledged_messages():
 
 
 @app.task(name="prelo.tasks.create_submind_for_investor")
-def create_submind_for_investor(investor_name: str, user_id: str, organization_id: int, firm_name: str, firm_url: str, conversation_uuid: str, slug: str):
+def create_submind_for_investor(first_name: str, last_name: str, user_id: str, organization_id: int, firm_name: str, firm_url: str, conversation_uuid: str, slug: str, email: str):
     start_time = time.perf_counter()
-    investor = Investor.objects.create(name=investor_name, lookup_id=user_id)
+    investor_name = f"{first_name} {last_name}"
+    investor = Investor.objects.create(first_name=first_name, last_name=last_name, name=investor_name, lookup_id=user_id, email=email)
     investor_submind = InvestorSubmind.create_submind_for_investor(investor_name, firm_name, firm_url)
-    investor_submind.learn_about_person(investor_name)
-    investor_submind = InvestorSubmind.create_submind_for_investor(investor_name, firm_name, firm_url)
-    investor_submind.learn_about_person(investor_name)
+    investor_submind.learn_about_person(investor_name)    
     investor_submind.compress_knowledge()
     passion = investor_submind.ask("What is your passion?")
     thesis = investor_submind.ask("What is your thesis?")
@@ -536,6 +536,8 @@ def create_submind_for_investor(investor_name: str, user_id: str, organization_i
     })
 
     print(f"Submind created for investor: {investor.id}, processing time: {end_time - start_time} seconds.")
+    # notify by email.
+    investor_created(investor)
     channel_layer = get_channel_layer()
 
     async_to_sync(channel_layer.group_send)(conversation_uuid,
