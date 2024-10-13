@@ -1456,7 +1456,7 @@ def create_new_investor(request):
     slug = body["slug"]
     email = body["email"]
     create_submind_for_investor.delay(
-        name, user_id, organization_id, firm_name, firm_url, conversation_uuid, slug, email
+        first_name, last_name, user_id, organization_id, firm_name, firm_url, conversation_uuid, slug, email
     )
     return Response({"message": "Investor created"})
 
