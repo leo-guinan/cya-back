@@ -7,6 +7,8 @@ from asgiref.sync import async_to_sync
 from celery import chord, signature
 from channels.layers import get_channel_layer
 from langchain_core.messages import HumanMessage
+from django.utils import timezone
+from django.db.models import Count
 
 from backend.celery import app
 from prelo.aws.s3_utils import file_exists, upload_file_to_s3, download_file_from_s3
@@ -468,10 +470,12 @@ def acknowledged_analyzed(conversation_uuid:str, deck_uuid:str, report_uuid:str)
 def acknowledged_created(conversation_uuid:str):
     # look up message
     # delete from db
-    message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, type="submind_created").first()
+    message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, type="submind_created").all()
     if message:
         message.acknowledged = True
         message.save()
+
+
 
 
 @app.task(name="prelo.tasks.resend_messages")
@@ -510,7 +514,16 @@ def resend_unacknowledged_messages():
 def create_submind_for_investor(first_name: str, last_name: str, user_id: str, organization_id: int, firm_name: str, firm_url: str, conversation_uuid: str, slug: str, email: str):
     start_time = time.perf_counter()
     investor_name = f"{first_name} {last_name}"
-    investor = Investor.objects.create(first_name=first_name, last_name=last_name, name=investor_name, lookup_id=user_id, email=email)
+    # Does investor already exist?
+    investor = Investor.objects.filter(lookup_id=user_id).first()
+    if not investor:    
+        investor = Investor.objects.create(first_name=first_name, last_name=last_name, name=investor_name, lookup_id=user_id, email=email)
+    else:
+        investor.first_name = first_name
+        investor.last_name = last_name
+        investor.name = investor_name
+        investor.email = email
+        investor.save()
     investor_submind = InvestorSubmind.create_submind_for_investor(investor_name, firm_name, firm_url)
     investor_submind.learn_about_person(investor_name)    
     investor_submind.compress_knowledge()
@@ -556,3 +569,29 @@ def create_submind_for_investor(first_name: str, last_name: str, user_id: str, o
                                                              })
 
     
+
+@app.task(name="prelo.tasks.cleanup_messages_to_confirm")
+def cleanup_messages_to_confirm():
+    now = timezone.now()
+    total_messages = MessageToConfirm.objects.count()
+    
+    # Group by type and count
+    type_counts = MessageToConfirm.objects.values('type').annotate(count=Count('id'))
+    
+    # Prepare metrics
+    metrics = {
+        'total_messages': total_messages,
+        'type_counts': {item['type']: item['count'] for item in type_counts},
+        'timestamp': now.isoformat()
+    }
+    
+    # Record event with metrics
+    record_prelo_event({
+        "event": "MessageToConfirm Cleanup",
+        "metrics": metrics
+    })
+    
+    # Delete all MessageToConfirm objects
+    deleted_count = MessageToConfirm.objects.all().delete()[0]
+    
+    return f"Cleaned up {deleted_count} MessageToConfirm objects at {now}"

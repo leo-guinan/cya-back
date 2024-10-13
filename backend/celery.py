@@ -44,5 +44,9 @@ app.conf.beat_schedule = {
         'task': 'prelo.tasks.resend_messages',
         'schedule': crontab(minute='*/1'),
     },
+    'cleanup-messages-to-confirm-hourly': {
+        'task': 'prelo.tasks.cleanup_messages_to_confirm',
+        'schedule': crontab(minute=0, hour='*/1'),  # Run at the start of every hour
+    },
 
 }
