@@ -1,4 +1,6 @@
 import json
+from django.core.cache import cache
+import hashlib
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
@@ -156,29 +158,40 @@ class ChatConsumer(WebsocketConsumer):
         self.send(text_data=message_content)
 
     def submind_created(self, event):
-        submind_id = event["submind_id"]
-        investor_id = event["investor_id"]
-        firm_id = event["firm_id"]
-        thesis = event["thesis"]
-        passion = event["passion"]
-        check_size = event["check_size"]
-        industries = event["industries"]
-        slug = event["slug"]
-        company = event["company"]
-        name = event["name"]
-        message_content = json.dumps({
-            "submind_id": submind_id,
-            "investor_id": investor_id,
-            "firm_id": firm_id,
-            "status": "configured",
-            "thesis": thesis,
-            "passion": passion,
-            "check_size": check_size,
-            "industries": industries,
-            "slug": slug,
-            "company": company,
-            "name": name
-        })
-        MessageToConfirm.objects.create(message=json.dumps(event), type="submind_created",
-                                        conversation_uuid=self.session)
-        self.send(text_data=message_content)
+        # Create a unique hash for this event
+        event_hash = hashlib.md5(json.dumps(event, sort_keys=True).encode()).hexdigest()
+        cache_key = f"submind_created:{event_hash}"
+
+        # Check if we've processed this event before
+        if not cache.get(cache_key):
+            submind_id = event["submind_id"]
+            investor_id = event["investor_id"]
+            firm_id = event["firm_id"]
+            thesis = event["thesis"]
+            passion = event["passion"]
+            check_size = event["check_size"]
+            industries = event["industries"]
+            slug = event["slug"]
+            company = event["company"]
+            name = event["name"]
+            message_content = json.dumps({
+                "submind_id": submind_id,
+                "investor_id": investor_id,
+                "firm_id": firm_id,
+                "status": "configured",
+                "thesis": thesis,
+                "passion": passion,
+                "check_size": check_size,
+                "industries": industries,
+                "slug": slug,
+                "company": company,
+                "name": name
+            })
+            MessageToConfirm.objects.create(message=json.dumps(event), type="submind_created",
+                                            conversation_uuid=self.session)
+            self.send(text_data=message_content)
+
+            # Mark this event as processed
+            cache.set(cache_key, True, timeout=3600)  # Cache for 1 hour
+        else:
+            print(f"Duplicate submind_created event ignored: {event_hash}")
