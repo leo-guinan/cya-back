@@ -1483,7 +1483,6 @@ def get_submind_status(request):
         return Response({"status": "not_configured"})
     return Response(
         {   
-            "status": investor_submind.status,
             "submind_id": investor_submind.id,
             "investor_id": investor.id,
             "firm_id": investment_firm.id,
