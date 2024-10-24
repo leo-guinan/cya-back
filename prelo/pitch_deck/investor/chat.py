@@ -1,3 +1,5 @@
+from decouple import config
+from openai import OpenAI
 from prelo.models import Investor, PitchDeck, PitchDeckAnalysis
 from prelo.pitch_deck.investor.competitor_analysis import ANALYSIS_TYPE, get_competitor_analysis
 from prelo.pitch_deck.investor.invite_coinvestor import write_invite_coinvestor
@@ -11,6 +13,35 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from submind.memory.memory import remember
 from submind.models import Submind
+import ell
+
+from prelo.investor_prompts import (
+    generate_deal_memo_standard_deal_memo,
+    list_competitors_competitor_market_share,
+    list_competitors_competitor_matrix,
+    list_competitors_competitor_prices,
+    list_competitors_how_much_they_raised,
+    list_competitors_key_differentiator,
+    list_competitors_target_market,
+    research_founders_founder_domain_experience,
+    research_founders_founder_social_media,
+    research_founders_founder_summary_bio,
+    research_founders_why_we_rate_the_founder,
+    share_traction_concerns_prompt,
+    share_market_size_concerns_prompt,
+    share_team_concerns_prompt,
+    share_product_concerns_prompt,
+    share_competitor_concerns_prompt,
+    share_regulation_concerns_prompt,
+    prepare_competition_questions,
+    prepare_go_to_market_questions,
+    prepare_traction_questions,
+    prepare_team_questions,
+    prepare_shuffle_questions,
+    prepare_moat_questions,
+    generate_deal_memo_with_option_pool_shuffle,
+    generate_deal_memo_with_non_standard_liquidation_preferences,
+)
 
 
 def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Submind, **kwargs) -> str:
@@ -21,17 +52,7 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
             You are an investor submind whose goal is to 
             think the same way as the investor you have studied.
 
-            Here's what you know about the thesis of the investor, their firm, 
-            and what the investor values when looking at a company: {mind}
-            You are an experienced pre-seed investor, you understand deeply how to assess early stage startups, 
-            especially pre-seed startups with little or no revenue. You are passionate about writing down concerns 
-            related to traction once you've reviewed a pitch deck. You have now just reviewed the traction slides for 
-            the company. Write down in detail your concerns about the level of traction the company has. 
-            Ban generic concerns and focus specifically on the concerns you have based on the company's pitch deck. 
-            Draw from examples from the pitch deck.
-
-            Here's the pitch deck:
-            {pitch_deck}
+           
         """,
         "share_market_size_concerns": """
             You are an investor submind whose goal is to 
@@ -442,153 +463,66 @@ def generate_prompt(prompt_name: str, analysis: PitchDeckAnalysis, submind: Subm
     return chain.invoke({"pitch_deck": analysis.compiled_slides, "mind": mind, **kwargs}), "message"
 
 def handle_quick_chat(message: str, deck: PitchDeck, investor: Investor, submind: Submind) -> str:
+    mind = remember(submind)
+    pitch_deck = deck.analysis.compiled_slides
+
     if message == "Email Founders - Rejection Email":
-        return write_rejection_email(deck.analysis, investor, submind)
+        return write_rejection_email(deck.analysis, investor, submind), "email"
     elif message == "Email Founders - Book a call":
-        return write_meeting_email(deck.analysis, investor, submind)
+        return write_meeting_email(deck.analysis, investor, submind), "email"
     elif message == "Email Founders - Invite Co-Investors":
-        return write_invite_coinvestor(deck.analysis, investor, submind)
+        return write_invite_coinvestor(deck.analysis, investor, submind), "email"
     elif message == "Email Founders - Request Info":
-        return request_more_info(deck.analysis, investor, submind)
+        return request_more_info(deck.analysis, investor, submind), "email"
     elif message == "Share Concerns - Traction Concerns":
-        return share_concerns_traction_concerns(deck.analysis, submind)
+        return share_traction_concerns_prompt(mind, pitch_deck), "message"
     elif message == "Share Concerns - Market Size Concerns":
-        return share_concerns_market_size_concerns(deck.analysis, submind)
+        return share_market_size_concerns_prompt(mind, pitch_deck), "message"
     elif message == "Share Concerns - Team Concerns":
-        return share_concerns_team_concerns(deck.analysis, submind)
+        return share_team_concerns_prompt(mind, pitch_deck), "message"
     elif message == "Share Concerns - Product Concerns":
-        return share_concerns_product_concerns(deck.analysis, submind)
+        return share_product_concerns_prompt(mind, pitch_deck), "message"
     elif message == "Share Concerns - Competitor Concerns":
-        return share_concerns_competitor_concerns(deck.analysis, submind)
+        return share_competitor_concerns_prompt(mind, pitch_deck), "message"
     elif message == "Share Concerns - Regulation Concerns":
-        return share_concerns_regulation_concerns(deck.analysis, submind)
+        return share_regulation_concerns_prompt(mind, pitch_deck), "message"
     elif message == "List Competitors - Competitor Matrix":
-        return list_competitors_competitor_matrix(deck.analysis, submind)
+        return list_competitors_competitor_matrix(mind, pitch_deck), "message"
     elif message == "List Competitors - Key Differentiator":
-        return list_competitors_key_differentiator(deck.analysis, submind)
+        return list_competitors_key_differentiator(mind, pitch_deck), "message"
     elif message == "List Competitors - How Much They Raised":
-        return list_competitors_how_much_they_raised(deck.analysis, submind)
+        return list_competitors_how_much_they_raised(mind, pitch_deck), "message"
     elif message == "List Competitors - Competitor Market Share":
-        return list_competitors_competitor_market_share(deck.analysis, submind)
+        return list_competitors_competitor_market_share(mind, pitch_deck), "message"
     elif message == "List Competitors - Competitor Prices":
-        return list_competitors_competitor_prices(deck.analysis, submind)
+        return list_competitors_competitor_prices(mind, pitch_deck), "message"
     elif message == "List Competitors - Target Market":
-        return list_competitors_target_market(deck.analysis, submind)
+        return list_competitors_target_market(mind, pitch_deck), "message"
     elif message == "Prepare questions - Competition Questions":
-        return prepare_questions_competition_questions(deck.analysis, submind)
+        return prepare_competition_questions(mind, pitch_deck), "message"
     elif message == "Prepare questions - Go To Market Questions":
-        return prepare_questions_go_to_market_questions(deck.analysis, submind)
+        return prepare_go_to_market_questions(mind, pitch_deck), "message"
     elif message == "Prepare questions - Traction Questions":
-        return prepare_questions_traction_questions(deck.analysis, submind)
+        return prepare_traction_questions(mind, pitch_deck), "message"
     elif message == "Prepare questions - Team Questions":
-        return prepare_questions_team_questions(deck.analysis, submind)
+        return prepare_team_questions(mind, pitch_deck), "message"
     elif message == "Prepare questions - Shuffle Questions":
-        return prepare_questions_shuffle_questions(deck.analysis, submind)
+        return prepare_shuffle_questions(mind, pitch_deck), "message"
     elif message == "Prepare questions - Moat Questions":
-        return prepare_questions_moat_questions(deck.analysis, submind)
+        return prepare_moat_questions(mind, pitch_deck), "message"
     elif message == "Research Founders - Founder Social Media":
-        return research_founders_founder_social_media(deck.analysis, submind, social_media=deck.analysis.founder_summary)
+        return research_founders_founder_social_media(mind, pitch_deck, deck.analysis.founder_summary), "message"
     elif message == "Research Founders - Founder Summary/Bio":
-        return research_founders_founder_summary_bio(deck.analysis, submind, social_media=deck.analysis.founder_summary)
+        return research_founders_founder_summary_bio(mind, pitch_deck, deck.analysis.founder_summary), "message"
     elif message == "Research Founders - Founder Domain Experience":
-        return research_founders_founder_domain_experience(deck.analysis, submind, social_media=deck.analysis.founder_summary)
+        return research_founders_founder_domain_experience(mind, pitch_deck, deck.analysis.founder_summary), "message"
     elif message == "Research Founders - Why we rate the founder?":
-        return research_founders_why_we_rate_the_founder(deck.analysis, submind, social_media=deck.analysis.founder_summary)
+        return research_founders_why_we_rate_the_founder(mind, pitch_deck, deck.analysis.founder_summary), "message"
     elif message == "Generate Deal Memo - Standard Deal Memo":
-        return generate_deal_memo_standard_deal_memo(deck.analysis, submind)
+        return generate_deal_memo_standard_deal_memo(mind, pitch_deck), "message"
+    elif message == "Generate Deal Memo - With Option Pool Shuffle":
+        return generate_deal_memo_with_option_pool_shuffle(mind, pitch_deck), "message"
+    elif message == "Generate Deal Memo - With Non-Standard Liquidation Preferences":
+        return generate_deal_memo_with_non_standard_liquidation_preferences(mind, pitch_deck), "message"
+
     return False, "error"
-
-def share_concerns_traction_concerns(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("share_traction_concerns", analysis, submind)
-
-def share_concerns_market_size_concerns(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("share_market_size_concerns", analysis, submind)
-
-def share_concerns_team_concerns(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("share_team_concerns", analysis, submind)
-
-def share_concerns_product_concerns(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("share_product_concerns", analysis, submind)
-
-def share_concerns_competitor_concerns(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("share_competitor_concerns", analysis, submind)
-
-def share_concerns_regulation_concerns(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("share_regulation_concerns", analysis, submind)
-
-def list_competitors_competitor_matrix(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("list_competitors_competitor_matrix", analysis, submind)
-
-def list_competitors_key_differentiator(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("list_competitors_key_differentiator", analysis, submind)
-
-def list_competitors_how_much_they_raised(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("list_competitors_how_much_they_raised", analysis, submind)
-
-def list_competitors_competitor_market_share(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("list_competitors_competitor_market_share", analysis, submind)
-
-def list_competitors_competitor_prices(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("list_competitors_competitor_prices", analysis, submind)
-
-def list_competitors_target_market(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("list_competitors_target_market", analysis, submind)
-
-def prepare_questions_competition_questions(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("prepare_competition_questions", analysis, submind)
-
-def prepare_questions_go_to_market_questions(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("prepare_go_to_market_questions", analysis, submind)
-
-def prepare_questions_traction_questions(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("prepare_traction_questions", analysis, submind)
-
-def prepare_questions_team_questions(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("prepare_team_questions", analysis, submind)
-
-def prepare_questions_shuffle_questions(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("prepare_shuffle_questions", analysis, submind)
-
-def prepare_questions_moat_questions(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("prepare_moat_questions", analysis, submind)
-
-def research_founders_founder_social_media(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
-    return generate_prompt("research_founder_social_media", analysis, submind, social_media=social_media)
-
-def research_founders_founder_summary_bio(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
-    return generate_prompt("research_founder_summary_bio", analysis, submind, social_media=social_media)
-
-def research_founders_founder_domain_experience(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
-    return generate_prompt("research_founder_domain_experience", analysis, submind, social_media=social_media)
-
-def research_founders_why_we_rate_the_founder(analysis: PitchDeckAnalysis, submind: Submind, social_media: str) -> tuple[str, str]:
-    return generate_prompt("research_founder_rating", analysis, submind, social_media=social_media)
-
-def generate_deal_memo_standard_deal_memo(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("generate_standard_deal_memo", analysis, submind)
-
-def generate_deal_memo_with_option_pool_shuffle(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("generate_option_pool_shuffle_memo", analysis, submind)
-
-def generate_deal_memo_with_non_standard_liquidation_preferences(analysis: PitchDeckAnalysis, submind: Submind) -> tuple[str, str]:
-    return generate_prompt("generate_non_standard_liquidation_memo", analysis, submind)
-
-# def generate_response(message: str, prompt: str, context: object) -> str:
-#     model = SubmindModelFactory.get_model(pitch_deck_analysis.deck.uuid, "write_memo")
-#     prompt = ChatPromptTemplate.from_template(MEMO_PROMPT)
-#     chain = prompt | model | StrOutputParser()
-#     firm_id = pitch_deck_analysis.deck.s3_path.split("/")[-3]
-#     investor_id = pitch_deck_analysis.deck.s3_path.split("/")[-2]
-#     firm = InvestmentFirm.objects.get(lookup_id=firm_id)
-#     investor = Investor.objects.get(lookup_id=investor_id)
-#     submind = Submind.objects.get(id=config("PRELO_SUBMIND_ID"))
-#     submind_document = remember(submind)
-#     response = chain.invoke({
-#         "mind": submind_document,
-#         "firm_thesis": firm.thesis,
-#         "investor_thesis": investor.thesis,
-#         "summary": pitch_deck_analysis.summary,
-#         "concerns": pitch_deck_analysis.concerns,
-#         "believe": pitch_deck_analysis.believe,
-#         "traction": pitch_deck_analysis.traction,
-#     })

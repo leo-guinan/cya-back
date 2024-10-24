@@ -86,6 +86,7 @@ markdown = "^3.6"
 pdfkit = "^1.0.0"
 langchain-chroma = "^0.1.1"
 pillow = "^10.3.0"
+ell-ai = "^0.0.14"
 
 [tool.poetry.dev-dependencies]
 
