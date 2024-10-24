@@ -470,7 +470,7 @@ def acknowledged_analyzed(conversation_uuid:str, deck_uuid:str, report_uuid:str)
 def acknowledged_created(conversation_uuid:str):
     # look up message
     # delete from db
-    message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, type="submind_created").all()
+    message = MessageToConfirm.objects.filter(conversation_uuid=conversation_uuid, type="submind_created").first()
     if message:
         message.acknowledged = True
         message.save()
